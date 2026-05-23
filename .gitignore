@@ -59,9 +59,11 @@ _bmad/
 website/
 waitlist-system/
 
-# Misc scratch notes (not user-readable docs)
+# Misc scratch notes / planning docs (not user-readable)
 newchat.md
 github_research.md
+Rotareview.md
+AGENTS.md
 
 # Diagnostic / trace files — may contain env-var status, paths, or key info
 diagnostic_trace*.py

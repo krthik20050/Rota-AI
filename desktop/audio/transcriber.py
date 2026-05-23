@@ -17,6 +17,10 @@ _GROQ_MODEL = "whisper-large-v3-turbo"
 _GROQ_LATENCY_THRESHOLD = 3.0    # seconds — switch to local if exceeded
 _GROQ_RECOVERY_COOLDOWN = 30.0   # seconds — wait before re-trying Groq after failure
 
+_SAMPLERATE = 16000              # must match AudioRecorder.samplerate
+_MAX_CHUNK_S = 55.0              # split sessions longer than this (Groq 25 MB limit safe zone)
+_SILENCE_RMS = 0.015             # RMS below this = silence (matches recorder threshold)
+
 # Whisper known end-of-clip hallucination artifacts
 _HALLUCINATION_RE = re.compile(
     r"^\s*(?:"
@@ -379,10 +383,71 @@ class AudioTranscriber:
     #  Public interface  (unchanged contract)
     # ------------------------------------------------------------------ #
 
+    # ------------------------------------------------------------------ #
+    #  Long-session chunking
+    # ------------------------------------------------------------------ #
+
+    def _find_split_point(self, audio: np.ndarray, target: int, window: int = 5) -> int:
+        """
+        Find the best split point near `target` samples by locating the
+        lowest-RMS (most silence-like) frame within a ±window second search band.
+        Falls back to exactly `target` if no silence is found.
+        """
+        half = int(window * _SAMPLERATE)
+        lo = max(0, target - half)
+        hi = min(len(audio), target + half)
+        if lo >= hi:
+            return target
+
+        frame = int(0.02 * _SAMPLERATE)  # 20 ms frames
+        best_rms = float("inf")
+        best_pos = target
+
+        for pos in range(lo, hi - frame, frame):
+            rms = float(np.sqrt(np.mean(audio[pos:pos + frame].astype(np.float32) ** 2)))
+            if rms < best_rms:
+                best_rms = rms
+                best_pos = pos
+
+        return best_pos if best_rms < _SILENCE_RMS else target
+
+    def _transcribe_chunked(self, full_audio: np.ndarray, app_context=None) -> list[str]:
+        """
+        Transcribe arbitrarily long audio by splitting at silence boundaries
+        near every _MAX_CHUNK_S interval. Each segment is sent as a separate
+        Groq/local call so no single chunk exceeds the API size limit.
+        """
+        max_samples = int(_MAX_CHUNK_S * _SAMPLERATE)
+        if len(full_audio) <= max_samples:
+            text, _ = self._transcribe_with_fallback(full_audio, app_context)
+            return [text] if text else []
+
+        duration_s = len(full_audio) / _SAMPLERATE
+        logger.info("long_session_chunking duration_s=%.1f chunk_s=%.0f", duration_s, _MAX_CHUNK_S)
+
+        texts: list[str] = []
+        start = 0
+        while start < len(full_audio):
+            target = start + max_samples
+            if target >= len(full_audio):
+                segment = full_audio[start:]
+            else:
+                split = self._find_split_point(full_audio, target)
+                segment = full_audio[start:split]
+                target = split
+
+            text, _ = self._transcribe_with_fallback(segment, app_context)
+            if text:
+                texts.append(text)
+            start = target
+
+        logger.info("long_session_chunks=%d joined_text_len=%d", len(texts), sum(len(t) for t in texts))
+        return texts
+
     def process_stream(self, audio_generator) -> Generator[Tuple[str, bool], None, None]:
         """
-        Accumulate all chunks, transcribe once, yield (text, is_final=True).
-        Signature unchanged from v1 — all callers are unaffected.
+        Accumulate all chunks, transcribe (chunking automatically for long sessions),
+        yield (text, is_final=True). Signature unchanged — all callers unaffected.
         """
         accumulated = []
         self._is_running = True
@@ -394,19 +459,17 @@ class AudioTranscriber:
 
         if accumulated:
             full_audio = np.concatenate(accumulated)
-            text, backend = self._transcribe_with_fallback(full_audio)
-            yield text, True
+            texts = self._transcribe_chunked(full_audio)
+            yield " ".join(texts), True
 
         self._is_running = False
 
     def transcribe_array(self, full_audio: np.ndarray, app_context: any = None) -> str:
-        """Single-shot transcription. Maintains original signature."""
+        """Single-shot transcription. Automatically chunks long recordings."""
         if full_audio is None or full_audio.size == 0:
             return ""
-        text, _ = self._transcribe_with_fallback(
-            full_audio.astype(np.float32, copy=False), app_context=app_context
-        )
-        return text
+        texts = self._transcribe_chunked(full_audio.astype(np.float32, copy=False), app_context)
+        return " ".join(texts)
 
     def transcribe_array_with_backend(self, full_audio: np.ndarray, app_context: any = None) -> tuple[str, str]:
         """Single-shot transcription with backend metadata."""

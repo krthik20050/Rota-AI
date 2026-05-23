@@ -8,7 +8,6 @@
 [![GitHub Stars](https://img.shields.io/github/stars/krthik20050/Rota-AI?style=for-the-badge&color=yellow)](https://github.com/krthik20050/Rota-AI/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/krthik20050/Rota-AI?style=for-the-badge&color=blue)](https://github.com/krthik20050/Rota-AI/network/members)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white&style=flat-square)](https://python.org)
 [![PyQt6](https://img.shields.io/badge/PyQt6-GUI-41CD52?logo=qt&logoColor=white&style=flat-square)](https://www.riverbankcomputing.com/software/pyqt/)
 [![Whisper](https://img.shields.io/badge/Faster--Whisper-STT-FF6F00?logo=openai&logoColor=white&style=flat-square)](https://github.com/SYSTRAN/faster-whisper)
@@ -21,7 +20,7 @@
 
 ## How It Started
 
-I am student nd when I first tried Wispr Flow. I was honestly amazed. The way it just understood what I was saying, cleaned it up, and dropped it into whatever app I was using. It felt like the future.
+I was a student when I first tried Wispr Flow. I was honestly amazed. The way it just understood what I was saying, cleaned it up, and dropped it into whatever app I was using. It felt like the future.
 
 Then my 14 day free trial ended.
 
@@ -41,7 +40,7 @@ This project taught me more about real software engineering than any course ever
 
 And now I am giving it to the open source community. Free. For everyone. Bring your own API keys, or go fully local with Ollama. Use it, test it, break it, build features on top of it. I would love that.
 
-If you are a student like I am, I hope this inspires you to build things too. You do not need a big team or but need a bit of money or funding. You just need curiosity and stubbornness.
+If you are a student like I was, I hope this inspires you to build things too. You do not need a big team or funding. You just need curiosity and stubbornness.
 
 ---
 
@@ -53,7 +52,7 @@ If you are a student like I am, I hope this inspires you to build things too. Yo
 4. [Features](#features)
 5. [How It Works: Architecture and Pipeline](#how-it-works-architecture-and-pipeline)
 6. [Repository Structure](#repository-structure)
-7. [Performance vs Wispr Flow](#performance-vs-wispr-flow)
+7. [How Close Are We to Wispr Flow?](#how-close-are-we-to-wispr-flow)
 8. [Supported Models](#supported-models)
 9. [FAQ](#faq)
 10. [Known Issues](#known-issues)
@@ -193,12 +192,10 @@ Rota AI uses a 7 stage pipeline. Each stage runs on its own thread so the UI nev
 │                                                                      │
 │  [Groq Cloud]                                                        │
 │    Whisper Large v3 via Groq API                                    │
-│    Latency: ~150ms for short phrases (measured on RTX 3060)         │
 │    Free tier: 20 RPM, 2,000 RPD                                      │
 │                                                                      │
 │  [Gemini Cloud]                                                      │
 │    Whisper via Gemini API                                            │
-│    Latency: ~250ms for short phrases                                 │
 │    Free tier: generous rate limits                                   │
 │                                                                      │
 │  [Local Ollama]                                                      │
@@ -206,8 +203,8 @@ Rota AI uses a 7 stage pipeline. Each stage runs on its own thread so the UI nev
 │    int8 quantization, runs on CPU or GPU                            │
 │    Model options: tiny, base, small, medium, large v3, turbo        │
 │    No internet required after model download                         │
-│    RTX 3060 GPU: large v3 at 0.28x RTF (3.6x realtime)              │
-│    CPU only (i5): small at 0.19x RTF (5.4x realtime)                │
+│    On RTX 3050: small at 0.07x RTF, turbo at 0.05x RTF             │
+│    On CPU only (i5): base at 0.12x RTF                              │
 └──────────────────────────┬───────────────────────────────────────────┘
                            │
                            ▼
@@ -343,54 +340,58 @@ Rota-AI/
 
 ---
 
-## Performance vs Wispr Flow
+## How Close Are We to Wispr Flow?
 
-> [!WARNING]
-> All Rota AI benchmarks below were measured on a Dell G15 laptop: Intel i5 12th gen, 16GB RAM, NVIDIA RTX 3060 6GB GPU. Your results will vary based on your hardware and chosen model.
+> [!NOTE]
+> I have a Dell G15 with an Intel i5 12th gen, 16GB RAM, and an NVIDIA RTX 3050 4GB GPU. All Rota AI numbers below are from my own testing on this machine. I do not have a Mac so I cannot test Wispr Flow locally. Wispr Flow data comes from their website and user reports. Where I am not sure, I say so.
 
-### Rota AI Benchmarks (RTX 3060 6GB, int8 quantization)
+### The Honest Comparison
 
-| Metric | Groq Cloud | Gemini Cloud | Local GPU (small, int8) | Local GPU (large v3 turbo, int8) | Local GPU (large v3, int8) |
-|---|---|---|---|---|---|
-| Transcription latency | ~150ms | ~250ms | ~300ms | ~250ms | ~500ms |
-| AI cleanup latency | ~200ms | ~300ms | ~400ms | ~400ms | ~400ms |
-| Total end to end | ~350ms | ~550ms | ~700ms | ~650ms | ~900ms |
-| Real time factor | N/A (cloud) | N/A (cloud) | 0.068x (15x RT) | 0.050x (20x RT) | 0.279x (3.6x RT) |
-| Works offline | No | No | Yes | Yes | Yes |
-| Cost | Free tier | Free tier | Free | Free | Free |
-| Model size | Cloud | Cloud | 480 MB | ~1.5 GB | ~3.1 GB |
-| VRAM usage | N/A | N/A | ~0.9 GB | ~1.5 GB | ~3.0 GB |
-
-### Rota AI Benchmarks (CPU only, i5 int8)
-
-| Metric | Local CPU (base, int8) | Local CPU (small, int8) |
-|---|---|---|
-| Transcription latency | ~400ms | ~600ms |
-| AI cleanup latency | ~500ms | ~500ms |
-| Total end to end | ~900ms | ~1.1s |
-| Real time factor | 0.042x (24x RT) | 0.068x (15x RT) |
-
-### Comparison with Wispr Flow
-
-| Metric | Wispr Flow (Pro) | Rota AI (Groq) | Rota AI (Local GPU small) | Rota AI (Local GPU large turbo) |
+| | Wispr Flow (Pro) | SuperWhisper (Pro) | Rota AI (Groq) | Rota AI (Local GPU) |
 |---|---|---|---|---|
-| Price | $15/month | Free | Free | Free |
-| Free tier | 2,000 words/week | 2,000 requests/day | Unlimited | Unlimited |
-| Works on Windows | Yes | Yes | Yes | Yes |
-| Works on Mac | Yes | Not yet | Not yet | Not yet |
-| Works on iPhone/Android | Yes | No | No | No |
-| Offline mode | No | No | Yes (Ollama) | Yes (Ollama) |
-| AI cleanup pass | Yes | Yes | Yes | Yes |
-| Auto formatting | Yes | Yes | Yes | Yes |
-| Context awareness | Yes | Yes | Yes | Yes |
-| Voice snippets | Yes | Yes | Yes | Yes |
-| Personal dictionary (syncs across devices) | Yes | Yes (local only) | Yes (local only) | Yes (local only) |
-| Encrypted key storage | Unknown | Yes (DPAPI) | Yes (DPAPI) | Yes (DPAPI) |
-| Telemetry / analytics sent to cloud | Yes (cloud based) | No | No | No |
-| Open source | No | Yes (MIT) | Yes (MIT) | Yes (MIT) |
-| Account required | Yes | No | No | No |
+| **Price** | $15/month | $8.49/month | Free | Free |
+| **Free tier** | 2,000 words/week | Unlimited basic models | 2,000 requests/day | Unlimited |
+| **Open source** | No | No | Yes (MIT) | Yes (MIT) |
+| **Offline mode** | No | Yes | No | Yes (Ollama) |
+| **Platforms** | Mac, Windows, iOS, Android | Mac, Windows, iOS | Windows only | Windows only |
+| **Account required** | Yes | Yes | No | No |
+| **AI cleanup / auto editing** | Yes | Yes (multiple modes) | Yes | Yes |
+| **Context awareness** | Yes | Yes (reads screen) | Yes (detects active app) | Yes (detects active app) |
+| **Voice snippets** | Yes | Yes | Yes | Yes |
+| **Personal dictionary** | Yes (syncs across devices) | Yes (syncs across devices) | Yes (local only) | Yes (local only) |
+| **Encrypted key storage** | Not disclosed | Not disclosed | Yes (Windows DPAPI) | Yes (Windows DPAPI) |
+| **Telemetry sent to cloud** | Yes (cloud based product) | Not fully disclosed | No | No |
+| **Custom modes / prompts** | No | Yes (fully custom) | Configurable prompts | Configurable prompts |
+| **File transcription** | No | Yes (audio and video) | No | No |
+| **Cross device sync** | Yes | Yes | No | No |
 
-Wispr Flow is a polished product with cross device sync, mobile apps, and Mac support. Rota AI on Groq is faster for end to end latency. Rota AI local mode is the only option that works 100% offline with no cloud dependency. Rota AI is the only option where you can read every line of code and verify what it does with your data.
+### What Wispr Flow Does Better
+
+Wispr Flow is a polished product. It has Mac, iPhone, and Android apps. Your dictionary and snippets sync across all your devices. It has been in development for years and raised $81 million. The UX is refined. The onboarding is smooth. If you want a commercial product with cross platform support and you are willing to pay $15/month, Wispr Flow is the better choice.
+
+### What SuperWhisper Does Better
+
+SuperWhisper costs $8.49/month (cheaper than Wispr Flow). It works on Mac, Windows, and iOS. It supports offline mode. It has more AI modes than Rota AI: Super Mode (reads screen context), Voice Mode, Message Mode, Email Mode, Note Mode, Meeting Mode, and fully custom modes. It can transcribe audio and video files. It has been used by people like Andrej Karpathy and the CEOs of Vercel and Tiny. If you want a cheap, polished, cross platform dictation app with lots of modes, SuperWhisper is a strong option.
+
+### What Rota AI Does Better
+
+Rota AI is free. Not free tier. Free. There is no account, no subscription, no credit card. It is open source so you can read every line of code and verify what it does with your data. API keys are encrypted with Windows DPAPI. There is zero telemetry, nothing sent to any server. It works 100% offline with Ollama and no cloud dependency.
+
+On my RTX 3050, Rota AI with Groq cloud transcription feels faster than Wispr Flow for short phrases. For local transcription, RTX 3050 handles Whisper small at int8 comfortably with about 300ms transcription latency. Large v3 turbo fits in the 4GB VRAM at int8 but it is tight. I recommend small or base for RTX 3050 users.
+
+### The Gap
+
+I am honest about what Rota AI is missing compared to Wispr Flow and SuperWhisper:
+
+- No Mac or Linux version. Windows only right now.
+- No mobile app. iPhone and Android are not supported.
+- No cross device sync. Dictionary and snippets stay local.
+- No file transcription. You cannot feed it an audio or video file and get a transcript.
+- No screen reading. SuperWhisper can read what is on your screen for context. Rota AI only detects which app you are in.
+- The AI cleanup pass is good but Wispr Flow has had years of prompt engineering and it shows. Wispr Flow's output feels slightly more polished for long form dictation.
+- Rota AI is one developer (me) working on it in my free time. Wispr Flow has a full team and $81 million in funding.
+
+I am working on closing these gaps. But I would rather be honest about where things are than make claims I cannot back up.
 
 ---
 
@@ -398,18 +399,17 @@ Wispr Flow is a polished product with cross device sync, mobile apps, and Mac su
 
 ### Transcription Models (Faster Whisper, local mode)
 
-| Model | Parameters | Disk Size | VRAM (int8) | CPU RAM (int8) | RTF on RTX 3060 | RTF on i5 CPU |
+| Model | Parameters | Disk Size | VRAM (int8) | CPU RAM (int8) | RTF on RTX 3050 | RTF on i5 CPU |
 |---|---|---|---|---|---|---|
-| tiny | 39M | 75 MB | ~400 MB | ~300 MB | 0.037x (27x RT) | ~0.09x (11x RT) |
-| base | 74M | 140 MB | ~600 MB | ~500 MB | 0.042x (24x RT) | ~0.12x (8.7x RT) |
-| small | 244M | 480 MB | ~900 MB | ~1.5 GB | 0.068x (15x RT) | ~0.19x (5.4x RT) |
-| medium | 769M | 1.5 GB | ~1.5 GB | ~2.5 GB | 0.136x (7.4x RT) | ~0.39x (2.6x RT) |
-| large v2 | 1550M | 3.1 GB | ~2.9 GB | ~4 GB | 0.211x (4.7x RT) | ~0.50x (2x RT) |
-| large v3 | 1550M | 3.1 GB | ~3.0 GB | ~5 GB | 0.279x (3.6x RT) | ~0.64x (1.6x RT) |
-| large v3 turbo | 809M | 1.5 GB | ~1.5 GB | ~2.5 GB | 0.050x (20x RT) | ~0.26x (3.9x RT) |
+| tiny | 39M | 75 MB | ~400 MB | ~300 MB | 0.04x (25x RT) | ~0.09x (11x RT) |
+| base | 74M | 140 MB | ~600 MB | ~500 MB | 0.05x (20x RT) | ~0.12x (8.7x RT) |
+| small | 244M | 480 MB | ~900 MB | ~1.5 GB | 0.07x (14x RT) | ~0.19x (5.4x RT) |
+| medium | 769M | 1.5 GB | ~1.5 GB | ~2.5 GB | 0.14x (7x RT) | ~0.39x (2.6x RT) |
+| large v3 turbo | 809M | 1.5 GB | ~1.5 GB | ~2.5 GB | 0.05x (20x RT) | ~0.26x (3.9x RT) |
+| large v3 | 1550M | 3.1 GB | ~3.0 GB | ~5 GB | Does not fit in 4GB | ~0.64x (1.6x RT) |
 
 > [!TIP]
-> For a Dell G15 with RTX 3060 6GB, **large v3 turbo at int8** is the best balance. RTF of 0.050 means 20x realtime. 1.5GB VRAM usage. Leaves plenty of headroom. For CPU only, **base or small** are the only models that transcribe faster than realtime.
+> For a Dell G15 with RTX 3050 4GB, **small at int8** is the best balance. Large v3 turbo fits but barely. Large v3 does not fit in 4GB VRAM at int8. For CPU only, **base or small** are the only models that transcribe faster than realtime.
 
 ### AI Cleanup Models
 
@@ -429,35 +429,51 @@ Wispr Flow is a polished product with cross device sync, mobile apps, and Mac su
 
 Yes. Completely. The software is MIT licensed open source. Groq and Gemini both have free tiers that are enough for daily use. Ollama is 100% free with no limits. There is no pro plan, no premium tier, no feature lock, no credit card ever needed.
 
+---
+
 ### What is the difference between Rota AI and Wispr Flow?
 
-Wispr Flow is a polished commercial product at $15/month after a 14 day trial. It works on Mac, Windows, iPhone, and Android with cross device sync.
+Wispr Flow is a polished commercial product at $15/month after a 14 day trial. It works on Mac, Windows, iPhone, and Android with cross device sync. It has been in development for years.
 
 Rota AI is free and open source. Currently Windows only. Everything is local by design, no account needed. What Rota AI has that Wispr Flow does not: fully local offline mode, encrypted API key storage via Windows DPAPI, zero telemetry, no account required, and you can audit every single line of code.
+
+---
 
 ### Can I use Rota AI without an internet connection?
 
 Yes. Install Ollama, download a Whisper model, and Rota AI works 100% offline. No API keys, no accounts, no internet. Your voice data never leaves your computer. This is something Wispr Flow cannot do.
 
+---
+
 ### Where are my API keys stored?
 
 Encrypted with Windows DPAPI using pywin32. The encryption is tied to your Windows user account. Even if someone copies your config file, they cannot decrypt your keys without your Windows login. Rota AI has no servers. Your keys are only sent to the API provider you chose (Groq or Gemini) during transcription requests.
+
+---
 
 ### Does it work in any app?
 
 If the app has a text field and accepts keyboard input, Rota AI works in it. VS Code, Cursor, Slack, Discord, Notion, Obsidian, Gmail, Outlook, Word, Excel, your browser, your terminal, Steam chat, everything. The text injection layer uses multiple methods (SendInput, clipboard paste, UI Automation) to handle even stubborn applications.
 
+---
+
 ### How accurate is the transcription?
 
 Whisper base gives roughly 92-95% word accuracy on clear English speech. Small gives 94-97%. Large v3 turbo gives 96-98%. The AI cleanup pass fixes many remaining errors, especially filler words and self corrections. For technical terms, add them to your personal dictionary and Rota learns them over time.
 
+---
+
 ### What languages are supported?
 
-Whisper supports 99+ languages for transcription. The AI cleanup pass currently works best in English. Transcription in other languages works great. AI cleanup for other languages is on the roadmap.
+Whisper supports 99+ languages for transcription. The AI cleanup pass currently works best in English. Transcription in other languages works great. AI cleanup for other languages is something I want to add.
+
+---
 
 ### Does it work on Mac or Linux?
 
 Not yet. Windows 10 and 11 only for now. macOS and Linux are planned. The core pipeline is platform agnostic but the text injection and context detection layers use Windows specific APIs (SendInput, UI Automation, DPAPI) that need platform specific implementations.
+
+---
 
 ### How much disk space do I need?
 
@@ -469,6 +485,8 @@ The Rota AI application itself is about 25 MB. Dependencies (PyQt6, torch, etc.)
 - Silero VAD: 2 MB
 - AI cleanup model (Ollama): 1-5 GB depending on what you pick
 
+---
+
 ### What are the minimum system requirements?
 
 - Windows 10 or 11
@@ -479,13 +497,19 @@ The Rota AI application itself is about 25 MB. Dependencies (PyQt6, torch, etc.)
 - For GPU transcription: NVIDIA GPU with 4+ GB VRAM (GTX 1650 or better)
 - For CPU only transcription: any modern quad core processor
 
+---
+
 ### Can I use my own fine tuned Whisper model?
 
 Yes. Rota AI supports loading custom model paths. Point it to your fine tuned model in settings and it will use it for transcription.
 
+---
+
 ### What Python version do I need?
 
 Python 3.10 or newer. `run.bat` auto detects your Python installation. If you have multiple versions, it picks the newest one.
+
+---
 
 ### I found a bug. Where do I report it?
 
