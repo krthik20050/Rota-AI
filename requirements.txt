@@ -1,0 +1,44 @@
+# Rota AI - Dependencies
+# Install: pip install -r requirements.txt
+
+# UI Framework
+PyQt6>=6.6.0,<7.0.0
+
+# Audio capture (requires PortAudio on the system)
+sounddevice>=0.4.6,<1.0.0
+numpy>=1.24.0,<3.0.0
+
+# Local speech-to-text (CTranslate2 backend, int8 CPU)
+faster-whisper>=1.0.0,<2.0.0
+
+# Groq Whisper API + preprocessing
+groq>=1.2.0,<2.0.0
+pydub>=0.25.1,<1.0.0
+python-dotenv>=1.0.0,<2.0.0
+# Python 3.13 removed stdlib audioop; pydub imports it
+audioop-lts>=0.2.0; python_version >= "3.13"
+
+# Global hotkey hooks — system-level access; pin to audited range
+pynput>=1.7.6,<2.0.0
+keyboard>=0.13.5,<1.0.0
+
+# Clipboard access — system-level access; pin to audited range
+pyperclip>=1.8.2,<2.0.0
+
+# Fallback text injection (optional)
+pyautogui>=0.9.54,<1.0.0
+
+# Field focus capture (Windows)
+pywin32>=306,<400
+psutil>=5.9.0,<7.0.0
+
+# Voice activity detection (silence stripping)
+torch>=2.0.0,<3.0.0
+silero-vad>=5.0,<6.0.0
+
+# Structured logging
+structlog>=24.1.0,<30.0.0
+
+# Optional audio denoising (improves transcription quality; graceful no-op if absent)
+noisereduce>=3.0,<4.0.0
+

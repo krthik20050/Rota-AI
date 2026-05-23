@@ -1,0 +1,22 @@
+{
+  "vocabulary": [
+    "Obsidian",
+    "markdown",
+    "wikilinks",
+    "RotaAI",
+    "Whisper",
+    "Groq",
+    "Silero",
+    "VAD",
+    "CTranslate2",
+    "structlog",
+    "psutil",
+    "PyQt6",
+    "transcription",
+    "dictation",
+    "faster-whisper",
+    "hotkey",
+    "clipboard"
+  ],
+  "initial_prompt": "Voice dictation. Transcribe with proper punctuation, capitalization, and complete sentences."
+}
