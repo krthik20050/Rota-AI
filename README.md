@@ -1,4 +1,4 @@
-# Rota AI — Local Voice Dictation
+# Rota  Local Voice Dictation
 
 **Free, open-source, local-first voice dictation for Windows.**
 A privacy-respecting alternative to Wispr Flow.
