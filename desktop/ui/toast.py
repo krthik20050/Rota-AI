@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
 
@@ -7,13 +9,23 @@ from PyQt6.QtWidgets import QApplication, QDialog, QLabel, QVBoxLayout
 class Toast(QDialog):
     """Simple toast notification for status messages."""
 
-    def __init__(self, message, parent=None, warning=False):
+    def __init__(
+        self,
+        message: str,
+        parent=None,
+        warning: bool = False,
+        on_click: Callable | None = None,
+        duration_ms: int = 3500,
+    ):
         super().__init__(parent)
+        self._on_click = on_click
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        if on_click is not None:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -50,4 +62,11 @@ class Toast(QDialog):
                 screen_geo.bottom() - 110,
             )
 
-        QTimer.singleShot(3500, self.close)
+        QTimer.singleShot(duration_ms, self.close)
+
+    def mousePressEvent(self, event):
+        if self._on_click is not None:
+            self._on_click()
+            self.close()
+        else:
+            super().mousePressEvent(event)
