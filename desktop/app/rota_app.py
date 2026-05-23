@@ -244,6 +244,7 @@ class RotaApp(
         except Exception as e:
             logger.warning("undo_hotkey_register_failed", error=str(e))
         logger.info("deferred_startup_done")
+        self._schedule_update_check()
 
     def _run_startup_health_checks(self, hotkey_ok):
         checker = StartupHealthChecker(
@@ -463,6 +464,31 @@ class RotaApp(
             self._transcriber_thread.quit()
             self._transcriber_thread.wait(1000)
         self.app.quit()
+
+    def _schedule_update_check(self):
+        """Check for updates 8 seconds after startup so it doesn't slow launch."""
+        QTimer.singleShot(8000, self._start_update_check)
+
+    def _start_update_check(self):
+        import webbrowser
+        from app.version import __version__
+        from services.updater import check_for_update
+
+        def on_update_found(latest: str, url: str) -> None:
+            # Marshal to Qt main thread
+            QTimer.singleShot(0, lambda: self._show_update_toast(latest, url))
+
+        check_for_update(__version__, on_update_found)
+
+    def _show_update_toast(self, latest: str, url: str) -> None:
+        import webbrowser
+        self._active_toast = Toast(
+            f"Update available: v{latest} — click to download",
+            on_click=lambda: webbrowser.open(url),
+            duration_ms=10000,
+        )
+        self._active_toast.show()
+        logger.info("update_toast_shown", latest=latest)
 
     def run(self):
         sys.exit(self.app.exec())

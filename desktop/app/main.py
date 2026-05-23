@@ -11,7 +11,9 @@ load_dotenv()
 
 # ── Native stability ──────────────────────────────────────────────────────────
 # Dump Python stack trace to stderr on native crash (SIGSEGV, SIGABRT etc.)
-faulthandler.enable()
+# sys.stderr is None in windowed PyInstaller builds (console=False) — guard it.
+if sys.stderr is not None:
+    faulthandler.enable()
 
 # Prevent ctranslate2/MKL/OpenMP thread storms that cause STATUS_STACK_BUFFER_OVERRUN (0xC0000409).
 # These MUST be set before any native library imports.
@@ -74,6 +76,14 @@ def run() -> None:
     configure_logging()
     sock = try_acquire_instance_listener()
     if sock is None:
+        # Grant the running instance permission to steal focus from this process.
+        # Windows blocks SetForegroundWindow unless the foreground process allows it.
+        try:
+            import ctypes
+            ASFW_ANY = 0xFFFFFFFF
+            ctypes.windll.user32.AllowSetForegroundWindow(ASFW_ANY)
+        except Exception:
+            pass
         ok = wake_existing_instance()
         logger.info("second_launch_wake", ok=ok)
         if ok:
