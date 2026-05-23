@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <b>The Privacy-Respecting Alternative to Wispr Flow.</b><br>
+  <b> Free version Wispr Flow.</b><br>
   <i>Dictate naturally. AI cleans the mess. Output stays local.</i>
 </p>
 
