@@ -20,7 +20,7 @@
 
 ## How It Started
 
-I was a student when I first tried Wispr Flow. I was honestly amazed. The way it just understood what I was saying, cleaned it up, and dropped it into whatever app I was using. It felt like the future.
+I am a student nd when I first tried Wispr Flow. I was honestly amazed. The way it just understood what I was saying, cleaned it up, and dropped it into whatever app I was using. It felt like the future.
 
 Then my 14 day free trial ended.
 
@@ -40,7 +40,7 @@ This project taught me more about real software engineering than any course ever
 
 And now I am giving it to the open source community. Free. For everyone. Bring your own API keys, or go fully local with Ollama. Use it, test it, break it, build features on top of it. I would love that.
 
-If you are a student like I was, I hope this inspires you to build things too. You do not need a big team or funding. You just need curiosity and stubbornness.
+If you are a student like I am, I hope this inspires you to build things too. You do not need a big team or but need a bit of money or funding. You just need curiosity and stubbornness.
 
 ---
 
@@ -129,29 +129,139 @@ Transcription backend and cleanup backend are picked independently during onboar
 
 ## Features
 
-> **AI Text Cleanup**
-> Rota does not dump raw transcription into your app. It understands what you said and cleans it up like a human would. Removes "um", "uh", "like", "you know". Resolves self corrections like "the price is 200 dollars... no wait, 300". Handles false starts and stutters. Converts spoken punctuation ("comma", "period", "new paragraph") into actual characters and formatting.
+<table>
+<tr>
+<td width="50%">
 
-> **Auto Formatting**
-> When you list steps, Rota creates a numbered list. When you list items, it creates bullet points. When you shift topics, it adds paragraph breaks. It detects whether you are being formal, casual, or technical and adjusts the tone of the output to match.
+### 🧠 AI Text Cleanup
 
-> **Context Awareness**
-> Rota detects which app you are in using Windows UI Automation. It preserves camelCase and snake_case in VS Code. It uses formal tone in Outlook. It keeps things short and punchy in Slack. It reads the existing text in the field before injecting so it never overwrites what you already wrote.
+Rota does not dump raw transcription into your app. It **understands what you said** and cleans it up like a human would:
 
-> **Voice Snippets**
-> Set up voice shortcuts for text you use often. Say "insert email" and your full email signature appears. Say "insert address" and your address is pasted. Stop typing the same things fifty times a day.
+- Removes filler words ("um", "uh", "like", "you know")
+- Resolves self corrections ("the price is 200... no wait, 300")
+- Handles false starts and stutters
+- Converts spoken punctuation into real characters ("comma" → ,)
+- Fixes grammar while keeping **your** voice
 
-> **Personal Dictionary**
-> Rota learns your vocabulary over time. Technical terms, project names, people names, company jargon. The more you use it, the better it gets at transcribing your specific words. You can also add terms manually.
+<table>
+<tr>
+<td width="50%">
 
-> **Productivity Analytics**
-> Track your words per minute, clarity scores, and session history. See how much time you are saving compared to typing. All stored locally in SQLite.
+### 📝 Auto Formatting
 
-> **Dark Mode UI**
-> Pure black dark theme inspired by Apple design language. Floating pill overlay with audio reactive waveform that shows when you are recording. System tray access. Acrylic blur effects on Windows 11. Every pixel is custom styled.
+Rota listens for structure in your speech and formats accordingly:
 
-> **Privacy First**
-> API keys are encrypted with Windows DPAPI, tied to your Windows user account. Transcription history is stored in local SQLite, no cloud sync. No telemetry. No analytics sent anywhere. No servers. No account required. Rota AI does not phone home. Period.
+- **Sequential steps** → numbered lists
+- **Parallel items** → bullet points
+- **Topic shifts** → paragraph breaks
+- **Tone detection** → adjusts output (formal for email, casual for chat, technical for code)
+
+You do not have to say "make this a list". Rota just knows.
+
+</td>
+</tr>
+</table>
+
+### 🎯 Context Awareness
+
+Rota detects which app you are in before injecting text:
+
+- **VS Code / Cursor** → preserves camelCase, snake_case, CLI commands
+- **Outlook / Gmail** → uses formal professional tone
+- **Slack / Discord** → keeps it short and casual
+- **Browser / Notes** → natural prose
+
+It also **reads the existing text** in the field before injecting, so it never overwrites what you already wrote.
+
+### 🔊 Smart Audio Pipeline
+
+The audio processing chain is designed for accuracy and speed:
+
+- **16kHz mono PCM** capture via PortAudio (sounddevice)
+- **Silero VAD v6** strips silence before transcription (2MB model, <1ms per chunk)
+- **Dual pass architecture** for short phrases, raw transcription is used directly to save latency
+- Configurable VAD threshold, padding, and minimum speech duration
+
+### 🧩 Voice Snippets
+
+Stop typing the same things over and over:
+
+- Say **"insert email"** → your full email signature appears
+- Say **"insert address"** → your full address is pasted
+- Say **"insert phone"** → your number appears
+- Create unlimited custom triggers in settings
+
+Perfect for support replies, calendar links, intro emails, code templates, anything you type more than twice.
+
+### 📖 Personal Dictionary
+
+Rota learns your vocabulary automatically:
+
+- Technical terms, project names, people names, company jargon
+- Learns from every correction you make post-injection
+- Manual add option for terms you want it to learn immediately
+- Stored locally in SQLite, never sent anywhere
+
+### 📊 Productivity Analytics
+
+Track your speaking productivity over time:
+
+- **Words per minute** in real time
+- **Clarity score** based on filler word ratio
+- **Session history** with full transcription records
+- All computed and stored **locally** in SQLite
+
+### 🎨 Desktop Grade UI
+
+Built with PyQt6, every pixel is custom styled:
+
+- **Pure black dark theme** inspired by Apple design language
+- **Floating pill overlay** with audio reactive 7-bar waveform
+- **System tray** access with one click show/hide
+- **Acrylic blur** effects using native Windows compositor (Windows 11)
+- Dockable, frameless, always-on-top overlay
+- Dedicated **onboarding flow** for first time setup
+
+### 🔐 Privacy by Design
+
+Everything about Rota AI is built around keeping your data yours:
+
+- **API keys encrypted** with Windows DPAPI (tied to your user account)
+- **Transcription history** in local SQLite, no cloud sync
+- **Zero telemetry**, no analytics, no phone calls home
+- **No servers**, no account, no signup required
+- **Full source code** available, audit every line
+- Works **100% offline** with Ollama, no internet ever needed
+
+</td>
+</tr>
+</table>
+
+### 💉 Text Injection Engine
+
+Getting text into applications is harder than it sounds. Rota uses multiple injection methods:
+
+- **Primary**: Windows SendInput API for keystroke simulation
+- **Large text**: Clipboard paste via pyperclip + Ctrl+V
+- **Fallback**: pyautogui for stubborn applications
+- **Field reader**: Windows UI Automation (IUIAutomationTextPattern) reads existing text before injection
+- **Verification**: confirms injection was successful
+
+Works in every app that accepts keyboard input: VS Code, Cursor, Slack, Discord, Notion, Obsidian, Gmail, Outlook, Word, Excel, browsers, terminals, Steam chat, everything.
+
+### ⌨️ Global Hotkeys
+
+Control Rota AI without touching your mouse:
+
+- **F9** (default): push to talk, hold and release
+- **Escape**: cancel current session
+- **Configurable**: rebind any key in settings
+
+Global hooks via pynput work at the system level, so hotkeys work regardless of which app is focused.
+
+### 🔄 Auto Updating
+
+`run.bat` auto-pulls the latest code from GitHub on every launch. You always run the newest version without thinking about it. No manual updates, no package manager, no prompts. Just double click and you are on the latest.
 
 ---
 
