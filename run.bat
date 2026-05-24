@@ -231,36 +231,37 @@ REM WHY: PYTHONPATH must include desktop/ so package imports resolve
 REM      (from audio.x, from ai.x, from injection.x, from ui.x, etc.)
 set "PYTHONPATH=%REPO_DIR%desktop;%PYTHONPATH%"
 
-echo       Rota is starting. This console stays open while the app runs.
-echo       Already running^? This click brings Rota to the front, then exits cleanly.
-echo       Close this window or press Ctrl+C only after quitting Rota ^(tray^).
-echo.
-echo =============================================
-echo.
-
-REM -u: unbuffered stdout/stderr so tracebacks appear before any crash exit
-"%VENV_PYTHON%" -u "%REPO_DIR%desktop\app\main.py"
-set "APP_EXIT=%ERRORLEVEL%"
-if "!APP_EXIT!"=="" set "APP_EXIT=9009"
-
-echo.
-echo =============================================
-REM WHY: "if %%APP_EXIT%% equ 0" becomes a syntax error when APP_EXIT is empty
-REM      ("if  equ 0") and CMD aborts before pause — instant window close.
-if "!APP_EXIT!"=="0" (
-    echo Rota AI has exited normally.
-) else (
-    echo Rota AI exited with error code !APP_EXIT!.
-    echo If the window flashed, scroll up for Python traceback or check logs:
-    echo   %APPDATA%\RotaAI\rota.log
+REM --- Single-instance check (runs SYNCHRONOUSLY so this CMD window keeps ---
+REM     foreground focus when AllowSetForegroundWindow is called, ensuring  ---
+REM     the running instance can actually call SetForegroundWindow later).  ---
+echo       Checking for existing instance...
+"%VENV_PYTHON%" -c "import sys,socket,ctypes;s=socket.socket();s.settimeout(1.0);s.connect(('127.0.0.1',47201));ctypes.windll.user32.AllowSetForegroundWindow(0xFFFFFFFF);s.sendall(b'ROTA_WAKE_MAIN\n');s.shutdown(2);s.close()" 2>nul
+if %errorlevel% equ 0 (
+    echo       Rota is already running ^(window brought forward^).
+    echo       If the window does not appear, check the system tray.
+    echo.
+    echo =============================================
+    goto :done
 )
 
-goto :cleanup
+echo       Rota is starting. This launcher will close automatically.
+echo       If the app window does not appear, check the system tray.
+echo       Logs: %APPDATA%\RotaAI\rota.log
+echo.
+echo =============================================
+
+REM WHY: "start """ launches Python as a detached process so this CMD window
+REM      can exit immediately. The Qt window then appears in the foreground
+REM      without the CMD console sitting on top of it.
+start "" "%VENV_PYTHON%" -u "%REPO_DIR%desktop\app\main.py"
+
+:done
+popd
+endlocal
+exit /b 0
 
 :fail
 echo.
-
-:cleanup
 popd
 pause
 endlocal
