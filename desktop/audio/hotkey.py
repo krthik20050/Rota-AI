@@ -45,8 +45,8 @@ class HotkeyHandler:
         main = next((p for p in parts if p not in known_mods), "")
         return mods, main
 
-    def __init__(self, hotkey="f9", mode=MODE_TOGGLE, start_callback=None, stop_callback=None, error_callback=None):
-        self.hotkey = (hotkey or "f9").lower()
+    def __init__(self, hotkey="tab", mode=MODE_TOGGLE, start_callback=None, stop_callback=None, error_callback=None):
+        self.hotkey = (hotkey or "tab").lower()
         self._hotkey_mods, self._hotkey_main = self._parse_hotkey_str(self.hotkey)
         self.mode = mode
         self.start_callback = start_callback

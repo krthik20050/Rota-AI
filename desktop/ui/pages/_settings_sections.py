@@ -25,14 +25,15 @@ def build_recording_section(dlg, parent):
 
     dlg.hotkey_combo = NonScrollComboBox()
     _hotkeys = [
-        # ── Easy single-key / bottom-row options ──
-        ("Ctrl (hold or tap)", "ctrl"),
-        ("Ctrl+Shift (recommended)", "ctrl+shift"),
+        # ── Single-key options ──
+        ("Tab", "tab"),
         # ── Function keys ──
         ("F1", "f1"), ("F2", "f2"), ("F3", "f3"), ("F4", "f4"),
         ("F5", "f5"), ("F6", "f6"), ("F7", "f7"), ("F8", "f8"),
         ("F9", "f9"), ("F10", "f10"), ("F11", "f11"), ("F12", "f12"),
-        # ── Combos ──
+        # ── Modifier combos ──
+        ("Ctrl (hold or tap)", "ctrl"),
+        ("Ctrl+Shift", "ctrl+shift"),
         ("Ctrl+Space", "ctrl+space"),
         ("Ctrl+Alt+Space", "ctrl+alt+space"), ("Ctrl+Alt+R", "ctrl+alt+r"),
         ("Alt+Space", "alt+space"), ("Alt+F9", "alt+f9"),
@@ -42,7 +43,7 @@ def build_recording_section(dlg, parent):
         ("Mouse Scroll Up", "mouse_scroll_up"),
     ]
     for label, data in _hotkeys:
-        dlg.hotkey_combo.add_option(label, data, recommended=(data == "ctrl+shift"))
+        dlg.hotkey_combo.add_option(label, data, recommended=(data == "tab"))
     form.addRow(dlg._field_label("Global Hotkey", "The keyboard shortcut that triggers recording."), dlg.hotkey_combo)
 
     dlg.hotkey_mode_combo = NonScrollComboBox()

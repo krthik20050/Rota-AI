@@ -10,11 +10,12 @@ from PyQt6.QtWidgets import (
 )
 
 _HOTKEYS = [
-    ("Ctrl+Shift",   "ctrl+shift"),
+    ("Tab",             "tab"),
     ("F9",              "f9"),
     ("F1",  "f1"), ("F2", "f2"), ("F3", "f3"), ("F4", "f4"),
     ("F5",  "f5"), ("F6", "f6"), ("F7", "f7"), ("F8", "f8"),
     ("F10", "f10"), ("F11", "f11"), ("F12", "f12"),
+    ("Ctrl+Shift",   "ctrl+shift"),
     ("Ctrl+Shift+R", "ctrl+shift+r"), ("Ctrl+Shift+D", "ctrl+shift+d"),
     ("Ctrl+Shift+V", "ctrl+shift+v"), ("Ctrl+Alt+Space", "ctrl+alt+space"),
     ("Alt+Space",   "alt+space"),   ("Alt+F9", "alt+f9"),
@@ -453,7 +454,7 @@ def build_step_hotkey(dialog) -> QWidget:
 
     lay.addSpacing(16)
 
-    dialog._hotkey_pill = QLabel("Ctrl+Shift")
+    dialog._hotkey_pill = QLabel("Tab")
     dialog._hotkey_pill.setObjectName("HotkeyPill")
     dialog._hotkey_pill.setAlignment(Qt.AlignmentFlag.AlignCenter)
     dialog._hotkey_pill.setFixedHeight(52)
