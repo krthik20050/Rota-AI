@@ -1,10 +1,11 @@
-# Rota AI - Linux Dependencies
+# Rota AI - Linux Python Dependencies
 # Install: pip install -r requirements-linux.txt
+# System deps: see setup-linux.txt or run setup-linux.sh
 
 # UI Framework
 PyQt6>=6.6.0,<7.0.0
 
-# Audio capture (requires PortAudio on the system)
+# Audio capture (requires PortAudio: sudo apt install libportaudio2 portaudio19-dev)
 sounddevice>=0.4.6,<1.0.0
 numpy>=1.24.0,<3.0.0
 
@@ -17,17 +18,17 @@ pydub>=0.25.1,<1.0.0
 python-dotenv>=1.0.0,<2.0.0
 audioop-lts>=0.2.0
 
-# Clipboard access
+# Clipboard access (Linux: needs wl-clipboard or xclip system packages)
 pyperclip>=1.8.2,<2.0.0
 
-# Global hotkeys (evdev -- Linux only)
+# Global hotkeys via evdev (Linux only; requires user in 'input' group)
 evdev>=1.8.0,<2.0.0
 
 # Voice activity detection
 torch>=2.0.0,<3.0.0
 silero-vad>=5.0,<6.0.0
 
-# Secure key storage (replaces Windows DPAPI)
+# Secure key storage (replaces Windows DPAPI; needs gnome-keyring or kwallet)
 keyring>=25.0.0,<26.0.0
 
 # Structured logging
