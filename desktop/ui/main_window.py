@@ -187,10 +187,10 @@ class MainWindow(QWidget):
         lay.addSpacing(28)
 
         for key, label in [
-            ("home",       "🏠  Home"),
-            ("insights",   "📈  Insights"),
-            ("dictionary", "📖  Dictionary"),
-            ("snippets",   "⚡  Snippets"),
+            ("home",       "Home"),
+            ("insights",   "Insights"),
+            ("dictionary", "Dictionary"),
+            ("snippets",   "Snippets"),
         ]:
             btn = QPushButton(label)
             btn.setObjectName("NavBtn")

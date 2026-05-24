@@ -14,12 +14,13 @@ class TranscriberMixin:
 
     def _update_readiness_status(self):
         backend = getattr(self.hotkey_handler, "backend", None) or "ready"
+        hotkey = str(self.config.get("hotkey") or "hotkey").upper()
         if self._transcriber_loading:
-            self.main_window.update_hotkey_status(f"Loading speech model... F9 ready ({backend})")
+            self.main_window.update_hotkey_status(f"Loading speech model... {hotkey} ready ({backend})")
         elif self.transcriber is None:
             self.main_window.update_hotkey_status("Speech model unavailable — check Settings > Model")
         else:
-            self.main_window.update_hotkey_status(f"F9 ready ({backend})")
+            self.main_window.update_hotkey_status(f"{hotkey} ready ({backend})")
 
     def _friendly_transcriber_error(self, error_message: str) -> str:
         msg = error_message.lower()

@@ -228,7 +228,11 @@ QStackedWidget {{
 /* ─── Focus States ─── */
 QPushButton:focus {{
     outline: none;
-    border: 1px solid {CLR_ACCENT};
+}}
+QPushButton#WordChipDeleteBtn:focus {{
+    outline: none;
+    border: none;
+    background: transparent;
 }}
 
 /* ─── Tooltip ─── */
