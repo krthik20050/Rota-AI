@@ -7,10 +7,10 @@ export const metadata = {
 
 const FAQ = [
   { q: "Is this really free?", a: "Yes. MIT licensed open source. Groq and Gemini both have free tiers. Ollama is completely free. No pro plan, no premium tier, no credit card needed." },
-  { q: "How does the download work?", a: "Download the latest release from GitHub. Double click run.bat. It handles everything: Python detection, virtual environment, dependencies, and launch. First run walks you through onboarding." },
+  { q: "How does the download work?", a: "Windows: run the installer — it handles everything. Linux: download the AppImage, mark it executable (chmod +x RotaAI.AppImage), and run it. First launch walks you through picking your transcription backend." },
   { q: "Can I use it without internet?", a: "Yes. Install Ollama, download a Whisper model (small is 480MB), and Rota works 100% offline. No API keys, no accounts, no internet." },
-  { q: "What about Mac or Linux?", a: "Not yet. Windows only right now. The text injection and context detection layers use Windows specific APIs. macOS and Linux are on the roadmap." },
-  { q: "System requirements?", a: "Windows 10/11, Python 3.10+, 4GB RAM minimum (8GB recommended). For local GPU: NVIDIA GPU with 4GB+ VRAM. For CPU only: any modern quad core processor." },
+  { q: "What about Mac or Linux?", a: "Linux is supported — download the AppImage and run it directly, no install needed. macOS is still on the roadmap." },
+  { q: "System requirements?", a: "Windows 10/11 or Linux (Ubuntu 20.04+, Fedora 36+, Arch). 4GB RAM minimum, 8GB recommended. For local GPU: NVIDIA GPU with 4GB+ VRAM. CPU-only works on any modern quad core." },
   { q: "Which Whisper model should I use?", a: "Base (140MB) for speed. Small (480MB) for best balance. Large v3 turbo (1.5GB) for best accuracy if you have 4GB+ VRAM." },
   { q: "How do I get a Groq API key?", a: "Go to console.groq.com, sign up (free), and create an API key. Paste it into Rota during onboarding." },
   { q: "Can I use my own Whisper model?", a: "Yes. Rota supports loading custom model paths. Point it to your fine-tuned model in settings." },
@@ -40,7 +40,7 @@ export default function SupportPage() {
           <h2 className="text-base font-semibold text-[#fafafa] mb-6 font-mono text-xs uppercase tracking-[0.2em]">Getting started</h2>
           <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
             <p><strong className="text-[#fafafa]">1. Download</strong> — Get the latest release from <a href="https://github.com/krthik20050/Rota-AI/releases/latest" className="text-[#e4f222] hover:underline">GitHub releases</a>.</p>
-            <p><strong className="text-[#fafafa]">2. Run</strong> — Double click <code className="text-xs bg-[#111113] px-1.5 py-0.5 rounded-sm text-[#e4f222] font-mono">run.bat</code>. It handles Python, dependencies, and launch.</p>
+            <p><strong className="text-[#fafafa]">2. Run</strong> — Windows: run the installer. Linux: <code className="text-xs bg-[#111113] px-1.5 py-0.5 rounded-sm text-[#e4f222] font-mono">chmod +x RotaAI.AppImage && ./RotaAI.AppImage</code></p>
             <p><strong className="text-[#fafafa]">3. Onboarding</strong> — Pick your transcription backend (Groq, Gemini, or Ollama). Add your API key if using cloud.</p>
             <p><strong className="text-[#fafafa]">4. Dictate</strong> — Press F9 in any app. Speak. Release F9. Your text appears.</p>
           </div>
@@ -51,8 +51,7 @@ export default function SupportPage() {
           <h2 className="text-base font-semibold text-[#fafafa] mb-6 font-mono text-xs uppercase tracking-[0.2em]">System requirements</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { label: "OS", value: "Windows 10 or 11" },
-              { label: "Python", value: "3.10+" },
+              { label: "OS", value: "Windows 10/11 or Linux (Ubuntu 20.04+, Fedora 36+, Arch)" },
               { label: "RAM", value: "4 GB minimum, 8 GB recommended" },
               { label: "GPU", value: "Optional. NVIDIA with 4GB+ VRAM for local transcription" },
               { label: "Disk", value: "~600 MB for dependencies + model size (140MB–3.1GB)" },

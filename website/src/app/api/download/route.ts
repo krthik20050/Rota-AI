@@ -4,7 +4,7 @@ const GITHUB_BASE = "https://github.com/krthik20050/Rota-AI/releases/latest/down
 
 // Map of platform -> release asset filename
 const ASSETS: Record<string, { file: string; label: string }> = {
-  windows: { file: "RotaAI.exe", label: "Windows" },
+  windows: { file: "RotaAI-Setup.exe", label: "Windows" },
   linux:   { file: "RotaAI.AppImage", label: "Linux" },
 };
 

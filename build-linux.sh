@@ -83,6 +83,11 @@ fi
 echo -e "${GREEN}[4/5] Downloading appimagetool...${NC}"
 if ! command -v appimagetool &>/dev/null; then
     ARCH=$(uname -m)
+    # Validate arch is one of the known values before using in URL
+    case "${ARCH}" in
+        x86_64|aarch64|armhf) ;;
+        *) echo -e "${RED}Unsupported architecture: ${ARCH}${NC}" && exit 1 ;;
+    esac
     curl -fsSL -o /tmp/appimagetool \
         "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
     chmod +x /tmp/appimagetool
