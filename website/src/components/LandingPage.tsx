@@ -6,8 +6,76 @@ import { motion, useInView, useScroll, useMotionValueEvent } from "framer-motion
 import {
   Mic, Zap, Send, Sparkles, Globe, Command, MessageSquare,
   Code2, FileText, CheckCircle2, ArrowRight, Download,
-  ChevronDown, ExternalLink, GitBranch,
+  ChevronDown, ExternalLink, GitBranch, X, Monitor, Terminal,
 } from "lucide-react";
+
+/* ─── Download Modal ───────────────────────────────────────────────────────── */
+
+function DownloadModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 w-full max-w-md border border-white/[.08] rounded-sm"
+        style={{ background: "#0c0c10", boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors">
+          <X size={18} />
+        </button>
+
+        <div className="p-8">
+          <h3 className="text-lg font-semibold text-white mb-1 tracking-tight">Download Rota AI</h3>
+          <p className="text-xs text-zinc-500 mb-6">Free &amp; open source. No account needed.</p>
+
+          {/* Windows */}
+          <a
+            href="/api/download?platform=windows"
+            className="group flex items-center gap-4 w-full px-5 py-4 mb-3 rounded-sm transition-all hover:opacity-90"
+            style={{ background: "#e4f222" }}
+          >
+            <div className="w-10 h-10 flex items-center justify-center rounded-sm bg-black/10">
+              <Monitor size={20} className="text-black" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-sm font-semibold text-black tracking-tight">Download for Windows</div>
+              <div className="text-[11px] text-black/60 mt-0.5">Installer (.exe) · Windows 10/11</div>
+            </div>
+            <Download size={16} className="text-black/40 group-hover:translate-y-0.5 transition-transform" />
+          </a>
+
+          {/* Linux */}
+          <a
+            href="/api/download?platform=linux"
+            className="group flex items-center gap-4 w-full px-5 py-4 mb-6 rounded-sm border transition-all hover:border-white/20"
+            style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }}
+          >
+            <div className="w-10 h-10 flex items-center justify-center rounded-sm bg-white/[.03]">
+              <Terminal size={20} className="text-[#e4f222]" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-sm font-semibold text-white tracking-tight">Download for Linux</div>
+              <div className="text-[11px] text-zinc-500 mt-0.5">AppImage · Ubuntu, Fedora, Arch</div>
+            </div>
+            <Download size={16} className="text-zinc-600 group-hover:translate-y-0.5 transition-transform" />
+          </a>
+
+          <div className="flex items-center gap-3 text-[11px] text-zinc-600">
+            <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors flex items-center gap-1">
+              <GitBranch size={12} /> View on GitHub
+            </a>
+            <span className="text-zinc-800">·</span>
+            <span>MIT License</span>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 /* ─── Waveform ─────────────────────────────────────────────────────────────── */
 
@@ -278,7 +346,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "How does the download work?",
-    a: "On Windows: download the installer and run it. On Linux: download the AppImage, mark it executable (chmod +x RotaAI.AppImage), and run it directly — no install needed. First launch walks you through picking your transcription backend.",
+    a: "Click Download and pick your platform. Windows: run the installer. Linux: run the AppImage directly (chmod +x RotaAI.AppImage && ./RotaAI.AppImage). Both handle Python, dependencies, and setup automatically.",
   },
   {
     q: "Can I use it without internet?",
@@ -286,17 +354,17 @@ const FAQ_ITEMS = [
   },
   {
     q: "What about Mac or Linux?",
-    a: "Linux is now supported — download the AppImage and run it directly, no install needed. macOS is still on the roadmap.",
+    a: "Linux is fully supported — download the AppImage and run it directly. macOS is on the roadmap. The core pipeline (faster-whisper, silero-vad, PyQt6) is cross-platform.",
   },
   {
     q: "What are the system requirements?",
-    a: "Windows 10/11 or Linux (Ubuntu 20.04+, Fedora 36+, Arch). 4GB RAM minimum, 8GB recommended. For local GPU transcription: NVIDIA GPU with 4GB+ VRAM. CPU-only works on any modern quad core.",
+    a: "Windows 10/11 or Linux (Ubuntu 20.04+, Fedora 36+, Arch). 4GB RAM minimum, 8GB recommended. For local GPU transcription: NVIDIA GPU with 4GB+ VRAM. CPU-only works on any modern quad-core.",
   },
 ];
 
 /* ─── Nav ───────────────────────────────────────────────────────────────────── */
 
-function Nav() {
+function Nav({ onDownloadClick }: { onDownloadClick: () => void }) {
   const [scrolled, setScrolled] = React.useState(false);
   const { scrollY } = useScroll();
 
@@ -330,19 +398,17 @@ function Nav() {
         <a href="#features" className="hover:text-[#fafafa] transition-colors">Features</a>
         <a href="#comparison" className="hover:text-[#fafafa] transition-colors">Compare</a>
         <a href="/blog" className="hover:text-[#fafafa] transition-colors">Blog</a>
-        <a href="#download" className="hover:text-[#fafafa] transition-colors">Download</a>
+        <button onClick={onDownloadClick} className="hover:text-[#fafafa] transition-colors" style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "inherit" }}>Download</button>
       </div>
 
-      <a
-        href="https://github.com/krthik20050/Rota-AI"
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        onClick={onDownloadClick}
+        style={{ background: "#e4f222", color: "#000", borderRadius: 2, border: "none", cursor: "pointer" }}
         className="flex items-center gap-2 px-4 py-2 text-xs font-semibold tracking-[0.15em] uppercase transition-all hover:opacity-90 active:scale-95"
-        style={{ background: "#e4f222", color: "#000", borderRadius: 2 }}
       >
         <Download className="w-3 h-3" />
         Download
-      </a>
+      </button>
     </nav>
   );
 }
@@ -351,14 +417,16 @@ function Nav() {
 
 export function LandingPage() {
   const [preloaderDone, setPreloaderDone] = React.useState(false);
+  const [downloadModalOpen, setDownloadModalOpen] = React.useState(false);
 
   return (
     <>
       {!preloaderDone && (
         <WordsPreloader onComplete={() => setPreloaderDone(true)} />
       )}
+      <DownloadModal open={downloadModalOpen} onClose={() => setDownloadModalOpen(false)} />
     <div className="min-h-screen bg-[#09090b]">
-      <Nav />
+      <Nav onDownloadClick={() => setDownloadModalOpen(true)} />
 
       {/* ── Hero ── */}
       <section
@@ -407,11 +475,11 @@ export function LandingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.08 }}
           className="relative z-10 font-display uppercase leading-[0.92] tracking-[0.02em] px-4"
-          style={{ fontSize: "clamp(68px, 12.5vw, 176px)", color: "#fafafa" }}
+          style={{ fontSize: "clamp(40px, 7vw, 96px)", color: "#fafafa" }}
         >
           Type at the
           <br />
-          <span style={{ color: "#e4f222" }}>speed of speech.</span>
+          <span style={{ color: "#e4f222" }}>speed of light.</span>
         </motion.h1>
 
         <motion.p
@@ -430,32 +498,22 @@ export function LandingPage() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="relative z-10 mt-10 flex flex-col sm:flex-row items-center gap-3"
         >
-          <a
-            href="/api/download?platform=windows"
+          <button
+            onClick={() => setDownloadModalOpen(true)}
             className="group flex items-center gap-2.5 px-7 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
             style={{
               background: "#e4f222",
               color: "#000",
               borderRadius: 2,
               boxShadow: "0 4px 20px rgba(228,242,34,0.2)",
+              border: "none",
+              cursor: "pointer",
+              font: "inherit",
             }}
           >
-            Download for Windows
+            Download
             <Download className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
-          </a>
-          <a
-            href="/api/download?platform=linux"
-            className="group flex items-center gap-2.5 px-7 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "transparent",
-              color: "#e4f222",
-              borderRadius: 2,
-              border: "1px solid rgba(228,242,34,0.3)",
-            }}
-          >
-            Download for Linux
-            <Download className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
-          </a>
+          </button>
           <a
             href="#how-it-works"
             className="flex items-center gap-2 px-6 py-3 text-xs uppercase tracking-[0.15em] border transition-all hover:border-white/15"
@@ -511,7 +569,7 @@ export function LandingPage() {
           <FadeIn className="mb-14">
             <h2
               className="font-display uppercase leading-[0.92] tracking-[0.02em]"
-              style={{ fontSize: "clamp(52px, 7.5vw, 112px)", color: "#fafafa" }}
+              style={{ fontSize: "clamp(36px, 5.5vw, 72px)", color: "#fafafa" }}
             >
               Three steps.
               <br />
@@ -520,8 +578,8 @@ export function LandingPage() {
           </FadeIn>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/[.04]">
             {HOW_STEPS.map((step, i) => (
-              <FadeIn key={step.num} delay={i * 0.1}>
-                <div className="relative p-8 h-full bg-[#09090b]">
+              <FadeIn key={i} delay={0.1 * i}>
+                <div className="p-8 bg-[#09090b] relative overflow-hidden">
                   <div
                     className="absolute top-6 right-6 font-display uppercase leading-none select-none"
                     style={{
@@ -534,51 +592,21 @@ export function LandingPage() {
                     {step.num}
                   </div>
                   <div
-                    className="inline-flex items-center justify-center w-10 h-10 mb-6"
-                    style={{ background: "rgba(228,242,34,0.06)", borderRadius: 2 }}
+                    className="w-12 h-12 flex items-center justify-center mb-6"
+                    style={{
+                      background: "rgba(228,242,34,0.06)",
+                      borderRadius: 2,
+                      border: "1px solid rgba(228,242,34,0.1)",
+                    }}
                   >
-                    <step.icon className="w-5 h-5" style={{ color: "#e4f222" }} />
+                    <step.icon className="w-5 h-5 text-[#e4f222]" />
                   </div>
-                  <h3 className="text-base font-semibold mb-3 text-[#fafafa]">{step.title}</h3>
-                  <p className="text-sm leading-relaxed text-[#a1a1aa]">{step.desc}</p>
+                  <h3 className="text-sm font-semibold text-white mb-2 uppercase tracking-wider">{step.title}</h3>
+                  <p className="text-sm leading-relaxed text-[#71717a]">{step.desc}</p>
                 </div>
               </FadeIn>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ── Compatible apps ── */}
-      <section
-        className="py-14 px-6 sm:px-10"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div className="max-w-6xl mx-auto">
-          <FadeIn>
-            <p className="text-xs uppercase tracking-[0.22em] mb-5 text-[#71717a] font-mono">
-              Works natively in every app you already use
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              {APPS.map((app) => (
-                <div
-                  key={app}
-                  className="px-4 py-2 text-xs uppercase tracking-widest border border-white/[.06] bg-[#111113] text-[#a1a1aa] rounded-sm"
-                >
-                  {app}
-                </div>
-              ))}
-              <div
-                className="px-4 py-2 text-xs uppercase tracking-widest border rounded-sm"
-                style={{
-                  borderColor: "rgba(228,242,34,0.18)",
-                  background: "rgba(228,242,34,0.04)",
-                  color: "#e4f222",
-                }}
-              >
-                + any text field
-              </div>
-            </div>
-          </FadeIn>
         </div>
       </section>
 
@@ -595,33 +623,53 @@ export function LandingPage() {
           <FadeIn className="mb-14">
             <h2
               className="font-display uppercase leading-[0.92] tracking-[0.02em]"
-              style={{ fontSize: "clamp(52px, 7.5vw, 112px)", color: "#fafafa" }}
+              style={{ fontSize: "clamp(36px, 5.5vw, 72px)", color: "#fafafa" }}
             >
-              Built for how you
+              Everything you need.
               <br />
-              <span style={{ color: "#e4f222" }}>actually think.</span>
+              <span style={{ color: "#e4f222" }}>Nothing you don't.</span>
             </h2>
           </FadeIn>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/[.04]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/[.04]">
             {FEATURES.map((feat, i) => (
-              <FadeIn
-                key={feat.title}
-                delay={i * 0.06}
-                className={feat.large ? "sm:col-span-2 lg:col-span-2" : ""}
-              >
-                <div className="p-7 h-full bg-[#09090b]">
+              <FadeIn key={i} delay={0.05 * i}>
+                <div className={`p-8 bg-[#09090b] ${feat.large ? "md:col-span-2 lg:col-span-1" : ""}`}>
                   <div
-                    className="inline-flex items-center justify-center w-10 h-10 mb-5"
-                    style={{ background: "rgba(228,242,34,0.05)", borderRadius: 2 }}
+                    className="w-10 h-10 flex items-center justify-center mb-5"
+                    style={{ background: "rgba(228,242,34,0.06)", borderRadius: 2 }}
                   >
-                    <feat.icon className="w-5 h-5" style={{ color: "#e4f222" }} />
+                    <feat.icon className="w-4 h-4 text-[#e4f222]" />
                   </div>
-                  <h3 className="text-base font-semibold mb-2.5 text-[#fafafa]">{feat.title}</h3>
-                  <p className="text-sm leading-relaxed text-[#a1a1aa]">{feat.desc}</p>
+                  <h3 className="text-sm font-semibold text-white mb-2 uppercase tracking-wider">{feat.title}</h3>
+                  <p className="text-sm leading-relaxed text-[#71717a]">{feat.desc}</p>
                 </div>
               </FadeIn>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Works everywhere ── */}
+      <section
+        className="py-28 px-6 sm:px-10"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <FadeIn>
+            <SectionLabel n="03" title="Works everywhere" />
+          </FadeIn>
+          <FadeIn>
+            <div className="flex flex-wrap gap-2 mb-10">
+              {APPS.map((app) => (
+                <span
+                  key={app}
+                  className="px-4 py-2 text-xs uppercase tracking-[0.15em] text-[#71717a] border border-white/[.06] rounded-sm"
+                >
+                  {app}
+                </span>
+              ))}
+            </div>
+          </FadeIn>
         </div>
       </section>
 
@@ -631,133 +679,40 @@ export function LandingPage() {
         className="py-28 px-6 sm:px-10"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <FadeIn>
-            <SectionLabel n="03" title="The difference" />
+            <SectionLabel n="04" title="Comparison" />
           </FadeIn>
-          <FadeIn>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/[.04]">
-              <div className="p-10 bg-[#09090b]">
-                <p className="text-xs uppercase tracking-[0.22em] mb-8 text-[#71717a] font-mono">
-                  Without Rota AI
-                </p>
-                <ul className="space-y-5">
-                  {WITHOUT.map((item) => (
-                    <li
-                      key={item}
-                      className="flex items-start gap-4 text-sm text-[#71717a]"
-                    >
-                      <span className="mt-0.5 shrink-0 text-[#3a3a40]">—</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="p-10 bg-[#111113]">
-                <p className="text-xs uppercase tracking-[0.22em] mb-8 text-[#e4f222] font-mono">
-                  With Rota AI
-                </p>
-                <ul className="space-y-5">
-                  {WITH.map((item) => (
-                    <li
-                      key={item}
-                      className="flex items-start gap-4 text-sm text-[#fafafa]"
-                    >
-                      <CheckCircle2
-                        className="w-4 h-4 mt-0.5 shrink-0"
-                        style={{ color: "#e4f222" }}
-                      />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ── Comparison Table ── */}
-      <section
-        className="py-28 px-6 sm:px-10"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div className="max-w-6xl mx-auto">
-          <FadeIn>
-            <SectionLabel n="04" title="Compare" />
-          </FadeIn>
-          <FadeIn>
-            <p className="text-sm text-[#a1a1aa] max-w-lg mb-10">
-              Honest comparison. I would rather tell you the truth than make claims I cannot back up.
-            </p>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse" style={{ minWidth: 640 }}>
-                <thead>
-                  <tr>
-                    <th className="text-left py-3 px-5 text-xs uppercase tracking-[0.15em] text-[#71717a] font-mono font-normal border-b border-white/[.06]" />
-                    <th className="text-left py-3 px-5 text-xs uppercase tracking-[0.15em] text-[#71717a] font-mono font-normal border-b border-white/[.06]">
-                      Wispr Flow
-                    </th>
-                    <th className="text-left py-3 px-5 text-xs uppercase tracking-[0.15em] text-[#71717a] font-mono font-normal border-b border-white/[.06]">
-                      SuperWhisper
-                    </th>
-                    <th
-                      className="text-left py-3 px-5 text-xs uppercase tracking-[0.15em] font-mono font-normal border-b"
-                      style={{ color: "#e4f222", borderColor: "rgba(228,242,34,0.15)" }}
-                    >
-                      Rota AI
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARE_ROWS.map((row, i) => (
-                    <tr
-                      key={row.feature}
-                      className="transition-colors hover:bg-white/[.015]"
-                    >
-                      <td className="py-3.5 px-5 text-[#a1a1aa] border-b border-white/[.04] font-mono text-xs">
-                        {row.feature}
-                      </td>
-                      <td className="py-3.5 px-5 text-[#a1a1aa] border-b border-white/[.04]">
-                        {row.wispr}
-                      </td>
-                      <td className="py-3.5 px-5 text-[#a1a1aa] border-b border-white/[.04]">
-                        {row.superwhisper}
-                      </td>
-                      <td
-                        className="py-3.5 px-5 border-b"
-                        style={{
-                          color: row.rotaBold ? "#fafafa" : "#a1a1aa",
-                          fontWeight: row.rotaBold ? 500 : 400,
-                          background: "rgba(228,242,34,0.02)",
-                          borderColor: "rgba(255,255,255,0.04)",
-                        }}
-                      >
-                        {row.rota}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div
-              className="mt-8 p-6 rounded-sm"
-              style={{
-                background: "#111113",
-                border: "1px solid rgba(255,255,255,0.06)",
-              }}
+          <FadeIn className="mb-14">
+            <h2
+              className="font-display uppercase leading-[0.92] tracking-[0.02em]"
+              style={{ fontSize: "clamp(36px, 5.5vw, 72px)", color: "#fafafa" }}
             >
-              <p className="text-sm text-[#a1a1aa] leading-relaxed">
-                <strong className="text-[#fafafa] font-medium">The honest version:</strong>{" "}
-                Wispr Flow is a polished product with cross-device sync, mobile apps, and Mac support.
-                It has a full team and funding. SuperWhisper has more AI modes and file transcription.
-                Rota is free, open source, and private. It is one developer working on it in free time.
-                I am closing the gaps.
-              </p>
-            </div>
+              Why Rota?
+            </h2>
           </FadeIn>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[.06]">
+                  <th className="text-left py-4 pr-6 text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">Feature</th>
+                  <th className="text-center py-4 px-4 text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">Wispr Flow</th>
+                  <th className="text-center py-4 px-4 text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">SuperWhisper</th>
+                  <th className="text-center py-4 pl-4 text-xs uppercase tracking-[0.2em] text-[#e4f222] font-mono">Rota AI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARE_ROWS.map((row, i) => (
+                  <tr key={i} className="border-b border-white/[.03]">
+                    <td className="py-4 pr-6 text-[#a1a1aa]">{row.feature}</td>
+                    <td className="py-4 px-4 text-center text-[#50545a]">{row.wispr}</td>
+                    <td className="py-4 px-4 text-center text-[#50545a]">{row.superwhisper}</td>
+                    <td className={`py-4 pl-4 text-center ${row.rotaBold ? "text-[#e4f222] font-semibold" : "text-[#a1a1aa]"}`}>{row.rota}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -766,11 +721,11 @@ export function LandingPage() {
         className="py-28 px-6 sm:px-10"
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
       >
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           <FadeIn>
-            <SectionLabel n="05" title="Questions" />
+            <SectionLabel n="05" title="FAQ" />
           </FadeIn>
-          <div className="mt-8">
+          <div className="space-y-px bg-white/[.04]">
             {FAQ_ITEMS.map((item, i) => (
               <FAQItem key={i} question={item.q} answer={item.a} />
             ))}
@@ -791,7 +746,7 @@ export function LandingPage() {
           <FadeIn className="mb-12">
             <h2
               className="font-display uppercase leading-[0.92] tracking-[0.02em]"
-              style={{ fontSize: "clamp(52px, 7.5vw, 112px)", color: "#fafafa" }}
+              style={{ fontSize: "clamp(36px, 5.5vw, 72px)", color: "#fafafa" }}
             >
               Download &amp;
               <br />
@@ -802,108 +757,42 @@ export function LandingPage() {
             <p className="text-sm mb-10 max-w-md text-[#a1a1aa]">
               Windows &amp; Linux · Free &amp; open source · No account needed
             </p>
-            <div className="flex flex-col sm:flex-row items-start gap-4">
-              <a
-                href="/api/download?platform=windows"
-                className="group inline-flex items-center gap-3 px-8 py-4 text-sm font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
-                style={{
-                  background: "#e4f222",
-                  color: "#000",
-                  borderRadius: 2,
-                  boxShadow: "0 4px 24px rgba(228,242,34,0.25)",
-                }}
-              >
-                <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
-                Download for Windows
-              </a>
-              <a
-                href="/api/download?platform=linux"
-                className="group inline-flex items-center gap-3 px-8 py-4 text-sm font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
-                style={{
-                  background: "transparent",
-                  color: "#e4f222",
-                  borderRadius: 2,
-                  border: "1px solid rgba(228,242,34,0.3)",
-                  boxShadow: "0 4px 24px rgba(228,242,34,0.08)",
-                }}
-              >
-                <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
-                Download for Linux
-              </a>
-              <a
-                href="https://github.com/krthik20050/Rota-AI"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-4 text-xs uppercase tracking-[0.15em] border transition-all hover:border-white/15"
-                style={{
-                  borderColor: "rgba(255,255,255,0.08)",
-                  color: "#71717a",
-                  borderRadius: 2,
-                }}
-              >
-                View on GitHub <ArrowRight className="w-3 h-3" />
-              </a>
-            </div>
-            <div
-              className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-px bg-white/[.04]"
-              style={{ maxWidth: 640 }}
+            <button
+              onClick={() => setDownloadModalOpen(true)}
+              className="group inline-flex items-center gap-3 px-8 py-4 text-sm font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{
+                background: "#e4f222",
+                color: "#000",
+                borderRadius: 2,
+                boxShadow: "0 4px 24px rgba(228,242,34,0.25)",
+                border: "none",
+                cursor: "pointer",
+                font: "inherit",
+              }}
             >
-              {[
-                { step: "1", label: "Download & run", desc: "Windows: run the installer. Linux: download the AppImage, chmod +x, and run." },
-                { step: "2", label: "Add your API key", desc: "Enter your Groq or Gemini key when prompted. Or use Ollama for fully local." },
-                { step: "3", label: "Press F9 to speak", desc: "That is it. Dictate into any app, anywhere." },
-              ].map(({ step, label, desc }) => (
-                <div key={step} className="p-6 bg-[#09090b]">
-                  <div className="text-xs uppercase tracking-widest mb-2 text-[#e4f222] font-mono">
-                    Step {step}
-                  </div>
-                  <div className="text-sm font-semibold mb-1 text-[#fafafa]">{label}</div>
-                  <div className="text-xs text-[#a1a1aa]">{desc}</div>
-                </div>
-              ))}
-            </div>
+              <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+              Download Rota AI
+            </button>
           </FadeIn>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer
-        className="py-8 px-6 sm:px-10"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-5 h-5 flex items-center justify-center"
-              style={{ background: "#e4f222", borderRadius: 2 }}
-            >
-              <Mic className="w-2.5 h-2.5 text-black" />
+      {/* Footer */}
+      <footer className="py-20 px-6 border-t border-white/5">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 bg-[#e4f222] flex items-center justify-center rounded-sm">
+               <Mic className="text-black" size={16} />
             </div>
-            <span className="text-xs font-semibold tracking-[0.12em] uppercase text-[#fafafa]">
-              Rota AI
-            </span>
+            <span className="text-sm font-bold text-white tracking-widest uppercase">ROTA AI</span>
           </div>
-          <p className="text-xs uppercase tracking-widest text-[#71717a]">
-            © 2026 Rota AI · MIT License
-          </p>
-          <div className="flex items-center gap-6 text-xs uppercase tracking-widest text-[#71717a]">
-            <a
-              href="https://github.com/krthik20050/Rota-AI"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-[#a1a1aa] transition-colors flex items-center gap-1"
-            >
-              GitHub <ExternalLink className="w-2.5 h-2.5" />
-            </a>
-            <a href="#how-it-works" className="hover:text-[#a1a1aa] transition-colors">
-              How it works
-            </a>
-            <a href="/blog" className="hover:text-[#a1a1aa] transition-colors">
-              Blog
-            </a>
-            <a href="#download" className="hover:text-[#a1a1aa] transition-colors">
-              Download
-            </a>
+          <div className="flex gap-12 text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-600">
+            <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Github</a>
+            <a href="#" className="hover:text-white transition-colors">Documentation</a>
+            <a href="#" className="hover:text-white transition-colors">Security</a>
+          </div>
+          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-700">
+            © 2026 ROTA_STUDIO_LABS
           </div>
         </div>
       </footer>
@@ -917,25 +806,23 @@ export function LandingPage() {
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = React.useState(false);
   return (
-    <div className="border-b border-white/[.06]">
+    <div className="bg-[#09090b]">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-5 text-left group"
+        className="w-full flex items-center justify-between px-6 py-5 text-left"
+        style={{ background: "none", border: "none", cursor: "pointer", font: "inherit" }}
       >
-        <span className="text-sm font-medium text-[#fafafa] pr-4">{question}</span>
+        <span className="text-sm text-white pr-4">{question}</span>
         <ChevronDown
-          className="w-4 h-4 shrink-0 text-[#71717a] transition-transform duration-200"
+          className="w-4 h-4 text-[#50545a] shrink-0 transition-transform duration-200"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
         />
       </button>
-      <motion.div
-        initial={false}
-        animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="overflow-hidden"
-      >
-        <p className="pb-5 text-sm text-[#a1a1aa] leading-relaxed max-w-xl">{answer}</p>
-      </motion.div>
+      {open && (
+        <div className="px-6 pb-5">
+          <p className="text-sm leading-relaxed text-[#71717a]">{answer}</p>
+        </div>
+      )}
     </div>
   );
 }
