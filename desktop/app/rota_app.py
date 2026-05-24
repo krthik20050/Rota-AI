@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import QApplication
 
 from app.health_check import HealthCheckReport, StartupHealthChecker
 from app.service_wiring import build_app_services
-from audio.hotkey import HotkeyHandler
+from plat import get_hotkey_handler as _get_hotkey_handler
 from ui.history_window import HistoryWindow
 from ui.main_window import MainWindow
 from ui.overlay.pill_overlay import PillOverlay
@@ -201,6 +201,7 @@ class RotaApp(
         self._setup_tray_connections()
         hotkey = str(self.config.get("hotkey") or "f9")
         mode = str(self.config.get("hotkey_mode") or "toggle")
+        HotkeyHandler = _get_hotkey_handler()
         self.hotkey_handler = HotkeyHandler(
             hotkey=hotkey,
             mode=mode,
@@ -378,6 +379,7 @@ class RotaApp(
                 self.hotkey_handler.stop_listening()
             hotkey = str(self.config.get("hotkey") or "f9")
             mode = str(self.config.get("hotkey_mode") or "toggle")
+            HotkeyHandler = _get_hotkey_handler()
             self.hotkey_handler = HotkeyHandler(
                 hotkey=hotkey,
                 mode=mode,

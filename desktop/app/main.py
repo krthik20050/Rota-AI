@@ -76,14 +76,16 @@ def run() -> None:
     configure_logging()
     sock = try_acquire_instance_listener()
     if sock is None:
-        # Grant the running instance permission to steal focus from this process.
+        # Grant the running instance permission to steal focus.
         # Windows blocks SetForegroundWindow unless the foreground process allows it.
-        try:
-            import ctypes
-            ASFW_ANY = 0xFFFFFFFF
-            ctypes.windll.user32.AllowSetForegroundWindow(ASFW_ANY)
-        except Exception:
-            pass
+        # On Linux this is handled by the compositor.
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                ASFW_ANY = 0xFFFFFFFF
+                ctypes.windll.user32.AllowSetForegroundWindow(ASFW_ANY)
+            except Exception:
+                pass
         ok = wake_existing_instance()
         logger.info("second_launch_wake", ok=ok)
         if ok:
