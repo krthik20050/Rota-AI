@@ -5,7 +5,6 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
-# Cancel in-progress runs for the same tag
 concurrency:
   group: release-${{ github.ref_name }}
   cancel-in-progress: true
@@ -50,10 +49,27 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - name: Install build dependencies
+        shell: cmd
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install PyQt6
+          pip install structlog
+          pip install python-dotenv
+          pip install pyperclip
+          pip install pywin32
+          pip install psutil
+          pip install pynput
+          pip install keyboard
+          pip install pyautogui
+          pip install sounddevice
+          pip install numpy
+          pip install pydub
+          pip install groq
+          pip install silero-vad
+          pip install faster-whisper
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install noisereduce
           pip install pyinstaller
 
       - name: Build RotaAI.exe
@@ -63,7 +79,7 @@ jobs:
         shell: pwsh
         run: |
           winget install JRSoftware.InnoSetup --silent --accept-package-agreements --accept-source-agreements
-          Start-Sleep -Seconds 5
+          Start-Sleep -Seconds 10
 
       - name: Build RotaAI-Setup.exe
         shell: pwsh
@@ -73,7 +89,6 @@ jobs:
           if (-not (Test-Path $iscc)) { $iscc = "C:\Program Files\Inno Setup 6\ISCC.exe" }
           Write-Host "Using ISCC at: $iscc"
           if (-not (Test-Path $iscc)) { Write-Error "Inno Setup not found"; exit 1 }
-          # Patch installer.iss version before building
           $issPath = "installer.iss"
           $iss = Get-Content $issPath -Raw
           $iss = $iss -replace '#define AppVersion ".*?"', "#define AppVersion `"$env:VERSION`""
@@ -86,7 +101,7 @@ jobs:
         shell: pwsh
         run: |
           $exe = "installer-output\RotaAI-Setup.exe"
-          if (-not (Test-Path $exe)) { Write-Error "Installer not found: $exe"; exit 1 }
+          if (-not (Test-Path $exe)) { Write-Error "Installer not found"; exit 1 }
           $size = (Get-Item $exe).Length
           Write-Host "Installer size: $size bytes"
 
