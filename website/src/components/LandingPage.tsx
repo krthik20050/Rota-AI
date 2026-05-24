@@ -268,7 +268,7 @@ const COMPARE_ROWS = [
   { feature: "Telemetry", wispr: "Cloud based", superwhisper: "Not fully disclosed", rota: "None", rotaBold: true },
   { feature: "File transcription", wispr: "No", superwhisper: "Audio + video", rota: "Not yet", rotaBold: false },
   { feature: "Cross-device sync", wispr: "Yes", superwhisper: "Yes", rota: "Not yet", rotaBold: false },
-  { feature: "Mac / Linux / iOS", wispr: "All", superwhisper: "Mac, Win, iOS", rota: "Windows only", rotaBold: false },
+  { feature: "Mac / Linux / iOS", wispr: "All", superwhisper: "Mac, Win, iOS", rota: "Windows & Linux", rotaBold: true },
 ];
 
 const FAQ_ITEMS = [
@@ -278,7 +278,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "How does the download work?",
-    a: "Download the latest release from GitHub. Double click run.bat. It handles everything: Python detection, virtual environment, dependencies, and launch. First run walks you through onboarding where you pick your transcription backend.",
+    a: "On Windows: download the installer and run it. On Linux: download the AppImage, mark it executable (chmod +x RotaAI.AppImage), and run it directly — no install needed. First launch walks you through picking your transcription backend.",
   },
   {
     q: "Can I use it without internet?",
@@ -286,11 +286,11 @@ const FAQ_ITEMS = [
   },
   {
     q: "What about Mac or Linux?",
-    a: "Not yet. Windows only right now. The core pipeline is platform agnostic but the text injection and context detection layers use Windows specific APIs. macOS and Linux are on the roadmap.",
+    a: "Linux is now supported — download the AppImage and run it directly, no install needed. macOS is still on the roadmap.",
   },
   {
     q: "What are the system requirements?",
-    a: "Windows 10 or 11, Python 3.10+, 4GB RAM minimum (8GB recommended). For local GPU transcription: NVIDIA GPU with 4GB+ VRAM. For CPU only: any modern quad core processor.",
+    a: "Windows 10/11 or Linux (Ubuntu 20.04+, Fedora 36+, Arch). 4GB RAM minimum, 8GB recommended. For local GPU transcription: NVIDIA GPU with 4GB+ VRAM. CPU-only works on any modern quad core.",
   },
 ];
 
@@ -399,7 +399,7 @@ export function LandingPage() {
           }}
         >
           <span className="w-1.5 h-1.5 rounded-full bg-[#e4f222] animate-pulse" />
-          Now available — Windows
+          Now available — Windows &amp; Linux
         </motion.div>
 
         <motion.h1
@@ -431,7 +431,7 @@ export function LandingPage() {
           className="relative z-10 mt-10 flex flex-col sm:flex-row items-center gap-3"
         >
           <a
-            href="/api/download"
+            href="/api/download?platform=windows"
             className="group flex items-center gap-2.5 px-7 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
             style={{
               background: "#e4f222",
@@ -441,6 +441,19 @@ export function LandingPage() {
             }}
           >
             Download for Windows
+            <Download className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
+          </a>
+          <a
+            href="/api/download?platform=linux"
+            className="group flex items-center gap-2.5 px-7 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
+            style={{
+              background: "transparent",
+              color: "#e4f222",
+              borderRadius: 2,
+              border: "1px solid rgba(228,242,34,0.3)",
+            }}
+          >
+            Download for Linux
             <Download className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
           </a>
           <a
@@ -787,11 +800,11 @@ export function LandingPage() {
           </FadeIn>
           <FadeIn delay={0.1}>
             <p className="text-sm mb-10 max-w-md text-[#a1a1aa]">
-              Windows · Free &amp; open source · No account needed
+              Windows &amp; Linux · Free &amp; open source · No account needed
             </p>
             <div className="flex flex-col sm:flex-row items-start gap-4">
               <a
-                href="/api/download"
+                href="/api/download?platform=windows"
                 className="group inline-flex items-center gap-3 px-8 py-4 text-sm font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
                 style={{
                   background: "#e4f222",
@@ -802,6 +815,20 @@ export function LandingPage() {
               >
                 <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
                 Download for Windows
+              </a>
+              <a
+                href="/api/download?platform=linux"
+                className="group inline-flex items-center gap-3 px-8 py-4 text-sm font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  background: "transparent",
+                  color: "#e4f222",
+                  borderRadius: 2,
+                  border: "1px solid rgba(228,242,34,0.3)",
+                  boxShadow: "0 4px 24px rgba(228,242,34,0.08)",
+                }}
+              >
+                <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                Download for Linux
               </a>
               <a
                 href="https://github.com/krthik20050/Rota-AI"
@@ -822,7 +849,7 @@ export function LandingPage() {
               style={{ maxWidth: 640 }}
             >
               {[
-                { step: "1", label: "Download & run", desc: "Download the latest release. Run run.bat — it handles everything." },
+                { step: "1", label: "Download & run", desc: "Windows: run the installer. Linux: download the AppImage, chmod +x, and run." },
                 { step: "2", label: "Add your API key", desc: "Enter your Groq or Gemini key when prompted. Or use Ollama for fully local." },
                 { step: "3", label: "Press F9 to speak", desc: "That is it. Dictate into any app, anywhere." },
               ].map(({ step, label, desc }) => (
