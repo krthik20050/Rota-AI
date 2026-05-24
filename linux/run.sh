@@ -8,9 +8,10 @@
 
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENV_DIR="${REPO_DIR}/.venv"
-REQ_FILE="${REPO_DIR}/requirements-linux.txt"
+REQ_FILE="${SCRIPT_DIR}/requirements-linux.txt"
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -47,8 +48,16 @@ source "${VENV_DIR}/bin/activate"
 
 # --- 3. Dependencies ---
 if [ -f "${REQ_FILE}" ]; then
-    echo "  Installing dependencies..."
-    pip install -r "${REQ_FILE}" -q --disable-pip-version-check 2>/dev/null || true
+    echo "  Installing Python dependencies..."
+    if ! pip install -r "${REQ_FILE}" --disable-pip-version-check 2>&1; then
+        echo -e "${RED}  [ERROR] Dependency installation failed.${NC}"
+        echo "  Try manually: pip install -r ${REQ_FILE}"
+        echo "  If system packages are missing, run: bash "${SCRIPT_DIR}/setup-linux.sh""
+        exit 1
+    fi
+    echo -e "${GREEN}  Dependencies installed.${NC}"
+else
+    echo -e "${YELLOW}  [WARN] ${REQ_FILE} not found — skipping dependency check.${NC}"
 fi
 
 # --- 4. Desktop file ---
@@ -59,7 +68,7 @@ cat > "${DESKTOP_FILE_DIR}/rota-ai.desktop" << DESKTOP
 Type=Application
 Name=Rota AI
 Comment=Open source voice dictation for Linux
-Exec=${REPO_DIR}/run.sh
+Exec=${REPO_DIR}/linux/run.sh
 Icon=${REPO_DIR}/desktop/assets/icon.svg
 Terminal=false
 Categories=Utility;Accessibility;

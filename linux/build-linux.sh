@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${REPO_DIR}/build-linux"
 DIST_DIR="${REPO_DIR}/dist"
 APP_DIR="${BUILD_DIR}/AppDir"

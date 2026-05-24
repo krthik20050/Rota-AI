@@ -1,6 +1,6 @@
 # Rota AI - Linux Python Dependencies
 # Install: pip install -r requirements-linux.txt
-# System deps: see setup-linux.txt or run setup-linux.sh
+# System deps: run setup-linux.sh (installs system packages + Python deps)
 
 # UI Framework
 PyQt6>=6.6.0,<7.0.0
@@ -9,7 +9,8 @@ PyQt6>=6.6.0,<7.0.0
 sounddevice>=0.4.6,<1.0.0
 numpy>=1.24.0,<3.0.0
 
-# Local speech-to-text
+# Local speech-to-text (CTranslate2 backend, int8 CPU)
+# This is the FALLBACK transcription backend. Primary is Groq cloud.
 faster-whisper>=1.0.0,<2.0.0
 
 # Groq Whisper API + preprocessing
@@ -39,3 +40,6 @@ noisereduce>=3.0,<4.0.0
 
 # Process utilities
 psutil>=5.9.0,<7.0.0
+
+# X11 window detection fallback (Linux only; python-xlib)
+python-xlib>=0.33,<1.0.0
