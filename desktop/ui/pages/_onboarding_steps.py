@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import os
 
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, QTimer
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
     QComboBox, QFrame, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QVBoxLayout, QWidget,
 )
+import threading
 
 _HOTKEYS = [
     ("Tab",             "tab"),
@@ -429,7 +430,7 @@ def build_step_hotkey(dialog) -> QWidget:
     lay.addSpacing(8)
 
     body = QLabel(
-        "Choose the keyboard shortcut that starts and stops recording. "
+        "Press the button below, then press any key combination you want to use. "
         "It works globally across all your apps."
     )
     body.setObjectName("StepBody")
@@ -437,37 +438,121 @@ def build_step_hotkey(dialog) -> QWidget:
     lay.addWidget(body)
     lay.addSpacing(20)
 
-    hk_lbl = QLabel("Global Hotkey")
-    hk_lbl.setObjectName("FieldLabel")
-    lay.addWidget(hk_lbl)
-
-    dialog._hotkey_combo = QComboBox()
-    dialog._hotkey_combo.setObjectName("HotkeyCombo")
-    dialog._hotkey_combo.wheelEvent = lambda e: e.ignore()
-    for label, data in _HOTKEYS:
-        dialog._hotkey_combo.addItem(label, data)
-    current_hk = dialog._config.get("hotkey", "f9").lower() if dialog._config else "f9"
-    idx = dialog._hotkey_combo.findData(current_hk)
-    dialog._hotkey_combo.setCurrentIndex(max(0, idx))
-    dialog._hotkey_combo.currentIndexChanged.connect(dialog._update_hotkey_pill)
-    lay.addWidget(dialog._hotkey_combo)
-
-    lay.addSpacing(16)
-
-    dialog._hotkey_pill = QLabel("Tab")
+    # Hotkey pill display
+    current_hk = dialog._config.get("hotkey", "tab").lower() if dialog._config else "tab"
+    dialog._hotkey_pill = QLabel(_hotkey_display_name(current_hk))
     dialog._hotkey_pill.setObjectName("HotkeyPill")
     dialog._hotkey_pill.setAlignment(Qt.AlignmentFlag.AlignCenter)
     dialog._hotkey_pill.setFixedHeight(52)
-    dialog._update_hotkey_pill()
     lay.addWidget(dialog._hotkey_pill)
 
     lay.addSpacing(12)
-    note = QLabel("You can change this anytime in Settings.")
+
+    # Record button row
+    btn_row = QHBoxLayout()
+    btn_row.setSpacing(8)
+
+    dialog._hotkey_record_btn = QPushButton("🎤 Record Hotkey")
+    dialog._hotkey_record_btn.setObjectName("RecordHotkeyBtn")
+    dialog._hotkey_record_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    dialog._hotkey_record_btn.setFixedHeight(44)
+    dialog._hotkey_record_btn.clicked.connect(lambda: _start_hotkey_capture(dialog))
+    btn_row.addWidget(dialog._hotkey_record_btn)
+
+    dialog._hotkey_cancel_btn = QPushButton("Cancel")
+    dialog._hotkey_cancel_btn.setObjectName("CancelBtn")
+    dialog._hotkey_cancel_btn.setFixedHeight(44)
+    dialog._hotkey_cancel_btn.setVisible(False)
+    dialog._hotkey_cancel_btn.clicked.connect(lambda: _cancel_hotkey_capture(dialog))
+    btn_row.addWidget(dialog._hotkey_cancel_btn)
+
+    lay.addLayout(btn_row)
+
+    # Status label
+    dialog._hotkey_status = QLabel("")
+    dialog._hotkey_status.setObjectName("FieldHint")
+    dialog._hotkey_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    lay.addWidget(dialog._hotkey_status)
+
+    lay.addSpacing(8)
+    note = QLabel("You can change this anytime in Settings. Press Escape to cancel recording.")
     note.setObjectName("StepBody")
+    note.setWordWrap(True)
     lay.addWidget(note)
 
     lay.addStretch()
     return w
+
+
+def _hotkey_display_name(hotkey_str: str) -> str:
+    """Convert internal hotkey string to user-friendly display name.
+    
+    Examples:
+        'tab' → 'Tab'
+        'ctrl+shift+k' → 'Ctrl+Shift+K'
+        'f9' → 'F9'
+        'alt+space' → 'Alt+Space'
+    """
+    if not hotkey_str:
+        return "Tab"
+    parts = hotkey_str.lower().split("+")
+    display_parts = []
+    for p in parts:
+        if p in ("ctrl", "shift", "alt", "meta"):
+            display_parts.append(p.capitalize())
+        elif p.startswith("f") and p[1:].isdigit():
+            display_parts.append(p.upper())
+        elif len(p) == 1:
+            display_parts.append(p.upper())
+        else:
+            display_parts.append(p.capitalize())
+    return "+".join(display_parts) if display_parts else hotkey_str
+
+
+def _start_hotkey_capture(dialog):
+    """Start hotkey capture mode."""
+    dialog._hotkey_record_btn.setEnabled(False)
+    dialog._hotkey_record_btn.setText("Listening…")
+    dialog._hotkey_cancel_btn.setVisible(True)
+    dialog._hotkey_status.setText("Press your desired key combination now")
+    dialog._hotkey_status.setObjectName("StatusOk")
+
+    # Capture in a background thread so UI stays responsive
+    def _capture():
+        try:
+            from plat import get_hotkey_handler
+            HotkeyHandlerClass = get_hotkey_handler()
+            result = HotkeyHandlerClass.capture_hotkey(timeout=8.0)
+            # Update UI on main thread
+            from PyQt6.QtCore import QTimer
+            if result:
+                dialog._config.set("hotkey", result)
+                dialog._hotkey_pill.setText(_hotkey_display_name(result))
+                dialog._hotkey_status.setText(f"Set to: {_hotkey_display_name(result)}")
+                dialog._hotkey_status.setObjectName("StatusOk")
+            else:
+                dialog._hotkey_status.setText("Cancelled. Try again or use Settings to change.")
+                dialog._hotkey_status.setObjectName("FieldHint")
+        except Exception as e:
+            dialog._hotkey_status.setText(f"Error: {e}")
+            dialog._hotkey_status.setObjectName("StatusError")
+        finally:
+            dialog._hotkey_record_btn.setEnabled(True)
+            dialog._hotkey_record_btn.setText("🎤 Record Hotkey")
+            dialog._hotkey_cancel_btn.setVisible(False)
+
+    t = threading.Thread(target=_capture, daemon=True)
+    t.start()
+
+
+def _cancel_hotkey_capture(dialog):
+    """Cancel ongoing hotkey capture."""
+    dialog._hotkey_record_btn.setEnabled(True)
+    dialog._hotkey_record_btn.setText("🎤 Record Hotkey")
+    dialog._hotkey_cancel_btn.setVisible(False)
+    dialog._hotkey_status.setText("Cancelled. Try again or use Settings to change.")
+    dialog._hotkey_status.setObjectName("FieldHint")
+
 
 
 def build_step_ready(dialog) -> QWidget:

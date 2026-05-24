@@ -25,6 +25,7 @@ class HotkeyHandler:
 
     # Map modifier names to pynput Key objects
     _PYNPUT_MOD_MAP = None  # populated lazily
+    _KEY_NAME_REVERSE_MAP = None  # populated lazily: {pynput_key_obj: "f9", "tab", "a", ...}
 
     @classmethod
     def _get_pynput_mod_map(cls):
@@ -35,6 +36,125 @@ class HotkeyHandler:
                 "alt":   {pynput_keyboard.Key.alt, pynput_keyboard.Key.alt_l, pynput_keyboard.Key.alt_r},
             }
         return cls._PYNPUT_MOD_MAP or {}
+
+    @classmethod
+    def _get_key_name_reverse_map(cls):
+        """Build {pynput_key_obj: name} reverse lookup for capture_hotkey."""
+        if cls._KEY_NAME_REVERSE_MAP is not None:
+            return cls._KEY_NAME_REVERSE_MAP
+        rev = {}
+        if pynput_keyboard is None:
+            return rev
+        # Named special keys: tab, space, enter, esc, delete, home, end, etc.
+        for attr in dir(pynput_keyboard.Key):
+            if attr.startswith('_'):
+                continue
+            key_obj = getattr(pynput_keyboard.Key, attr, None)
+            if key_obj is not None and isinstance(key_obj, pynput_keyboard.Key):
+                rev[key_obj] = attr.lower()
+        # Function keys are already in dir(Key): f1, f2, ..., f12
+        # Characters are handled via key.char, not in Key enum
+        cls._KEY_NAME_REVERSE_MAP = rev
+        return rev
+
+    @classmethod
+    def _key_to_name(cls, key) -> str | None:
+        """Convert a pynput key object to its canonical name string."""
+        if pynput_keyboard is None:
+            return None
+        # Check named keys (tab, f1, space, enter, etc.)
+        rev = cls._get_key_name_reverse_map()
+        if key in rev:
+            return rev[key]
+        # Check modifier keys
+        mod_map = cls._get_pynput_mod_map()
+        for name, key_set in mod_map.items():
+            if key in key_set:
+                return name
+        # Character key
+        char = getattr(key, 'char', None)
+        if char:
+            return char.lower()
+        return None
+
+    @classmethod
+    def _names_to_hotkey_str(cls, mods: set, main_name: str = "") -> str:
+        """Convert captured modifier set + main key name to canonical hotkey string.
+        
+        Example: ({'ctrl', 'shift'}, 'k') → 'ctrl+shift+k'
+                 ({}, 'tab') → 'tab'
+                 ({'ctrl', 'alt'}, 'space') → 'ctrl+alt+space'
+        """
+        parts = []
+        # Always put modifiers in canonical order
+        for mod in ('ctrl', 'shift', 'alt'):
+            if mod in mods:
+                parts.append(mod)
+        if main_name:
+            parts.append(main_name.lower())
+        return '+'.join(parts) if parts else ''
+
+    @classmethod
+    def capture_hotkey(cls, timeout: float = 8.0) -> str | None:
+        """Record the next key combination the user presses.
+        
+        Temporarily installs a global keyboard listener, waits for a key press,
+        and returns the canonical hotkey string (e.g. 'ctrl+shift+k', 'tab', 'f9').
+        
+        Pressing Escape cancels and returns None.
+        
+        Args:
+            timeout: Seconds to wait before giving up.
+            
+        Returns:
+            Hotkey string like 'ctrl+k', 'tab', 'f9', or None if cancelled/timeout.
+        """
+        if pynput_keyboard is None:
+            logger.error("capture_hotkey: pynput not available")
+            return None
+
+        result = {"hotkey": None}
+        done = threading.Event()
+        held_mods: set = set()
+
+        def capture_press(key):
+            # Escape cancels
+            if key == pynput_keyboard.Key.esc:
+                result["hotkey"] = None
+                done.set()
+                return False  # stop listener
+            main_name = cls._key_to_name(key)
+            if main_name is None:
+                return True  # skip unrecognized keys
+            # Ignore press events for modifier-only (wait for main key)
+            known_mods = {"ctrl", "shift", "alt"}
+            if main_name in known_mods:
+                held_mods.add(main_name)
+                return True
+            # Main key found - build hotkey string
+            hotkey_str = cls._names_to_hotkey_str(held_mods, main_name)
+            result["hotkey"] = hotkey_str
+            done.set()
+            return False  # stop listener
+
+        def capture_release(key):
+            name = cls._key_to_name(key)
+            if name in ("ctrl", "shift", "alt"):
+                held_mods.discard(name)
+
+        try:
+            listener = pynput_keyboard.Listener(
+                on_press=capture_press,
+                on_release=capture_release,
+            )
+            listener.daemon = True
+            listener.start()
+            done.wait(timeout=timeout)
+            listener.stop()
+        except Exception:
+            logger.exception("capture_hotkey failed")
+
+        return result["hotkey"]
 
     @classmethod
     def _parse_hotkey_str(cls, hotkey: str):

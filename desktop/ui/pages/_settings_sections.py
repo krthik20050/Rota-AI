@@ -3,6 +3,8 @@ Section-building helpers for SettingsWindow._init_ui.
 Each function receives the dialog instance as `dlg` and a parent layout,
 builds the widgets, attaches them to `dlg`, and adds them to `parent`.
 """
+import threading
+
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QCheckBox, QPushButton, QFormLayout, QFrame,
@@ -23,28 +25,32 @@ def build_recording_section(dlg, parent):
     form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
     form.setFormAlignment(Qt.AlignmentFlag.AlignTop)
 
-    dlg.hotkey_combo = NonScrollComboBox()
-    _hotkeys = [
-        # ── Single-key options ──
-        ("Tab", "tab"),
-        # ── Function keys ──
-        ("F1", "f1"), ("F2", "f2"), ("F3", "f3"), ("F4", "f4"),
-        ("F5", "f5"), ("F6", "f6"), ("F7", "f7"), ("F8", "f8"),
-        ("F9", "f9"), ("F10", "f10"), ("F11", "f11"), ("F12", "f12"),
-        # ── Modifier combos ──
-        ("Ctrl (hold or tap)", "ctrl"),
-        ("Ctrl+Shift", "ctrl+shift"),
-        ("Ctrl+Space", "ctrl+space"),
-        ("Ctrl+Alt+Space", "ctrl+alt+space"), ("Ctrl+Alt+R", "ctrl+alt+r"),
-        ("Alt+Space", "alt+space"), ("Alt+F9", "alt+f9"),
-        ("Pause/Break", "pause"), ("Scroll Lock", "scroll lock"),
-        ("Print Screen", "print screen"),
-        ("Mouse Scroll Down", "mouse_scroll_down"),
-        ("Mouse Scroll Up", "mouse_scroll_up"),
-    ]
-    for label, data in _hotkeys:
-        dlg.hotkey_combo.add_option(label, data, recommended=(data == "tab"))
-    form.addRow(dlg._field_label("Global Hotkey", "The keyboard shortcut that triggers recording."), dlg.hotkey_combo)
+    # Hotkey display + record button
+    hk_row_w = QWidget()
+    hk_row = QHBoxLayout(hk_row_w)
+    hk_row.setContentsMargins(0, 0, 0, 0)
+    hk_row.setSpacing(8)
+
+    current_hk = dlg.config.get("hotkey", "tab") if hasattr(dlg, "config") else "tab"
+    from ui.pages._settings_sections import _hotkey_display_name
+    dlg.hotkey_display = QLabel(_hotkey_display_name(current_hk))
+    dlg.hotkey_display.setObjectName("HotkeyPill")
+    dlg.hotkey_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    dlg.hotkey_display.setFixedHeight(40)
+    hk_row.addWidget(dlg.hotkey_display, 1)
+
+    dlg.hotkey_record_btn = QPushButton(" Record New Hotkey")
+    dlg.hotkey_record_btn.setObjectName("RecordHotkeyBtn")
+    dlg.hotkey_record_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    dlg.hotkey_record_btn.setFixedHeight(40)
+    dlg.hotkey_record_btn.clicked.connect(lambda: _start_settings_hotkey_capture(dlg))
+    hk_row.addWidget(dlg.hotkey_record_btn)
+
+    form.addRow(dlg._field_label("Global Hotkey", "Press the button to record a new key combination."), hk_row_w)
+
+    dlg.hotkey_status = QLabel("")
+    dlg.hotkey_status.setObjectName("FieldHint")
+    form.addRow("", dlg.hotkey_status))
 
     dlg.hotkey_mode_combo = NonScrollComboBox()
     dlg.hotkey_mode_combo.add_option("Hold to Record", "hold", recommended=True)
@@ -246,3 +252,54 @@ def build_appearance_section(dlg, parent):
     )
 
     dlg._add_form_section(parent, font_form)
+
+
+
+def _hotkey_display_name(hotkey_str: str) -> str:
+    """Convert internal hotkey string to user-friendly display name."""
+    if not hotkey_str:
+        return "Tab"
+    parts = hotkey_str.lower().split("+")
+    display_parts = []
+    for p in parts:
+        if p in ("ctrl", "shift", "alt", "meta"):
+            display_parts.append(p.capitalize())
+        elif p.startswith("f") and p[1:].isdigit():
+            display_parts.append(p.upper())
+        elif len(p) == 1:
+            display_parts.append(p.upper())
+        else:
+            display_parts.append(p.capitalize())
+    return "+".join(display_parts) if display_parts else hotkey_str
+
+
+def _start_settings_hotkey_capture(dlg):
+    """Start hotkey capture from settings window."""
+    dlg.hotkey_record_btn.setEnabled(False)
+    dlg.hotkey_record_btn.setText("Listening...")
+    dlg.hotkey_status.setText("Press your desired key combination now")
+    dlg.hotkey_status.setObjectName("StatusOk")
+
+    def _capture():
+        try:
+            from plat import get_hotkey_handler
+            HotkeyHandlerClass = get_hotkey_handler()
+            result = HotkeyHandlerClass.capture_hotkey(timeout=8.0)
+            if result:
+                dlg.config.set("hotkey", result)
+                from ui.pages._settings_sections import _hotkey_display_name
+                dlg.hotkey_display.setText(_hotkey_display_name(result))
+                dlg.hotkey_status.setText(f"Hotkey set to: {_hotkey_display_name(result)}")
+                dlg.hotkey_status.setObjectName("StatusOk")
+            else:
+                dlg.hotkey_status.setText("Cancelled.")
+                dlg.hotkey_status.setObjectName("FieldHint")
+        except Exception as e:
+            dlg.hotkey_status.setText(f"Error: {e}")
+            dlg.hotkey_status.setObjectName("StatusError")
+        finally:
+            dlg.hotkey_record_btn.setEnabled(True)
+            dlg.hotkey_record_btn.setText(" Record New Hotkey")
+
+    t = threading.Thread(target=_capture, daemon=True)
+    t.start()
