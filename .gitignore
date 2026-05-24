@@ -82,3 +82,45 @@ CODEBASE_MAP.md
 
 # Example launcher (local-only)
 desktop-launcher.example.bat
+
+# Debug / temp files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.swp
+*.swo
+*~
+*.log
+original_landing.txt
+
+# Zero-byte / crash artifacts
+1.7.6
+self._hotkey_mods
+tuple[bool
+voice-powered
+run_build.py
+
+# Test scripts (local-only)
+test_imports.bat
+test_imports.py
+test_launch.py
+test_launch_out.txt
+test_out.txt
+test_startup.py
+test_startup_out.txt
+
+# Backup files
+*.bak
+
+# Website build artifacts (keep source only)
+website/.env
+website/.vercel/
+website/tsconfig.tsbuildinfo
+website/next-env.d.ts
+website/blog/*.html
+website/taste-skill/
+website/skiper8_chunk.js
+website/words_preloader_search*.json
+website/console.log*
+website/index.html
