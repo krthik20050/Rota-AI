@@ -1,0 +1,226 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Linux CI ────────────────────────────────────────────────────────────────
+  linux-ci:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libportaudio2 portaudio19-dev \
+            libdbus-glib-1-dev libdbus-1-dev \
+            at-spi2-core libatk-bridge2.0-0 \
+            libsecret-1-dev \
+            xvfb xdotool wl-clipboard xclip \
+            python3-pyatspi \
+            ffmpeg
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-pip-${{ hashFiles('requirements-linux.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ matrix.python-version }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r linux/requirements-linux.txt
+
+      - name: Check Python imports (Linux)
+        run: |
+          cd desktop
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          # Test that all desktop modules can be imported on Linux
+          from plat import get_hotkey_handler, get_injector, get_window_detector
+          print('plat imports: OK')
+          HotkeyHandler = get_hotkey_handler()
+          print(f'HotkeyHandler: {HotkeyHandler.__name__}')
+          Injector = get_injector()
+          print(f'TextInjector: {Injector.__name__}')
+          from PyQt6.QtWidgets import QApplication
+          from PyQt6.QtCore import Qt
+          print('PyQt6: OK')
+          from audio.transcriber import AudioTranscriber
+          print('AudioTranscriber: OK')
+          from data.config import ConfigManager
+          print('ConfigManager: OK')
+          from data.snippets import SnippetsManager
+          print('SnippetsManager: OK')
+          from utils.seeder import seed_mock_data
+          print('seeder: OK')
+          from utils.window_effects import apply_blur
+          print('window_effects: OK')
+          print('All imports successful on Linux!')
+          "
+
+      - name: Check for Windows-only imports on Linux
+        run: |
+          cd desktop
+          python -c "
+          import sys, os, ast, glob
+
+          # These modules are allowed to use ctypes/windll on Windows only
+          WINDOWS_ONLY_MODULES = {
+              'injection.injector', 'injection.field_detector',
+              'injection.field_reader', 'injection.app_detector',
+              'audio.hotkey', 'data.snippets',
+              'app.instance_guard', 'utils.window_effects',
+          }
+
+          errors = []
+          for root, dirs, files in os.walk('.'):
+            for f in files:
+              if not f.endswith('.py'):
+                continue
+              filepath = os.path.join(root, f)
+              mod_path = filepath.replace('./', '').replace('/', '.').replace('.py', '')
+
+              with open(filepath) as fh:
+                try:
+                  tree = ast.parse(fh.read())
+                except SyntaxError:
+                  continue
+
+              for node in ast.walk(tree):
+                # Check for ctypes.windll usage outside Windows-only modules
+                if isinstance(node, ast.Attribute):
+                  if isinstance(node.value, ast.Attribute):
+                    if (isinstance(node.value.value, ast.Name) and
+                        node.value.value.id == 'ctypes' and
+                        node.value.attr == 'windll'):
+                      # Check if this module is Windows-only
+                      is_win_only = any(mod_path.endswith(m) for m in WINDOWS_ONLY_MODULES)
+                      if not is_win_only:
+                        errors.append(f'{filepath}:{node.lineno}: ctypes.windll usage outside Windows-only module')
+
+          if errors:
+            print('ERROR: Found ctypes.windll usage in modules that should be cross-platform:')
+            for e in errors:
+              print(f'  {e}')
+            sys.exit(1)
+          else:
+            print('OK: No ctypes.windll leakage into cross-platform code')
+          "
+
+      - name: Run import smoke test with display
+        run: |
+          cd desktop
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1024x768x24 &
+          sleep 1
+          python -c "
+          import sys, os
+          sys.path.insert(0, '.')
+          os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+
+          from PyQt6.QtWidgets import QApplication
+          app = QApplication(sys.argv)
+
+          # Test onboarding dialog can be created
+          from data.config import ConfigManager
+          config = ConfigManager()
+          from ui.onboarding import OnboardingDialog
+          dlg = OnboardingDialog(config=config)
+          print('OnboardingDialog created successfully')
+          print(f'Step count: {dlg._TOTAL_STEPS}')
+          print(f'Current step: {dlg._step}')
+          dlg.close()
+          print('OnboardingDialog closed cleanly')
+          "
+
+      - name: Run unit tests
+        run: |
+          cd desktop
+          export PYTHONPATH="${PWD}:$PYTHONPATH"
+          python -m pytest tests/ -v --tb=short 2>&1 | head -100
+
+  # ── Windows CI ──────────────────────────────────────────────────────────────
+  windows-ci:
+    runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ matrix.python-version }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Check Python imports (Windows)
+        run: |
+          cd desktop
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from plat import get_hotkey_handler, get_injector, get_window_detector
+          print('plat imports: OK')
+          HotkeyHandler = get_hotkey_handler()
+          print(f'HotkeyHandler: {HotkeyHandler.__name__}')
+          Injector = get_injector()
+          print(f'TextInjector: {Injector.__name__}')
+          from PyQt6.QtWidgets import QApplication
+          print('PyQt6: OK')
+          from audio.transcriber import AudioTranscriber
+          print('AudioTranscriber: OK')
+          from data.config import ConfigManager
+          print('ConfigManager: OK')
+          from injection.injector import TextInjector
+          print('Windows TextInjector: OK')
+          from data.snippets import SnippetsManager
+          print('SnippetsManager: OK')
+          print('All imports successful on Windows!')
+          "
+
+      - name: Run unit tests
+        run: |
+          cd desktop
+          $env:PYTHONPATH = "$pwd;$env:PYTHONPATH"
+          python -m pytest tests/ -v --tb=short 2>&1 | Select-Object -First 100
