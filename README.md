@@ -453,7 +453,7 @@ Rota-AI/
 ## How Close Are We to Wispr Flow?
 
 > [!NOTE]
-> I have a Dell G15 with an Intel i5 12th gen, 16GB RAM, and an NVIDIA RTX 3050 4GB GPU. All Rota AI numbers below are from my own testing on this machine. I do not have a Mac so I cannot test Wispr Flow locally. Wispr Flow data comes from their website and user reports. Where I am not sure, I say so.
+> I have a Dell G15 with an Intel i5 13th gen (i5-13450HX), 16GB RAM, and an NVIDIA RTX 3050 6GB Laptop GPU. All Rota AI numbers below are from my own testing on this machine. I do not have a Mac so I cannot test Wispr Flow locally. Wispr Flow data comes from their website and user reports. Where I am not sure, I say so.
 
 ### The Honest Comparison
 
@@ -463,7 +463,7 @@ Rota-AI/
 | **Free tier** | 2,000 words/week | Unlimited basic models | 2,000 requests/day | Unlimited |
 | **Open source** | No | No | Yes (MIT) | Yes (MIT) |
 | **Offline mode** | No | Yes | No | Yes (Ollama) |
-| **Platforms** | Mac, Windows, iOS, Android | Mac, Windows, iOS | Windows only | Windows only |
+| **Platforms** | Mac, Windows, iOS, Android | Mac, Windows, iOS | Windows, Linux (AppImage) | Windows, Linux (AppImage) |
 | **Account required** | Yes | Yes | No | No |
 | **AI cleanup / auto editing** | Yes | Yes (multiple modes) | Yes | Yes |
 | **Context awareness** | Yes | Yes (reads screen) | Yes (detects active app) | Yes (detects active app) |
@@ -487,13 +487,13 @@ SuperWhisper costs $8.49/month (cheaper than Wispr Flow). It works on Mac, Windo
 
 Rota AI is free. Not free tier. Free. There is no account, no subscription, no credit card. It is open source so you can read every line of code and verify what it does with your data. API keys are encrypted with Windows DPAPI. There is zero telemetry, nothing sent to any server. It works 100% offline with Ollama and no cloud dependency.
 
-On my RTX 3050, Rota AI with Groq cloud transcription feels faster than Wispr Flow for short phrases. For local transcription, RTX 3050 handles Whisper small at int8 comfortably with about 300ms transcription latency. Large v3 turbo fits in the 4GB VRAM at int8 but it is tight. I recommend small or base for RTX 3050 users.
+On my RTX 3050 6GB, Rota AI with Groq cloud transcription feels faster than Wispr Flow for short phrases. For local transcription, RTX 3050 handles Whisper small at int8 comfortably with about 300ms transcription latency. Large v3 turbo fits in the 6GB VRAM at int8. I recommend small or base for RTX 3050 users.
 
 ### The Gap
 
 I am honest about what Rota AI is missing compared to Wispr Flow and SuperWhisper:
 
-- No Mac or Linux version. Windows only right now.
+- No macOS version yet. Linux is supported via AppImage.
 - No mobile app. iPhone and Android are not supported.
 - No cross device sync. Dictionary and snippets stay local.
 - No file transcription. You cannot feed it an audio or video file and get a transcript.
@@ -516,10 +516,10 @@ I am working on closing these gaps. But I would rather be honest about where thi
 | small | 244M | 480 MB | ~900 MB | ~1.5 GB | 0.07x (14x RT) | ~0.19x (5.4x RT) |
 | medium | 769M | 1.5 GB | ~1.5 GB | ~2.5 GB | 0.14x (7x RT) | ~0.39x (2.6x RT) |
 | large v3 turbo | 809M | 1.5 GB | ~1.5 GB | ~2.5 GB | 0.05x (20x RT) | ~0.26x (3.9x RT) |
-| large v3 | 1550M | 3.1 GB | ~3.0 GB | ~5 GB | Does not fit in 4GB | ~0.64x (1.6x RT) |
+| large v3 | 1550M | 3.1 GB | ~3.0 GB | ~5 GB | ~0.75x (1.3x RT) | ~0.64x (1.6x RT) |
 
 > [!TIP]
-> For a Dell G15 with RTX 3050 4GB, **small at int8** is the best balance. Large v3 turbo fits but barely. Large v3 does not fit in 4GB VRAM at int8. For CPU only, **base or small** are the only models that transcribe faster than realtime.
+> For a Dell G15 with RTX 3050 6GB, **small or large v3 turbo at int8** is the best balance. Large v3 also fits in 6GB VRAM. For CPU only, **base or small** are the only models that transcribe faster than realtime.
 
 ### AI Cleanup Models
 
@@ -581,7 +581,7 @@ Whisper supports 99+ languages for transcription. The AI cleanup pass currently 
 
 ### Does it work on Mac or Linux?
 
-Not yet. Windows 10 and 11 only for now. macOS and Linux are planned. The core pipeline is platform agnostic but the text injection and context detection layers use Windows specific APIs (SendInput, UI Automation, DPAPI) that need platform specific implementations.
+Windows 10/11 and Linux (AppImage) are supported. macOS is planned. Linux support includes evdev-based global hotkeys (X11 + Wayland), clipboard + Ctrl+V text injection, and XDG-compliant data directories.
 
 ---
 
@@ -604,7 +604,7 @@ The Rota AI application itself is about 25 MB. Dependencies (PyQt6, torch, etc.)
 - 4 GB RAM minimum (8 GB recommended)
 - Microphone (built in or external)
 - For local transcription: 8 GB RAM for base/small, 16 GB for medium/large
-- For GPU transcription: NVIDIA GPU with 4+ GB VRAM (GTX 1650 or better)
+- For GPU transcription: NVIDIA GPU with 6+ GB VRAM recommended (RTX 3050 or better)
 - For CPU only transcription: any modern quad core processor
 
 ---
@@ -630,7 +630,7 @@ Open an issue on GitHub. I read every single issue and try to respond quickly. I
 ## Known Issues
 
 > [!WARNING]
-> **Windows only**: Rota AI currently only supports Windows 10 and 11. macOS and Linux versions are planned. The README will be updated when they are available.
+> **Platform support**: Rota AI supports Windows 10/11 and Linux (AppImage). macOS support is planned.
 
 > [!NOTE]
 > **First run model download**: The first time you use a local model, it downloads from Hugging Face. base is 140 MB, small is 480 MB, large v3 is 3.1 GB. This is a one time download. Files are cached and reused.
