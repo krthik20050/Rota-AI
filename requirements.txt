@@ -42,3 +42,7 @@ structlog>=24.1.0,<30.0.0
 # Optional audio denoising (improves transcription quality; graceful no-op if absent)
 noisereduce>=3.0,<4.0.0
 
+# Testing
+pytest>=8.0,<9.0.0
+pytest-qt>=4.4,<5.0.0
+

@@ -43,3 +43,7 @@ psutil>=5.9.0,<7.0.0
 
 # X11 window detection fallback (Linux only; python-xlib)
 python-xlib>=0.33,<1.0.0
+
+# Testing
+pytest>=8.0,<9.0.0
+pytest-qt>=4.4,<5.0.0
