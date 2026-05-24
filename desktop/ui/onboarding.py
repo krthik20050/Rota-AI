@@ -35,7 +35,14 @@ class OnboardingDialog(QDialog):
 
     finished_signal = pyqtSignal()
     _download_result = pyqtSignal(bool, str)   # success, error_msg — thread-safe
-    _STEPS = 5
+
+    # Step indices: 0=Welcome, 1=API Keys, 2=Model, 3=Hotkey, 4=Ready
+    _WELCOME = 0
+    _API_KEYS = 1
+    _MODEL = 2
+    _HOTKEY = 3
+    _READY = 4
+    _TOTAL_STEPS = 5  # always 5 widgets in stack, but we may skip one
 
     def __init__(self, config=None, parent=None):
         super().__init__(parent)
@@ -67,15 +74,38 @@ class OnboardingDialog(QDialog):
         self._container = QFrame()
         self._container.setObjectName("OBContainer")
         lay = QVBoxLayout(self._container)
-        lay.setContentsMargins(52, 40, 52, 32)
+        lay.setContentsMargins(52, 10, 52, 32)
         lay.setSpacing(0)
+
+        # Window controls row (close + minimize)
+        ctrl_row = QHBoxLayout()
+        ctrl_row.setContentsMargins(0, 0, 0, 0)
+        ctrl_row.setSpacing(0)
+        ctrl_row.addStretch()
+
+        self._min_btn  = QPushButton("─")
+        self._min_btn.setObjectName("WindowCtrlBtn")
+        self._min_btn.setFixedSize(28, 28)
+        self._min_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._min_btn.clicked.connect(self.showMinimized)
+        ctrl_row.addWidget(self._min_btn)
+
+        self._close_btn = QPushButton("✕")
+        self._close_btn.setObjectName("WindowCloseBtn")
+        self._close_btn.setFixedSize(28, 28)
+        self._close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._close_btn.clicked.connect(self._finish)
+        ctrl_row.addWidget(self._close_btn)
+
+        lay.addLayout(ctrl_row)
+        lay.addSpacing(0)
 
         # Progress dots
         dot_row = QHBoxLayout()
         dot_row.setSpacing(6)
         dot_row.addStretch()
         self._dots = []
-        for _ in range(self._STEPS):
+        for _ in range(self._TOTAL_STEPS):
             d = QFrame()
             d.setObjectName("DotInactive")
             d.setFixedSize(6, 6)
@@ -140,6 +170,24 @@ class OnboardingDialog(QDialog):
         t = threading.Thread(target=self._download_worker, args=(model_size,), daemon=True)
         t.start()
 
+    def _auto_start_download(self):
+        """Called automatically when the model step is shown.
+        Starts the download without user clicking the button."""
+        # Guard: don't re-download if already done or in progress
+        if self._download_done or self._download_error:
+            return
+        if self._spinner_timer.isActive():
+            return
+        self._download_btn.setEnabled(False)
+        self._download_done = False
+        self._download_error = ""
+        model_size = self._model_combo.currentData() or "base.en"
+        self._spinner_timer.start()
+        self._download_status.setObjectName("StatusLabel")
+        self._download_status.setText("⠋ Downloading fallback model…")
+        t = threading.Thread(target=self._download_worker, args=(model_size,), daemon=True)
+        t.start()
+
     def _download_worker(self, model_size: str):
         """Runs in background thread — only emits a signal, never touches Qt widgets."""
         try:
@@ -191,9 +239,9 @@ class OnboardingDialog(QDialog):
         self._step = idx
         self._stack.setCurrentIndex(idx)
         self._back_btn.setVisible(idx > 0)
-        self._skip_btn.setVisible(idx < self._STEPS - 1)
-        self._next_btn.setText("Get Started" if idx == self._STEPS - 1 else "Next")
-        if idx == self._STEPS - 1:
+        self._skip_btn.setVisible(idx < self._READY)
+        self._next_btn.setText("Get Started" if idx == self._READY else "Next")
+        if idx == self._READY:
             self._build_ready_summary()
         for i, dot in enumerate(self._dots):
             if i == idx:
@@ -203,6 +251,24 @@ class OnboardingDialog(QDialog):
                 dot.setObjectName("DotInactive")
                 dot.setFixedSize(6, 6)
             dot.setStyleSheet("")
+
+        # Auto-download model when reaching the model step (only if not already cached)
+        if idx == self._MODEL and not self._download_done and not self._download_error:
+            if not getattr(self, "_model_already_cached", False):
+                QTimer.singleShot(300, self._auto_start_download)
+
+    def _next(self):
+        self._collect_step_data(self._step)
+        next_step = self._step + 1
+        if next_step <= self._READY:
+            self._show_step(next_step)
+        else:
+            self._finish()
+
+    def _prev(self):
+        prev_step = self._step - 1
+        if prev_step >= 0:
+            self._show_step(prev_step)
 
     def _build_ready_summary(self):
         if not hasattr(self, "_ready_summary"):
@@ -227,21 +293,10 @@ class OnboardingDialog(QDialog):
             pass
         self._ready_summary.setText("\n".join(lines))
 
-    def _next(self):
-        self._collect_step_data(self._step)     # fast in-memory only
-        if self._step < self._STEPS - 1:
-            self._show_step(self._step + 1)
-        else:
-            self._finish()
-
-    def _prev(self):
-        if self._step > 0:
-            self._show_step(self._step - 1)
-
     def _finish(self):
         self._closing = True
         self._spinner_timer.stop()
-        for s in range(self._STEPS):
+        for s in range(self._TOTAL_STEPS):
             self._collect_step_data(s)
         if self._config:
             self._config.set("onboarding_complete", True)

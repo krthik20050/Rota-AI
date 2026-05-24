@@ -248,8 +248,13 @@ class RotaApp(
         self._schedule_update_check()
 
     def _run_startup_health_checks(self, hotkey_ok):
+        if sys.platform == "win32":
+            appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+        else:
+            xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+            appdata_dir = os.path.join(xdg_data, "rota-ai")
         checker = StartupHealthChecker(
-            appdata_dir=os.path.join(os.environ.get("APPDATA", "."), "RotaAI"),
+            appdata_dir=appdata_dir,
             model_size=str(self._current_model_size),
             hotkey_validator=lambda: (
                 hotkey_ok,
