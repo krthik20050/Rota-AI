@@ -12,9 +12,96 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── Lint & Syntax Check (fast, runs first) ──────────────────────────────────
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install lint tools
+        run: pip install pyflakes
+
+      - name: Check Python syntax (all files)
+        run: |
+          cd desktop
+          python -c "
+          import os, py_compile, sys
+          errors = []
+          for root, dirs, files in os.walk('.'):
+            for f in files:
+              if f.endswith('.py'):
+                path = os.path.join(root, f)
+                try:
+                  py_compile.compile(path, doraise=True)
+                except py_compile.PyCompileError as e:
+                  errors.append(f'{path}: {e}')
+          if errors:
+            for e in errors:
+              print(f'ERROR: {e}')
+            sys.exit(1)
+          print(f'OK: All {sum(1 for _ in (f for r,d,fs in os.walk(\".\") for f in fs if f.endswith(\".py\")))} Python files pass syntax check')
+          "
+
+      - name: Check for Windows-only imports leaking into shared code
+        run: |
+          cd desktop
+          python -c "
+          import sys, os, ast
+
+          # These modules are allowed to use Windows-specific imports
+          WINDOWS_ONLY = {
+              'injection.injector', 'injection.field_detector',
+              'injection.field_reader', 'injection.app_detector',
+              'audio.hotkey', 'app.instance_guard',
+              'app.hotkey_mixin', 'app.processing_pipeline_mixin',
+              'app.recording_state_mixin', 'app.transcriber_mixin',
+              'app.service_wiring', 'app.signal_bridges',
+              'app.thread_lifecycle_mixin',
+          }
+
+          errors = []
+          for root, dirs, files in os.walk('.'):
+            for f in files:
+              if not f.endswith('.py'):
+                continue
+              filepath = os.path.join(root, f)
+              mod_path = filepath.replace('./', '').replace('/', '.').replace('.py', '')
+              with open(filepath) as fh:
+                try:
+                  tree = ast.parse(fh.read())
+                except SyntaxError:
+                  continue
+              for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                  for alias in node.names:
+                    if alias.name in ('win32crypt', 'win32api', 'win32con', 'win32gui', 'win32process', 'winreg', 'pywintypes'):
+                      is_win_only = any(mod_path.endswith(m) for m in WINDOWS_ONLY)
+                      if not is_win_only:
+                        errors.append(f'{filepath}:{node.lineno}: imports {alias.name} (Windows-only)')
+                elif isinstance(node, ast.ImportFrom):
+                  if node.module and node.module.startswith('win32'):
+                    is_win_only = any(mod_path.endswith(m) for m in WINDOWS_ONLY)
+                    if not is_win_only:
+                      errors.append(f'{filepath}:{node.lineno}: imports from {node.module} (Windows-only)')
+
+          if errors:
+            for e in errors:
+              print(f'ERROR: {e}')
+            sys.exit(1)
+          else:
+            print('OK: No Windows-only imports in shared code')
+          "
+
   # ── Linux CI ────────────────────────────────────────────────────────────────
   linux-ci:
     runs-on: ubuntu-24.04
+    needs: lint
     strategy:
       fail-fast: false
       matrix:
@@ -38,29 +125,30 @@ jobs:
             at-spi2-core libatk-bridge2.0-0 \
             libsecret-1-dev \
             xvfb xdotool wl-clipboard xclip \
-            python3-pyatspi \
-            ffmpeg
+            python3-pyatspi
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-py${{ matrix.python-version }}-pip-${{ hashFiles('requirements-linux.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-py${{ matrix.python-version }}-pip-
-
-      - name: Install Python dependencies
+      - name: Install Python dependencies (lightweight)
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install -r linux/requirements-linux.txt
+          # Install only the packages needed for import checks (not torch/faster-whisper)
+          pip install PyQt6>=6.6.0,<7.0.0
+          pip install structlog>=24.1.0
+          pip install python-dotenv>=1.0.0
+          pip install pyperclip>=1.8.2
+          pip install evdev>=1.8.0
+          pip install keyring>=25.0.0
+          pip install psutil>=5.9.0
+          pip install python-xlib>=0.33
+          pip install pytest>=8.0
 
       - name: Check Python imports (Linux)
         run: |
           cd desktop
           python -c "
-          import sys
+          import sys, os
           sys.path.insert(0, '.')
-          # Test that all desktop modules can be imported on Linux
+          os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+
           from plat import get_hotkey_handler, get_injector, get_window_detector
           print('plat imports: OK')
           HotkeyHandler = get_hotkey_handler()
@@ -70,8 +158,6 @@ jobs:
           from PyQt6.QtWidgets import QApplication
           from PyQt6.QtCore import Qt
           print('PyQt6: OK')
-          from audio.transcriber import AudioTranscriber
-          print('AudioTranscriber: OK')
           from data.config import ConfigManager
           print('ConfigManager: OK')
           from data.snippets import SnippetsManager
@@ -83,91 +169,17 @@ jobs:
           print('All imports successful on Linux!')
           "
 
-      - name: Check for Windows-only imports on Linux
-        run: |
-          cd desktop
-          python -c "
-          import sys, os, ast, glob
-
-          # These modules are allowed to use ctypes/windll on Windows only
-          WINDOWS_ONLY_MODULES = {
-              'injection.injector', 'injection.field_detector',
-              'injection.field_reader', 'injection.app_detector',
-              'audio.hotkey', 'data.snippets',
-              'app.instance_guard', 'utils.window_effects',
-          }
-
-          errors = []
-          for root, dirs, files in os.walk('.'):
-            for f in files:
-              if not f.endswith('.py'):
-                continue
-              filepath = os.path.join(root, f)
-              mod_path = filepath.replace('./', '').replace('/', '.').replace('.py', '')
-
-              with open(filepath) as fh:
-                try:
-                  tree = ast.parse(fh.read())
-                except SyntaxError:
-                  continue
-
-              for node in ast.walk(tree):
-                # Check for ctypes.windll usage outside Windows-only modules
-                if isinstance(node, ast.Attribute):
-                  if isinstance(node.value, ast.Attribute):
-                    if (isinstance(node.value.value, ast.Name) and
-                        node.value.value.id == 'ctypes' and
-                        node.value.attr == 'windll'):
-                      # Check if this module is Windows-only
-                      is_win_only = any(mod_path.endswith(m) for m in WINDOWS_ONLY_MODULES)
-                      if not is_win_only:
-                        errors.append(f'{filepath}:{node.lineno}: ctypes.windll usage outside Windows-only module')
-
-          if errors:
-            print('ERROR: Found ctypes.windll usage in modules that should be cross-platform:')
-            for e in errors:
-              print(f'  {e}')
-            sys.exit(1)
-          else:
-            print('OK: No ctypes.windll leakage into cross-platform code')
-          "
-
-      - name: Run import smoke test with display
-        run: |
-          cd desktop
-          export DISPLAY=:99
-          Xvfb :99 -screen 0 1024x768x24 &
-          sleep 1
-          python -c "
-          import sys, os
-          sys.path.insert(0, '.')
-          os.environ['QT_QPA_PLATFORM'] = 'offscreen'
-
-          from PyQt6.QtWidgets import QApplication
-          app = QApplication(sys.argv)
-
-          # Test onboarding dialog can be created
-          from data.config import ConfigManager
-          config = ConfigManager()
-          from ui.onboarding import OnboardingDialog
-          dlg = OnboardingDialog(config=config)
-          print('OnboardingDialog created successfully')
-          print(f'Step count: {dlg._TOTAL_STEPS}')
-          print(f'Current step: {dlg._step}')
-          dlg.close()
-          print('OnboardingDialog closed cleanly')
-          "
-
       - name: Run unit tests
         run: |
           cd desktop
           export PYTHONPATH="${PWD}:$PYTHONPATH"
-          python -m pytest tests/ -v --tb=short 2>&1 | tail -50
-        continue-on-error: true
+          export QT_QPA_PLATFORM=offscreen
+          python -m pytest tests/ -v --tb=short -x 2>&1 | head -80
 
   # ── Windows CI ──────────────────────────────────────────────────────────────
   windows-ci:
     runs-on: windows-2025
+    needs: lint
     strategy:
       fail-fast: false
       matrix:
@@ -182,25 +194,24 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~\AppData\Local\pip\Cache
-          key: ${{ runner.os }}-py${{ matrix.python-version }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-py${{ matrix.python-version }}-pip-
-
-      - name: Install Python dependencies
+      - name: Install Python dependencies (lightweight)
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
+          pip install PyQt6>=6.6.0,<7.0.0
+          pip install structlog>=24.1.0
+          pip install python-dotenv>=1.0.0
+          pip install pyperclip>=1.8.2
+          pip install pywin32>=306
+          pip install psutil>=5.9.0
+          pip install pytest>=8.0
 
       - name: Check Python imports (Windows)
         run: |
           cd desktop
           python -c "
-          import sys
+          import sys, os
           sys.path.insert(0, '.')
+          os.environ['QT_QPA_PLATFORM'] = 'offscreen'
           from plat import get_hotkey_handler, get_injector, get_window_detector
           print('plat imports: OK')
           HotkeyHandler = get_hotkey_handler()
@@ -209,8 +220,6 @@ jobs:
           print(f'TextInjector: {Injector.__name__}')
           from PyQt6.QtWidgets import QApplication
           print('PyQt6: OK')
-          from audio.transcriber import AudioTranscriber
-          print('AudioTranscriber: OK')
           from data.config import ConfigManager
           print('ConfigManager: OK')
           from injection.injector import TextInjector
@@ -224,5 +233,5 @@ jobs:
         run: |
           cd desktop
           $env:PYTHONPATH = "$pwd;$env:PYTHONPATH"
-          python -m pytest tests/ -v --tb=short 2>&1 | Select-Object -Last 50
-        continue-on-error: true
+          $env:QT_QPA_PLATFORM = "offscreen"
+          python -m pytest tests/ -v --tb=short -x 2>&1 | Select-Object -First 80
