@@ -2,14 +2,14 @@
 # ============================================================================
 # Rota AI - Linux Launcher
 # ============================================================================
-# Handles: venv setup, dependency sync, config dir creation, launch
+# Handles: venv setup, dependency sync, desktop file, launch
+# Usage:   ./run.sh
 # ============================================================================
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
-VENV_DIR="${REPO_DIR}/.venv-linux"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="${REPO_DIR}/.venv"
 REQ_FILE="${REPO_DIR}/requirements-linux.txt"
 
 # --- Colors ---
@@ -32,35 +32,33 @@ if command -v python3 &>/dev/null; then
 elif command -v python &>/dev/null; then
     PY="python"
 else
-    echo -e "${RED}[ERROR] Python 3 not found. Install it with:${NC}"
+    echo -e "${RED}[ERROR] Python 3 not found.${NC}"
     echo "  sudo apt install python3 python3-pip python3-venv"
     exit 1
 fi
-
-PYTHON_VERSION=$($PY --version 2>&1)
-echo "  Found: ${PYTHON_VERSION}"
+echo "  Found: $($PY --version 2>&1)"
 
 # --- 2. Virtual environment ---
 if [ ! -d "${VENV_DIR}" ]; then
     echo "  Creating virtual environment..."
     $PY -m venv "${VENV_DIR}"
 fi
-
 source "${VENV_DIR}/bin/activate"
 
 # --- 3. Dependencies ---
 if [ -f "${REQ_FILE}" ]; then
+    echo "  Installing dependencies..."
     pip install -r "${REQ_FILE}" -q --disable-pip-version-check 2>/dev/null || true
 fi
 
-# --- 4. Desktop file for PATH integration (optional) ---
+# --- 4. Desktop file ---
 DESKTOP_FILE_DIR="${HOME}/.local/share/applications"
 mkdir -p "${DESKTOP_FILE_DIR}"
 cat > "${DESKTOP_FILE_DIR}/rota-ai.desktop" << DESKTOP
 [Desktop Entry]
 Type=Application
 Name=Rota AI
-Comment=Voice dictation for Linux
+Comment=Open source voice dictation for Linux
 Exec=${REPO_DIR}/run.sh
 Icon=${REPO_DIR}/desktop/assets/icon.svg
 Terminal=false
@@ -73,6 +71,6 @@ echo "  Launching Rota AI..."
 echo "  Config: ~/.config/rota-ai/config.json"
 echo ""
 
-export PYTHONPATH="${SCRIPT_DIR}:\${PYTHONPATH:-}"
+export PYTHONPATH="${REPO_DIR}/desktop:${PYTHONPATH:-}"
 
-exec python3 -u "${SCRIPT_DIR}/app/main.py" "$@"
+exec python3 -u "${REPO_DIR}/desktop/app/main.py" "$@"

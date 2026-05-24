@@ -264,7 +264,7 @@ const COMPARE_ROWS = [
   { feature: "Account required", wispr: "Yes", superwhisper: "Yes", rota: "No", rotaBold: true },
   { feature: "AI cleanup", wispr: "Yes", superwhisper: "Yes, multiple modes", rota: "Yes", rotaBold: true },
   { feature: "Context awareness", wispr: "Yes", superwhisper: "Reads screen", rota: "Detects app", rotaBold: true },
-  { feature: "Encrypted key storage", wispr: "Not disclosed", superwhisper: "Not disclosed", rota: "DPAPI", rotaBold: true },
+  { feature: "Encrypted key storage", wispr: "Not disclosed", superwhisper: "Not disclosed", rota: "OS keychain", rotaBold: true },
   { feature: "Telemetry", wispr: "Cloud based", superwhisper: "Not fully disclosed", rota: "None", rotaBold: true },
   { feature: "File transcription", wispr: "No", superwhisper: "Audio + video", rota: "Not yet", rotaBold: false },
   { feature: "Cross-device sync", wispr: "Yes", superwhisper: "Yes", rota: "Not yet", rotaBold: false },
