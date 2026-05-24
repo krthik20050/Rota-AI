@@ -1,0 +1,40 @@
+# Rota AI - Linux Dependencies
+# Install: pip install -r requirements-linux.txt
+
+# UI Framework
+PyQt6>=6.6.0,<7.0.0
+
+# Audio capture (requires PortAudio on the system)
+sounddevice>=0.4.6,<1.0.0
+numpy>=1.24.0,<3.0.0
+
+# Local speech-to-text
+faster-whisper>=1.0.0,<2.0.0
+
+# Groq Whisper API + preprocessing
+groq>=1.2.0,<2.0.0
+pydub>=0.25.1,<1.0.0
+python-dotenv>=1.0.0,<2.0.0
+audioop-lts>=0.2.0
+
+# Clipboard access
+pyperclip>=1.8.2,<2.0.0
+
+# Global hotkeys (evdev -- Linux only)
+evdev>=1.8.0,<2.0.0
+
+# Voice activity detection
+torch>=2.0.0,<3.0.0
+silero-vad>=5.0,<6.0.0
+
+# Secure key storage (replaces Windows DPAPI)
+keyring>=25.0.0,<26.0.0
+
+# Structured logging
+structlog>=24.1.0,<30.0.0
+
+# Audio denoising
+noisereduce>=3.0,<4.0.0
+
+# Process utilities
+psutil>=5.9.0,<7.0.0
