@@ -47,24 +47,22 @@ _BUILTIN_VARIABLES = {
 def _get_clipboard_text() -> str:
     """Read current clipboard text content. Never raises."""
     try:
-        import ctypes
-        user32 = ctypes.windll.user32
-        kernel32 = ctypes.windll.kernel32
-
-        if not user32.OpenClipboard(0):
-            return ""
-        try:
-            # CF_UNICODETEXT = 13
-            handle = user32.GetClipboardData(13)
-            if not handle:
-                return ""
-            kernel32.GlobalLock.restype = ctypes.c_wchar_p
-            text = kernel32.GlobalLock(handle)
-            kernel32.GlobalUnlock(handle)
-            return text or ""
-        finally:
-            user32.CloseClipboard()
+        import pyperclip
+        return pyperclip.paste() or ""
     except Exception:
+        # Fallback: try xclip/xsel on Linux
+        try:
+            import subprocess
+            for cmd in (["xclip", "-selection", "clipboard", "-o"],
+                        ["xsel", "--clipboard", "--output"]):
+                try:
+                    result = subprocess.run(cmd, capture_output=True, timeout=2)
+                    if result.returncode == 0:
+                        return result.stdout.decode("utf-8", errors="replace")
+                except Exception:
+                    continue
+        except Exception:
+            pass
         return ""
 
 

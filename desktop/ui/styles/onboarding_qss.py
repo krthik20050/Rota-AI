@@ -105,4 +105,16 @@ QPushButton#SkipBtn {{
 QPushButton#SkipBtn:hover {{ color: {_TEXT_S}; }}
 QFrame#DotActive   {{ background: {_ACCENT}; border-radius: 4px; }}
 QFrame#DotInactive {{ background: rgba(255,255,255,18); border-radius: 3px; }}
+QPushButton#WindowCtrlBtn {{
+    background: transparent; color: {_TEXT_MUT}; border: none;
+    font-size: 14px; font-family: {_BODY}; padding: 0px;
+    border-radius: 6px;
+}}
+QPushButton#WindowCtrlBtn:hover {{ background: rgba(255,255,255,8); color: {_TEXT_P}; }}
+QPushButton#WindowCloseBtn {{
+    background: transparent; color: {_TEXT_MUT}; border: none;
+    font-size: 13px; font-family: {_BODY}; padding: 0px;
+    border-radius: 6px;
+}}
+QPushButton#WindowCloseBtn:hover {{ background: rgba(239,68,68,200); color: #fff; }}
 """

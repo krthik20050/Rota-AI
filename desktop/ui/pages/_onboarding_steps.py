@@ -22,6 +22,127 @@ _HOTKEYS = [
 ]
 
 
+def _detect_best_model() -> str:
+    """Detect the best Whisper model for this device based on available RAM and GPU.
+
+    Returns one of: 'tiny', 'base.en', 'small.en', 'medium', 'large-v3'
+    Priority: GPU VRAM > system RAM > CPU fallback
+    """
+    try:
+        # Check for NVIDIA GPU with CUDA
+        try:
+            import torch
+            if torch.cuda.is_available():
+                vram_gb = torch.cuda.get_device_properties(0).total_mem / (1024 ** 3)
+                if vram_gb >= 10:
+                    return "large-v3"
+                elif vram_gb >= 6:
+                    return "medium"
+                elif vram_gb >= 3:
+                    return "small.en"
+                elif vram_gb >= 1:
+                    return "base.en"
+                else:
+                    return "tiny"
+        except Exception:
+            pass
+
+        # Check system RAM via /proc/meminfo (Linux) or psutil
+        try:
+            import psutil
+            ram_gb = psutil.virtual_memory().total / (1024 ** 3)
+        except Exception:
+            try:
+                # Fallback: read /proc/meminfo directly
+                with open("/proc/meminfo") as f:
+                    for line in f:
+                        if line.startswith("MemTotal:"):
+                            ram_gb = int(line.split()[1]) / (1024 ** 2)  # kB to GB
+                            break
+                    else:
+                        ram_gb = 4  # conservative default
+            except Exception:
+                ram_gb = 4  # conservative default
+
+        if ram_gb >= 16:
+            return "medium"
+        elif ram_gb >= 8:
+            return "small.en"
+        elif ram_gb >= 4:
+            return "base.en"
+        elif ram_gb >= 2:
+            return "tiny"
+        else:
+            return "tiny"
+    except Exception:
+        return "base.en"  # safe default
+
+
+def _is_model_cached(model_size: str) -> bool:
+    """Check if a faster-whisper model is already in the local cache.
+
+    faster-whisper stores models in ~/.cache/huggingface/hub/ under directories
+    named models--Systran--faster-whisper-{model-size}
+    Also checks ~/.cache/huggingface/ as a flat fallback.
+    """
+    import glob
+    import os
+
+    model_slug = model_size.lower().replace(".", "-").replace("_", "-")
+    home = os.path.expanduser("~")
+
+    # Possible cache locations
+    cache_dirs = [
+        os.path.join(home, ".cache", "huggingface", "hub"),
+        os.path.join(home, ".cache", "huggingface"),
+        os.path.join(home, ".cache", "ctranslate2"),
+    ]
+
+    # HF_HOME override
+    hf_home = os.environ.get("HF_HOME", "")
+    if hf_home:
+        cache_dirs.insert(0, os.path.join(hf_home, "hub"))
+        cache_dirs.insert(1, hf_home)
+
+    for cache_dir in cache_dirs:
+        if not os.path.isdir(cache_dir):
+            continue
+        # Pattern: models--Systran--faster-whisper-{model}/*
+        pattern = os.path.join(cache_dir, f"models--Systran--faster-whisper-{model_slug}")
+        matches = glob.glob(pattern)
+        if matches:
+            # Verify it has actual model files (not just an empty dir)
+            for m in matches:
+                snapshots = os.path.join(m, "snapshots")
+                if os.path.isdir(snapshots):
+                    snap_contents = os.listdir(snapshots)
+                    if snap_contents:
+                        # Check for model.bin or model.bin.gz
+                        for snap in snap_contents:
+                            snap_dir = os.path.join(snapshots, snap)
+                            if any(
+                                os.path.isfile(os.path.join(snap_dir, f))
+                                for f in ["model.bin", "model.bin.gz", "config.json"]
+                            ):
+                                return True
+                # Also check if the model files are directly in the dir
+                if any(
+                    os.path.isfile(os.path.join(m, f))
+                    for f in ["model.bin", "model.bin.gz", "config.json"]
+                ):
+                    return True
+        # Also search recursively for config.json with matching model name
+        for root, dirs, files in os.walk(cache_dir):
+            if "config.json" in files:
+                # Check if this looks like a whisper model by checking path
+                if f"faster-whisper-{model_slug}" in root:
+                    return True
+            # Don't recurse too deep
+            if root.count(os.sep) > cache_dir.count(os.sep) + 5:
+                break
+    return False
+
+
 def build_step_welcome(dialog) -> QWidget:
     w = QWidget()
     w.setStyleSheet("background: transparent;")
@@ -212,14 +333,17 @@ def build_step_model(dialog) -> QWidget:
     lay.addWidget(num)
     lay.addSpacing(4)
 
-    title = QLabel("Whisper Model")
+    title = QLabel("Offline Fallback Model")
     title.setObjectName("StepTitle")
     lay.addWidget(title)
     lay.addSpacing(8)
 
     body = QLabel(
-        "Rota uses OpenAI Whisper locally for transcription. "
-        "Choose a model size and download it now (or skip and it will download on first use)."
+        "Rota uses Groq's cloud for transcription when online. "
+        "A local Whisper model is downloaded as a fallback in case Groq goes down, "
+        "your internet stops working, or you're offline. The best model for your "
+        "device has been selected automatically. It downloads in the background "
+        "while you continue setup — no waiting. You can always change it in Settings."
     )
     body.setObjectName("StepBody")
     body.setWordWrap(True)
@@ -241,7 +365,11 @@ def build_step_model(dialog) -> QWidget:
     ]
     for label, data in models:
         dialog._model_combo.addItem(label, data)
-    current = dialog._config.get("model_size", "base.en") if dialog._config else "base.en"
+
+    recommended = _detect_best_model()
+    current = dialog._config.get("model_size", recommended) if dialog._config else recommended
+    # Check if this model is already cached
+    dialog._model_already_cached = _is_model_cached(current)
     idx = dialog._model_combo.findData(current)
     dialog._model_combo.setCurrentIndex(max(0, idx))
     lay.addWidget(dialog._model_combo)
@@ -257,13 +385,23 @@ def build_step_model(dialog) -> QWidget:
     dl_row.addWidget(dialog._download_btn)
     dl_row.addStretch()
 
-    dialog._download_status = QLabel("Not downloaded yet")
+    dialog._download_status = QLabel("")
     dialog._download_status.setObjectName("StatusLabel")
+
+    # Set initial status based on cache check
+    if dialog._model_already_cached:
+        dialog._download_status.setText("Model already downloaded on this device.")
+        dialog._download_status.setObjectName("StatusOk")
+        dialog._download_btn.setText("Already Downloaded")
+        dialog._download_btn.setEnabled(False)
+    else:
+        dialog._download_status.setText("Will download in the background — you can continue setup")
+
     dl_row.addWidget(dialog._download_status)
     lay.addLayout(dl_row)
 
     lay.addSpacing(4)
-    note = QLabel("Models are cached in ~/.cache/huggingface and reused across sessions.")
+    note = QLabel("This is a fallback model — it downloads in the background so you don't have to wait. Groq cloud is used for transcription when online.")
     note.setObjectName("FieldHint")
     note.setWordWrap(True)
     lay.addWidget(note)

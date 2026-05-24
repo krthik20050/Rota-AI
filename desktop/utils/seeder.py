@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import sys
 import time
 import uuid
 from datetime import datetime, timedelta
@@ -83,7 +84,11 @@ def seed_mock_data(session_store: SessionStore) -> int:
         return 0
 
     # SECURITY: Don't seed if config already exists (app has been configured)
-    appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+    if sys.platform == "win32":
+        appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+    else:
+        xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+        appdata_dir = os.path.join(xdg_data, "rota-ai")
     config_path = os.path.join(appdata_dir, "config.json")
     if os.path.exists(config_path):
         return 0
