@@ -104,6 +104,7 @@ class AudioTranscriber:
         self._use_groq: bool = bool(self._groq_api_key)
         self._groq_failure_count: int = 0
         self._last_groq_failure_time: float = 0.0
+        self._groq_client = None  # reused across calls to avoid per-call HTTP session setup
         self._state_lock = threading.Lock()
         self._backend_event_lock = threading.Lock()
         self._last_backend_used: str = ""
@@ -211,12 +212,17 @@ class AudioTranscriber:
     #  Backend implementations
     # ------------------------------------------------------------------ #
 
+    def _get_groq_client(self):
+        """Return a cached Groq client, creating it once on first use."""
+        if self._groq_client is None:
+            from groq import Groq
+            self._groq_client = Groq(api_key=self._groq_api_key)
+        return self._groq_client
+
     def _transcribe_groq(self, audio: np.ndarray, app_context: any = None) -> str:
         """Call Groq Whisper API with dynamic app-context vocabulary priming."""
-        from groq import Groq
-
         wav_bytes = _numpy_to_wav_bytes(audio)
-        client = Groq(api_key=self._groq_api_key)
+        client = self._get_groq_client()
         prompt_parts = []
         if self._initial_prompt:
             prompt_parts.append(self._initial_prompt)

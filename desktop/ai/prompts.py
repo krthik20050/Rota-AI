@@ -20,6 +20,7 @@ _SECURITY_BLOCK = """\
 "Holistic", "Robust", "Paradigm", "Cutting-edge", "Pivotal", "Delve", "Showcasing", \
 "Fostering", "Tapestry", "Underscores", "Stands as". Use plain human language only.
 - NEVER wrap output in quotes or code blocks.
+- NEVER change the speaker's pronouns. If they said "Can you", output "Can you" — never switch to "Can we" or "we". Pronouns are part of voice preservation.
 - If a word or phrase is ambiguous, PRESERVE the original phrasing.
 - Return ONLY the final polished text. Nothing else."""
 
@@ -45,6 +46,12 @@ transcription. Spoken language has fillers, restarts, and corrections — writte
 If they speak casually, keep casual vocabulary. If they speak technically, keep jargon. \
 Do not "improve" their language beyond cleanup — preserve their voice.
 
+2b. **Preserve structure, do not reorganize**: Keep the same overall structure the speaker used. \
+If they spoke in flowing sentences, output flowing sentences. If they asked a question, keep the question. \
+Do NOT collapse a narrative into a summary or action-item list unless the content CLEARLY signals a list \
+(speaker explicitly enumerated items or used ordinal words). The default is always prose that matches \
+how the speaker naturally communicated — not a reorganized, sanitized version of it.
+
 3. **Self-correction resolution (full-context)**: Resolve corrections using the FULL \
 dictation window, not just adjacent words.
    - "We're meeting Tuesday. No wait, Wednesday." → "We're meeting Wednesday."
@@ -59,6 +66,8 @@ dictation window, not just adjacent words.
    - Stutters: "th- th- the" → "the"
    - False starts: "I was going to— I think we should" → "I think we should"
    - Transitional "so" at sentence boundaries (when filler, not "therefore")
+   - Filler clusters: "I mean, I like, the reason..." → strip both fillers, keep "The reason..."
+   - "I like the reason" when used as a filler bridge → strip "I like", keep the actual content
 
 5. **Punctuation & capitalization**:
    - Add proper punctuation based on meaning and grammatical structure — the user should NEVER need to say "period" or "comma"
@@ -77,24 +86,30 @@ dictation window, not just adjacent words.
    - Phone numbers: "five five five one two three four" → "555-1234"
    - Exception: keep numbers as words when idiomatic — "on the one hand", "one of us", "a couple of things"
 
-7. **Smart structure detection** — choose the right format based on content signals:
+7. **Structure: ALWAYS default to prose** — this is the most critical formatting rule:
 
-   **Numbered list** (use when): The speaker uses ordinal words sequentially — "first... second... third...", \
-"number one... number two...", "step one... step two..." → convert to a numbered list:
-   ```
-   1. First item
-   2. Second item
-   ```
+   NEVER convert conversational speech into bullet points or numbered lists unless the speaker \
+EXPLICITLY dictates them using sequential ordinal words.
 
-   **Bullet list** (use when): The speaker lists 3 or more distinct, parallel items without \
-ordinal signals, OR uses "and then... and then..." repeatedly for distinct items:
-   - Each bullet on its own line, starting with "• "
-   - Keep each bullet to one clear idea
+   **Prose is the default for EVERYTHING**:
+   - Multiple topics → multiple sentences or paragraph breaks, NOT a list
+   - "One more thing..." → a new sentence or paragraph, NOT a bullet
+   - "Also..." / "And then..." → continuation of prose, NOT a list item
+   - Questions, updates, requests, casual speech → always prose
 
-   **Paragraphs** (default): For narrative, explanations, stories, or continuous thought — \
-use proper paragraphs with blank lines between topic shifts.
+   **Use a numbered list ONLY when ALL of these are true**:
+   - The speaker explicitly uses sequential ordinals: "first... second... third..." OR \
+"number one... number two..." OR "step one... step two..."
+   - The ordinals appear in sequence (not just "first" alone)
+   - The content after each ordinal is a discrete action or item, not a full narrative sentence
+   - THEN convert to: 1. Item  2. Item  3. Item
+   - ALWAYS keep any introductory sentence above the list as plain prose
 
-   **Inline** (use when): 2 items or fewer, or items are tightly coupled — keep as a sentence.
+   **Use bullet points (• ) ONLY when**:
+   - The speaker explicitly says "bullet points" or "make a list"
+   - OR there are 5+ clearly parallel, tightly parallel short items with no narrative
+
+   **When in doubt: PROSE. Always.**
 
 8. **Paragraph intelligence**: Insert paragraph breaks (blank lines) when:
    - The speaker changes topic significantly
@@ -349,33 +364,24 @@ Return ONLY the (possibly restructured) text. Nothing else."""
 # Helper: should we run the structure pass?
 # ---------------------------------------------------------------------------
 
-_LIST_SIGNAL_RE = re.compile(
-    r'\b(?:first(?:ly)?|second(?:ly)?|third(?:ly)?|fourth(?:ly)?|finally|'
-    r'also|another thing|and then|next step|'
-    r'number (?:one|two|three|four|\d+)|step (?:one|two|three|\d+)|'
-    r'one thing|the first|the second|to begin|to start)\b',
-    re.I,
+_SEQUENTIAL_ORDINALS_RE = re.compile(
+    r'(?:first(?:ly)?|number one|step one).{1,300}?(?:second(?:ly)?|number two|step two)',
+    re.I | re.DOTALL,
 )
 _ALREADY_STRUCTURED_RE = re.compile(r'(?:^[•\-\*]\s|^\d+\.\s)', re.MULTILINE)
-_MIN_WORDS_FOR_STRUCTURE = 8
 
 
 def should_run_structure_pass(text: str) -> bool:
     """
-    Return True if cleaned text warrants a second structural-formatting pass.
-
-    Criteria:
-    - Text is long enough to have structure (>= 8 words)
-    - Text is NOT already structured (bullets or numbered list detected)
-    - Text contains enumeration or list-signal language
+    Return True only when the text contains explicit sequential ordinals (first...second...).
+    This prevents converting normal conversational prose into lists.
     """
     if not text or not text.strip():
         return False
-    if len(text.split()) < _MIN_WORDS_FOR_STRUCTURE:
-        return False
     if _ALREADY_STRUCTURED_RE.search(text):
         return False
-    return bool(_LIST_SIGNAL_RE.search(text))
+    # Only trigger on genuine sequential enumeration — not on "also", "one more thing", etc.
+    return bool(_SEQUENTIAL_ORDINALS_RE.search(text))
 
 
 # ---------------------------------------------------------------------------

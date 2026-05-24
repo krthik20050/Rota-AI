@@ -65,6 +65,9 @@ class HotkeyHandler:
         self._held_mods: set = set()  # currently held modifier names
         # Extra hotkeys: list of (mods: frozenset, main: str, callback)
         self._extra_hotkeys: list = []
+        # Modifier-only chord state (used when hotkey has no main key, e.g. "ctrl+shift")
+        self._modifier_chord_active: bool = False   # all required mods are currently held
+        self._modifier_chord_dirty: bool = False    # a non-required key was pressed during chord
 
     def _get_keyboard_hook(self):
         """Lazy-loads the fallback python-keyboard hook engine.
@@ -164,9 +167,16 @@ class HotkeyHandler:
                     self._started_this_press = True
                     action = self.start_callback
                 else:
-                    # Already recording: defer stop decision to release
-                    # (3s hold compat — see _handle_release)
-                    self._started_this_press = False
+                    # Already recording
+                    if self._hotkey_main:
+                        # Standard key: defer stop decision to release
+                        # (3s hold compat — see _handle_release)
+                        self._started_this_press = False
+                    else:
+                        # Modifier-only chord: stop immediately on second chord press
+                        # (no separate release event used for stop)
+                        self._is_recording = False
+                        action = self.stop_callback
 
         if action:
             action()
@@ -229,8 +239,22 @@ class HotkeyHandler:
     def _on_pynput_press(self, key):
         try:
             self._update_held_mod_press(key)
-            if self._matches_pynput_key(key):
-                self._handle_press()
+            if not self._hotkey_main and self._hotkey_mods:
+                # Modifier-only hotkey (e.g. "ctrl+shift")
+                mod_name = self._pynput_key_to_name(key)
+                if self._held_mods >= self._hotkey_mods and not self._modifier_chord_active:
+                    # Chord just completed — mark active and clean
+                    self._modifier_chord_active = True
+                    self._modifier_chord_dirty = False
+                    if self.mode == self.MODE_HOLD:
+                        # Hold mode: start recording immediately on chord press
+                        self._handle_press()
+                elif self._modifier_chord_active and mod_name not in self._hotkey_mods:
+                    # A key outside the required set was pressed while chord is held
+                    self._modifier_chord_dirty = True
+            else:
+                if self._matches_pynput_key(key):
+                    self._handle_press()
             self._fire_extra_hotkeys(key)
         except Exception as exc:
             logger.exception("hotkey_press_callback_failed")
@@ -239,8 +263,23 @@ class HotkeyHandler:
 
     def _on_pynput_release(self, key):
         try:
-            if self._matches_pynput_key(key):
-                self._handle_release()
+            if not self._hotkey_main and self._hotkey_mods:
+                # Modifier-only hotkey
+                mod_name = self._pynput_key_to_name(key)
+                if mod_name in self._hotkey_mods and self._modifier_chord_active:
+                    was_dirty = self._modifier_chord_dirty
+                    self._modifier_chord_active = False
+                    self._modifier_chord_dirty = False
+                    with self._lock:
+                        self._is_key_pressed = False  # allow next chord to fire
+                    if self.mode == self.MODE_HOLD:
+                        self._handle_release()
+                    elif not was_dirty:
+                        # Toggle: fire start/stop on clean chord release
+                        self._handle_press()
+            else:
+                if self._matches_pynput_key(key):
+                    self._handle_release()
             self._update_held_mod_release(key)
         except Exception as exc:
             logger.exception("hotkey_release_callback_failed")
@@ -308,7 +347,11 @@ class HotkeyHandler:
                 logger.exception("pynput_hotkey_stop_failed")
             self._listener = None
 
-        kh = self._get_keyboard_hook()
+        # Use the already-loaded module-level var — do NOT call _get_keyboard_hook()
+        # here. That function triggers an import which spawns a competing
+        # WH_KEYBOARD_LL hook thread, causing 0x8001010d / access-violation crashes
+        # when pynput is the active backend.
+        kh = keyboard_hook
         if kh is not None:
             if self._press_hook is not None:
                 kh.unhook(self._press_hook)
@@ -320,6 +363,8 @@ class HotkeyHandler:
         self.backend = None
         self._held_mods.clear()
         self._extra_hotkeys.clear()
+        self._modifier_chord_active = False
+        self._modifier_chord_dirty = False
         with self._lock:
             self._is_key_pressed = False
             self._is_recording = False

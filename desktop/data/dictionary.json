@@ -16,7 +16,17 @@
     "dictation",
     "faster-whisper",
     "hotkey",
-    "clipboard"
+    "clipboard",
+    "refactor",
+    "refactoring",
+    "codebase",
+    "endpoint",
+    "API",
+    "GitHub",
+    "dashboard",
+    "deployment",
+    "latency",
+    "infrastructure"
   ],
   "initial_prompt": "Voice dictation. Transcribe with proper punctuation, capitalization, and complete sentences."
 }

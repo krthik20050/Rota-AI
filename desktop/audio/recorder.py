@@ -2,6 +2,7 @@ import numpy as np
 import queue
 from utils.log import get_logger
 import time as _time
+import threading
 from typing import Optional
 
 from PyQt6.QtCore import pyqtSignal, QObject
@@ -11,11 +12,40 @@ logger = get_logger(__name__)
 
 _SILENCE_RMS = 0.015  # RMS below this = silence (tune if needed)
 
-try:
-    import sounddevice as sd
-except Exception:
-    sd = None
-    logger.warning("sounddevice import failed; audio recording will be unavailable")
+# ── sounddevice lazy-load ─────────────────────────────────────────────────────
+# Pa_Initialize (called inside `import sounddevice`) can hang indefinitely on
+# Windows when an audio driver or Bluetooth device is in a bad state.  Loading
+# it in a daemon thread keeps startup non-blocking.  The module ref is written
+# once the thread succeeds; None means "still loading or permanently failed".
+_sd = None
+_sd_load_error: str | None = None
+_sd_lock = threading.Lock()
+
+
+def _load_sounddevice() -> None:
+    global _sd, _sd_load_error
+    try:
+        import sounddevice as _mod
+        with _sd_lock:
+            _sd = _mod
+        logger.info("sounddevice_loaded_ok")
+    except Exception as exc:
+        with _sd_lock:
+            _sd_load_error = str(exc)
+        logger.warning("sounddevice_import_failed error=%s", exc)
+
+
+_sd_loader = threading.Thread(target=_load_sounddevice, daemon=True, name="sd-loader")
+_sd_loader.start()
+
+
+def _get_sd():
+    """Return the sounddevice module, or None if not yet loaded / failed."""
+    with _sd_lock:
+        return _sd
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 class AudioRecorder(QObject):
@@ -89,8 +119,19 @@ class AudioRecorder(QObject):
         if self._is_recording:
             return
 
+        sd = _get_sd()
         if sd is None:
-            raise RuntimeError("Audio input backend is unavailable. Install PortAudio/sounddevice for this environment.")
+            with _sd_lock:
+                err = _sd_load_error
+            if err:
+                raise RuntimeError(
+                    f"Audio input backend unavailable: {err}. "
+                    "Check that a microphone is connected and the Windows Audio service is running."
+                )
+            raise RuntimeError(
+                "Audio input is still initializing. Wait a moment and try again. "
+                "If this persists, restart the app or check the Windows Audio service."
+            )
 
         # Reset silence-detection state for each new recording
         self._silence_start = 0.0

@@ -25,24 +25,24 @@ def build_recording_section(dlg, parent):
 
     dlg.hotkey_combo = NonScrollComboBox()
     _hotkeys = [
+        # ── Easy single-key / bottom-row options ──
+        ("Ctrl (hold or tap)", "ctrl"),
+        ("Ctrl+Shift (recommended)", "ctrl+shift"),
+        # ── Function keys ──
         ("F1", "f1"), ("F2", "f2"), ("F3", "f3"), ("F4", "f4"),
         ("F5", "f5"), ("F6", "f6"), ("F7", "f7"), ("F8", "f8"),
         ("F9", "f9"), ("F10", "f10"), ("F11", "f11"), ("F12", "f12"),
-        ("Ctrl+Shift+R", "ctrl+shift+r"), ("Ctrl+Shift+D", "ctrl+shift+d"),
-        ("Ctrl+Shift+V", "ctrl+shift+v"), ("Ctrl+Shift+A", "ctrl+shift+a"),
-        ("Ctrl+Shift+S", "ctrl+shift+s"), ("Ctrl+Shift+T", "ctrl+shift+t"),
-        ("Ctrl+Shift+M", "ctrl+shift+m"), ("Ctrl+Shift+W", "ctrl+shift+w"),
-        ("Ctrl+Space", "ctrl+space"), ("Ctrl+Tab", "ctrl+tab"),
+        # ── Combos ──
+        ("Ctrl+Space", "ctrl+space"),
         ("Ctrl+Alt+Space", "ctrl+alt+space"), ("Ctrl+Alt+R", "ctrl+alt+r"),
         ("Alt+Space", "alt+space"), ("Alt+F9", "alt+f9"),
-        ("Alt+Shift+R", "alt+shift+r"), ("Alt+Shift+D", "alt+shift+d"),
         ("Pause/Break", "pause"), ("Scroll Lock", "scroll lock"),
         ("Print Screen", "print screen"),
         ("Mouse Scroll Down", "mouse_scroll_down"),
         ("Mouse Scroll Up", "mouse_scroll_up"),
     ]
     for label, data in _hotkeys:
-        dlg.hotkey_combo.add_option(label, data, recommended=(data == "f9"))
+        dlg.hotkey_combo.add_option(label, data, recommended=(data == "ctrl+shift"))
     form.addRow(dlg._field_label("Global Hotkey", "The keyboard shortcut that triggers recording."), dlg.hotkey_combo)
 
     dlg.hotkey_mode_combo = NonScrollComboBox()
@@ -204,7 +204,7 @@ def build_appearance_section(dlg, parent):
     font_form.addRow(dlg._field_label("UI Font", "Choose from all fonts installed on this system."), dlg.font_family_combo)
 
     dlg.font_size_spin = QSpinBox()
-    dlg.font_size_spin.setRange(8, 24)
+    dlg.font_size_spin.setRange(8, 36)
     dlg.font_size_spin.setValue(13)
     dlg.font_size_spin.setSuffix(" px")
     dlg.font_size_spin.valueChanged.connect(dlg._update_font_preview)

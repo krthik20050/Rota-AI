@@ -108,7 +108,7 @@ class ProcessingPipelineMixin:
 
         if recording_seconds < 0.5:
             log.info("recording_ignored_too_short", duration_ms=round(recording_seconds * 1000, 2))
-            self.show_toast("Recording too short — hold F9 for at least half a second")
+            self.show_toast("Recording too short. Hold the hotkey for at least half a second.")
             session.state = "DROPPED_TOO_SHORT"
             self._processing_timeout_timer.stop()
             if self._processor_thread is not None and self._processor_thread.isRunning():
@@ -141,7 +141,7 @@ class ProcessingPipelineMixin:
         if self._processor_thread is None:
             self._set_error_state("processing thread missing", session.id)
             self.overlay.set_state(PillState.IDLE)
-            self.show_toast("Processing thread unavailable — restart the app if this persists", warning=True)
+            self.show_toast("Processing thread unavailable. Restart the app if this persists.", warning=True)
             self._sessions.pop(session.id, None)
             self._active_session = None
             return
@@ -177,7 +177,7 @@ class ProcessingPipelineMixin:
             self._latest_raw_text = raw or ""
             self._latest_cleaned_text = cleaned or ""
             if ai_failed:
-                self.show_toast("AI cleanup unavailable — raw transcript used")
+                self.show_toast("AI cleanup unavailable. Raw transcript used.")
             if not cleaned:
                 log.info("processing_completed_empty")
                 self._sessions.pop(correlation_id, None)
@@ -228,7 +228,7 @@ class ProcessingPipelineMixin:
                     "injection_ms": "command_failed",
                 }
                 self._refresh_debug_window()
-                self.show_toast(handled_msg or "Could not apply edit command — try again")
+                self.show_toast(handled_msg or "Could not apply edit command. Try again.")
                 self._clear_processor_refs(correlation_id)
                 return
 
@@ -287,25 +287,27 @@ class ProcessingPipelineMixin:
             inject_text = expanded if expanded is not None else cleaned
 
             app_ctx = getattr(session, "app_context", None) if session else None
-            if app_ctx and getattr(app_ctx, "category", "") == "terminal":
+            is_terminal = app_ctx and getattr(app_ctx, "category", "") == "terminal"
+            if is_terminal:
                 logger.warning(
                     "injection_into_terminal",
                     correlation_id=correlation_id,
                     process=getattr(app_ctx, "process_name", ""),
-                )
-                self.show_toast(
-                    "Pasting into terminal — text copied, press Enter to confirm",
-                    warning=True,
                 )
 
             log_event("injection_start", correlation_id=correlation_id)
             injection_start = time.perf_counter()
             field_info = session.field_info if session else None
             success, msg = self.injector.inject(
-                inject_text, correlation_id=correlation_id, field_info=field_info
+                inject_text,
+                correlation_id=correlation_id,
+                field_info=field_info,
+                use_paste_shortcut=True,
             )
             if success:
                 self.auto_improvement.track_injection(correlation_id, inject_text)
+            else:
+                self.show_toast("Could not paste. Click a text field first, then try again.")
             injection_seconds = time.perf_counter() - injection_start
             log_event(
                 "injection_end",
@@ -324,9 +326,6 @@ class ProcessingPipelineMixin:
                 "injection_ms": f"{round(injection_seconds * 1000, 2)} ms",
                 "injection_success": str(success),
             }
-
-            if not success:
-                self.show_toast("Could not paste — click a text field first, or use Ctrl+V to paste")
             self._sessions.pop(correlation_id, None)
             self._maybe_notify_backend_fallback()
             self.overlay.show_success("Sent")
@@ -398,12 +397,12 @@ class ProcessingPipelineMixin:
             return
         reason_lower = reason.lower()
         if reason_lower.startswith("latency="):
-            self.show_toast("Groq slow — switched to local transcription")
+            self.show_toast("Groq slow. Switched to local transcription.")
             return
         if any(token in reason_lower for token in ("429", "rate", "quota", "limit", "too many requests")):
-            self.show_toast("Groq rate limit reached — switched to local transcription. Try again in a minute")
+            self.show_toast("Groq rate limit reached. Switched to local transcription. Try again in a minute.")
             return
-        self.show_toast("Groq unavailable — switched to local transcription")
+        self.show_toast("Groq unavailable. Switched to local transcription.")
 
     @pyqtSlot(str, str, str)
     def on_processing_error(self, err_msg, correlation_id, traceback_text):
