@@ -5,32 +5,37 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
+# Cancel in-progress runs for the same tag
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   # ── Windows Build ──────────────────────────────────────────────────────────
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2025
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set VERSION
-        shell: bash
+        shell: pwsh
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "Building version: $VERSION"
+          $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
+          echo "VERSION=$VERSION" >> $env:GITHUB_ENV
+          Write-Host "Building version: $VERSION"
 
       - name: Patch version.py
-        shell: bash
+        shell: pwsh
         run: |
-          sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" desktop/app/version.py
-          grep __version__ desktop/app/version.py
-
-      - name: Patch installer.iss
-        shell: bash
-        run: |
-          sed -i "s/#define AppVersion \".*\"/#define AppVersion \"$VERSION\"/" installer.iss
-          grep AppVersion installer.iss
+          $VERSION = $env:VERSION
+          $path = "desktop/app/version.py"
+          $content = Get-Content $path -Raw
+          $content = $content -replace '__version__ = ".*?"', "__version__ = `"$VERSION`""
+          Set-Content -Path $path -Value $content -NoNewline
+          Get-Content $path
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v5
@@ -67,25 +72,36 @@ jobs:
           if (-not (Test-Path $iscc)) { $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" }
           if (-not (Test-Path $iscc)) { $iscc = "C:\Program Files\Inno Setup 6\ISCC.exe" }
           Write-Host "Using ISCC at: $iscc"
+          if (-not (Test-Path $iscc)) { Write-Error "Inno Setup not found"; exit 1 }
+          # Patch installer.iss version before building
+          $issPath = "installer.iss"
+          $iss = Get-Content $issPath -Raw
+          $iss = $iss -replace '#define AppVersion ".*?"', "#define AppVersion `"$env:VERSION`""
+          Set-Content -Path $issPath -Value $iss -NoNewline
           New-Item -ItemType Directory -Force -Path installer-output | Out-Null
-          & $iscc installer.iss
+          & $iscc $issPath
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Verify installer
-        shell: bash
+        shell: pwsh
         run: |
-          ls -lh installer-output/
-          test -f installer-output/RotaAI-Setup.exe || (echo "ERROR: installer not found" && exit 1)
+          $exe = "installer-output\RotaAI-Setup.exe"
+          if (-not (Test-Path $exe)) { Write-Error "Installer not found: $exe"; exit 1 }
+          $size = (Get-Item $exe).Length
+          Write-Host "Installer size: $size bytes"
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: installer-output/RotaAI-Setup.exe
+          retention-days: 30
 
   # ── Linux Build (AppImage) ────────────────────────────────────────────────
   build-linux:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -138,11 +154,14 @@ jobs:
         with:
           name: linux-appimage
           path: dist/RotaAI.AppImage
+          retention-days: 30
 
   # ── Create Release ────────────────────────────────────────────────────────
   release:
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4

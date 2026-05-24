@@ -6,7 +6,7 @@
 #define AppName "Rota AI"
 #define AppVersion "1.0.0"
 #define AppPublisher "Rota AI"
-#define AppURL "https://github.com/krthik20050/rota-ai"
+#define AppURL "https://github.com/krthik20050/Rota-AI"
 #define AppExeName "RotaAI.exe"
 #define SourceDir "dist\RotaAI"
 
