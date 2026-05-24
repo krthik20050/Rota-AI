@@ -113,6 +113,9 @@ test_startup_out.txt
 # Backup files
 *.bak
 
+# Linux build output
+build-linux/
+
 # Website build artifacts (keep source only)
 website/.env
 website/.vercel/

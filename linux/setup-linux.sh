@@ -171,7 +171,7 @@ echo ""
 # ============================================================================
 echo -e "${GREEN}[4/6] Setting up Python virtual environment...${NC}"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="${SCRIPT_DIR}/.venv"
 
 if [ ! -d "${VENV_DIR}" ]; then
@@ -193,7 +193,7 @@ echo ""
 echo -e "${GREEN}[5/6] Installing Python dependencies...${NC}"
 
 PIP_REQ="${SCRIPT_DIR}/requirements.txt"
-PIP_REQ_LINUX="${SCRIPT_DIR}/requirements-linux.txt"
+PIP_REQ_LINUX="${SCRIPT_DIR}/linux/requirements-linux.txt"
 
 if [ -f "${PIP_REQ_LINUX}" ]; then
     pip install -r "${PIP_REQ_LINUX}" -q 2>&1 | tail -3
@@ -211,6 +211,7 @@ echo -e "${GREEN}[6/6] Verification...${NC}"
 echo ""
 
 source "${VENV_DIR}/bin/activate"
+cd "${SCRIPT_DIR}"
 python3 -c "
 import sys
 sys.path.insert(0, 'desktop')

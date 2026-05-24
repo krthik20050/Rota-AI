@@ -125,13 +125,13 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-linux.txt
+          pip install -r linux/requirements-linux.txt
           pip install pyinstaller
 
       - name: Build AppImage
         run: |
-          chmod +x build-linux.sh
-          ./build-linux.sh
+          chmod +x linux/build-linux.sh
+          ./linux/build-linux.sh
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
