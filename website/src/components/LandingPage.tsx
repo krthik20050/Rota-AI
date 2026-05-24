@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { WordsPreloader } from "./WordsPreloader";
 import { motion, useInView, useScroll, useMotionValueEvent } from "framer-motion";
 import {
   Mic, Zap, Send, Sparkles, Globe, Command, MessageSquare,
@@ -349,7 +350,13 @@ function Nav() {
 /* ─── LandingPage ───────────────────────────────────────────────────────────── */
 
 export function LandingPage() {
+  const [preloaderDone, setPreloaderDone] = React.useState(false);
+
   return (
+    <>
+      {!preloaderDone && (
+        <WordsPreloader onComplete={() => setPreloaderDone(true)} />
+      )}
     <div className="min-h-screen bg-[#09090b]">
       <Nav />
 
@@ -874,6 +881,7 @@ export function LandingPage() {
         </div>
       </footer>
     </div>
+    </>
   );
 }
 

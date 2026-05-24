@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import sys
@@ -8,21 +7,62 @@ import re
 logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
-# SECURITY: API key encryption at rest using Windows DPAPI
-# Keys stored in config.json are opaque blobs; only the current Windows user
-# account can decrypt them (CryptProtectData / CryptUnprotectData).
-# On non-Windows platforms this falls back to plaintext with a log warning.
+# SECURITY: API key encryption at rest.
+# Windows: DPAPI via win32crypt (existing)
+# Linux:   keyring via FreeDesktop Secret Service (GNOME Keyring / KWallet)
 # ---------------------------------------------------------------------------
+
+_IS_LINUX = sys.platform.startswith("linux")
+_IS_WINDOWS = sys.platform == "win32"
 
 _ENCRYPTED_KEYS = frozenset({"groq_api_key", "gemini_api_key"})
 
 
+def _encrypt(plaintext: str) -> str | None:
+    """Encrypt a string. Returns encrypted blob or None on failure."""
+    if not plaintext:
+        return None
+    if _IS_LINUX:
+        return _keyring_encrypt(plaintext)
+    else:
+        return _dpapi_encrypt(plaintext)
+
+
+def _decrypt(blob: str) -> str | None:
+    """Decrypt a blob. Returns plaintext or None on failure."""
+    if not blob:
+        return None
+    if blob.startswith("dpapi:"):
+        return _dpapi_decrypt(blob[6:])
+    if _IS_LINUX:
+        return _keyring_decrypt(blob)
+    return blob  # legacy plaintext
+
+
+def _keyring_encrypt(plaintext: str) -> str | None:
+    try:
+        from plat.linux_secrets import encrypt_secret
+        return encrypt_secret(plaintext)
+    except Exception:
+        logger.warning("keyring_encrypt_failed")
+        return None
+
+
+def _keyring_decrypt(stored: str) -> str | None:
+    try:
+        from plat.linux_secrets import decrypt_secret
+        return decrypt_secret(stored)
+    except Exception:
+        logger.warning("keyring_decrypt_failed")
+        return None
+
+
 def _dpapi_encrypt(plaintext: str) -> str | None:
     """Encrypt a string via DPAPI. Returns base64 blob or None on failure."""
-    if sys.platform != "win32" or not plaintext:
+    if _IS_LINUX or not plaintext:
         return None
     try:
-        import win32crypt
+        import base64, win32crypt
         encrypted = win32crypt.CryptProtectData(
             plaintext.encode("utf-8"), None, None, None, None, 0
         )
@@ -34,10 +74,10 @@ def _dpapi_encrypt(plaintext: str) -> str | None:
 
 def _dpapi_decrypt(blob_b64: str) -> str | None:
     """Decrypt a DPAPI base64 blob. Returns plaintext or None on failure."""
-    if sys.platform != "win32" or not blob_b64:
+    if _IS_LINUX or not blob_b64:
         return None
     try:
-        import win32crypt
+        import base64, win32crypt
         encrypted = base64.b64decode(blob_b64)
         _, plaintext = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)
         return plaintext.decode("utf-8")
@@ -109,10 +149,13 @@ class ConfigManager:
 
     def __init__(self, config_path=None):
         if config_path is None:
-            appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
-            if not os.path.exists(appdata_dir):
-                os.makedirs(appdata_dir)
-            config_path = os.path.join(appdata_dir, "config.json")
+            if _IS_LINUX:
+                config_dir = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "rota-ai")
+            else:
+                config_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+            if not os.path.exists(config_dir):
+                os.makedirs(config_dir)
+            config_path = os.path.join(config_dir, "config.json")
 
         self.config_path = config_path
         self.config = self.DEFAULT_CONFIG.copy()
@@ -134,7 +177,7 @@ class ConfigManager:
                     for key in _ENCRYPTED_KEYS:
                         raw = loaded_config.get(key, "")
                         if raw and raw.startswith("dpapi:"):
-                            decrypted = _dpapi_decrypt(raw[6:])
+                            decrypted = _decrypt(raw)
                             if decrypted is not None:
                                 loaded_config[key] = decrypted
                             else:
@@ -158,13 +201,10 @@ class ConfigManager:
             save_config = dict(self.config)
             for key in _ENCRYPTED_KEYS:
                 plaintext = save_config.get(key, "")
-                if plaintext and not plaintext.startswith("dpapi:"):
-                    blob = _dpapi_encrypt(plaintext)
+                if plaintext and not plaintext.startswith("dpapi:") and not plaintext.startswith("keyring:"):
+                    blob = _encrypt(plaintext)
                     if blob:
-                        save_config[key] = "dpapi:" + blob
-                    else:
-                        # DPAPI unavailable (non-Windows / test env) — log once
-                        logger.warning("dpapi_unavailable_storing_plaintext", config_key=key)
+                        save_config[key] = blob
             with open(self.config_path, 'w', encoding='utf-8') as f:
                 json.dump(save_config, f, indent=4)
 
@@ -190,14 +230,33 @@ class ConfigManager:
 
     def _handle_startup(self):
         """
-        Registers/unregisters the application for Windows startup.
+        Registers/unregisters the application for session startup.
 
-        SECURITY: Validates the executable path before writing to the registry
-        to prevent persistence via malicious executables.
+        Windows: Uses winreg (HKCU\\...\\Run)
+        Linux:   Uses XDG autostart .desktop file
         """
-        if sys.platform != "win32":
-            return
+        if _IS_LINUX:
+            self._handle_startup_linux()
+        else:
+            self._handle_startup_windows()
 
+    def _handle_startup_linux(self):
+        """Register/unregister via XDG autostart."""
+        try:
+            from plat.linux_startup import register_startup, unregister_startup
+            if self.config.get("startup_enabled"):
+                exe_path = sys.executable
+                if exe_path and os.path.isfile(exe_path):
+                    register_startup(exe_path)
+                else:
+                    logger.error("startup_invalid_exe_path", path=exe_path)
+            else:
+                unregister_startup()
+        except Exception:
+            logger.exception("Failed to update startup registration")
+
+    def _handle_startup_windows(self):
+        """Register/unregister via Windows registry (HKCU\\Run)."""
         import winreg as reg
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         app_name = "RotaAI"

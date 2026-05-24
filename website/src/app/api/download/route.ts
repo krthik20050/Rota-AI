@@ -1,12 +1,32 @@
-import { NextResponse } from "next/server";
+export const runtime = "nodejs";
 
-const LATEST_EXE =
-  "https://github.com/krthik20050/Rota-AI/releases/download/v1.0.0/RotaAI.exe";
+const GITHUB_BASE = "https://github.com/krthik20050/Rota-AI/releases/latest/download";
 
-export function GET() {
-  return NextResponse.redirect(LATEST_EXE, {
+// Map of platform -> release asset filename
+const ASSETS: Record<string, { file: string; label: string }> = {
+  windows: { file: "RotaAI.exe", label: "Windows" },
+  linux:   { file: "RotaAI.AppImage", label: "Linux" },
+};
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const platform = (url.searchParams.get("platform") || "windows").toLowerCase();
+  const asset = ASSETS[platform] || ASSETS.windows;
+
+  const upstream = await fetch(`${GITHUB_BASE}/${asset.file}`, { redirect: "follow" });
+
+  if (!upstream.ok || !upstream.body) {
+    return new Response(`Download unavailable (${asset.label})`, { status: 502 });
+  }
+
+  return new Response(upstream.body, {
+    status: 200,
     headers: {
-      "Content-Disposition": 'attachment; filename="RotaAI.exe"',
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${asset.file}"`,
+      ...(upstream.headers.get("Content-Length")
+        ? { "Content-Length": upstream.headers.get("Content-Length")! }
+        : {}),
     },
   });
 }

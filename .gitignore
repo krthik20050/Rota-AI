@@ -56,7 +56,7 @@ _bmad/
 .claude/settings.local.json
 
 # Web projects moved to dedicated repo path
-website/
+# website/  -- DO NOT ignore; website is deployed from this repo via vercel.json
 waitlist-system/
 
 # Misc scratch notes / planning docs (not user-readable)
