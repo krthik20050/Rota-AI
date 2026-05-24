@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rota AI — Voice Dictation for Windows",
-  description: "Free, open source voice dictation for Windows. Speak in any app. AI cleans up your text. No subscriptions, no account, no cloud lock.",
+  title: "Rota AI — Voice Dictation for Windows & Linux",
+  description: "Free, open source voice dictation for Windows and Linux. Speak in any app. AI cleans up your text. No subscriptions, no account, no cloud lock.",
 };
 
 export default function RootLayout({
