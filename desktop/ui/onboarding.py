@@ -153,10 +153,6 @@ class OnboardingDialog(QDialog):
 
     # ── Hotkey pill sync ────────────────────────────────────────────────────
 
-    def _update_hotkey_pill(self):
-        if hasattr(self, "_hotkey_pill") and hasattr(self, "_hotkey_combo"):
-            self._hotkey_pill.setText(self._hotkey_combo.currentText())
-
     # ── Model download ──────────────────────────────────────────────────────
 
     def _start_download(self):

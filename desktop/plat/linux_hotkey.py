@@ -105,6 +105,113 @@ def _parse_hotkey_str(hotkey: str) -> tuple[frozenset[str], str]:
     return mods, main
 
 
+def capture_hotkey(timeout: float = 8.0) -> str | None:
+    """Record the next key combination the user presses (Linux/evdev version).
+    
+    Temporarily grabs all keyboard devices, waits for a key press, and returns
+    the canonical hotkey string (e.g. 'ctrl+shift+k', 'tab', 'f9').
+    
+    Pressing Escape cancels and returns None.
+    
+    Args:
+        timeout: Seconds to wait before giving up.
+        
+    Returns:
+        Hotkey string like 'ctrl+k', 'tab', 'f9', or None if cancelled/timeout.
+    """
+    try:
+        from evdev import ecodes, InputDevice, list_devices, categorize
+        import glob
+        import select
+    except ImportError:
+        logger.error("capture_hotkey: evdev not available")
+        return None
+
+    # Discover keyboard devices
+    keyboards = []
+    for path_dev in sorted(glob.glob("/dev/input/event*")):
+        try:
+            dev = InputDevice(path_dev)
+        except (OSError, PermissionError):
+            continue
+        try:
+            caps = dev.capabilities(verbose=False)
+            ev_key_caps = caps.get(ecodes.EV_KEY, [])
+        except Exception:
+            continue
+        if not ev_key_caps:
+            continue
+        # Check for letter keys (keyboard, not mouse/button)
+        if ecodes.KEY_A in ev_key_caps:
+            keyboards.append(dev)
+
+    if not keyboards:
+        logger.error("capture_hotkey: no keyboard devices found")
+        return None
+
+    # Build reverse lookup: evdev key code → name
+    key_lookup = _get_key_lookup()  # {code: "tab", "f9", "a", ...}
+
+    # Known modifier key codes
+    mod_codes = {
+        ecodes.KEY_LEFTCTRL: "ctrl", ecodes.KEY_RIGHTCTRL: "ctrl",
+        ecodes.KEY_LEFTSHIFT: "shift", ecodes.KEY_RIGHTSHIFT: "shift",
+        ecodes.KEY_LEFTALT: "alt", ecodes.KEY_RIGHTALT: "alt",
+        ecodes.KEY_LEFTMETA: "meta", ecodes.KEY_RIGHTMETA: "meta",
+    }
+
+    held_mods: set = set()
+    result = {"hotkey": None}
+    deadline = time.time() + timeout
+
+    try:
+        # Use select() to poll all keyboard devices with timeout
+        while time.time() < deadline:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            r, _, _ = select.select(keyboards, [], [], min(remaining, 0.2))
+            for dev in r:
+                try:
+                    events = dev.read()
+                except OSError:
+                    continue
+                for event in events:
+                    if event.type != ecodes.EV_KEY:
+                        continue
+                    code = event.code
+                    value = event.value  # 0=up, 1=down, 2=hold
+                    if value == 0:  # release
+                        if code in mod_codes:
+                            mod_name = mod_codes[code]
+                            held_mods.discard(mod_name)
+                        continue
+                    if value != 1:  # skip repeat
+                        continue
+                    # Press event
+                    if code == ecodes.KEY_ESC:
+                        result["hotkey"] = None
+                        return None
+                    if code in mod_codes:
+                        held_mods.add(mod_codes[code])
+                        continue
+                    main_name = key_lookup.get(code, "")
+                    if not main_name:
+                        continue
+                    # Build hotkey string
+                    parts = []
+                    for mod in ("ctrl", "shift", "alt", "meta"):
+                        if mod in held_mods:
+                            parts.append(mod)
+                    parts.append(main_name)
+                    result["hotkey"] = "+".join(parts)
+                    return result["hotkey"]
+    except Exception:
+        logger.exception("capture_hotkey failed")
+
+    return result["hotkey"]
+
+
 # ---------------------------------------------------------------------------
 # Keyboard device discovery
 # ---------------------------------------------------------------------------
@@ -121,11 +228,15 @@ def _discover_keyboard_devices() -> list[InputDevice]:
 
     keyboards: list[InputDevice] = []
     key_lookup = _get_key_lookup()
+    permission_denied_count = 0
 
     for path in sorted(glob.glob("/dev/input/event*")):
         try:
             dev = InputDevice(path)
-        except (OSError, PermissionError):
+        except PermissionError:
+            permission_denied_count += 1
+            continue
+        except OSError:
             continue
 
         try:
@@ -159,6 +270,37 @@ def _discover_keyboard_devices() -> list[InputDevice]:
             if ecodes.KEY_A in ev_key_caps:
                 keyboards.append(dev)
                 logger.debug("hotkey_device_fallback", path=path, name=dev.name)
+
+    # Surface a clear, actionable error when permission is the problem.
+    # This happens when setup-linux.sh ran but the user hasn't logged out/in
+    # yet — the 'input' group membership hasn't propagated to the session.
+    if not keyboards and permission_denied_count > 0:
+        import grp
+        try:
+            input_group = grp.getgrnam("input")
+            import os
+            in_group = os.getlogin() in input_group.gr_mem or input_group.gr_gid in os.getgroups()
+        except Exception:
+            in_group = False
+
+        if not in_group:
+            logger.error(
+                "evdev_permission_denied_not_in_input_group",
+                hint=(
+                    "Your user is NOT in the 'input' group. "
+                    "Run: sudo usermod -aG input $USER  then log out and back in. "
+                    "Or run Rota AI with: newgrp input to apply the group without logging out."
+                ),
+            )
+        else:
+            logger.error(
+                "evdev_permission_denied_session_stale",
+                hint=(
+                    "Your user is in the 'input' group but the current session "
+                    "doesn't reflect it yet. Log out and back in, or restart with: "
+                    "newgrp input"
+                ),
+            )
 
     return keyboards
 
@@ -266,7 +408,26 @@ class HotkeyHandler:
             self._devices = []
 
         if not self._devices:
-            logger.error("no_keyboard_devices_found")
+            logger.error(
+                "no_keyboard_devices_found",
+                hint=(
+                    "No keyboard devices could be opened. "
+                    "Ensure your user is in the 'input' group and you have logged out/in since setup. "
+                    "Run: groups  — you should see 'input' listed. "
+                    "If not: sudo usermod -aG input $USER  then log out and back in."
+                ),
+            )
+            if self.error_callback:
+                try:
+                    self.error_callback(
+                        PermissionError(
+                            "Cannot access keyboard devices (/dev/input/event*).\n"
+                            "Fix: sudo usermod -aG input $USER  then log out and back in.\n"
+                            "Quick fix without logout: run Rota AI via:  newgrp input"
+                        )
+                    )
+                except Exception:
+                    pass
             return False
 
         # Grab exclusive access on all discovered keyboard devices so events
@@ -360,10 +521,6 @@ class HotkeyHandler:
     @staticmethod
     def _key_code_to_name(code: int) -> str | None:
         return _get_key_lookup().get(code)
-
-    def _is_modifier_code(self, code: int) -> str | None:
-        """Return canonical modifier name if code is a modifier key, else None."""
-        return self._key_code_to_name(code) if code in _MODIFIER_CODES else None
 
     def _matches_hotkey(self, code: int) -> bool:
         """True if key code matches the hotkey's main key AND all required
@@ -467,7 +624,7 @@ class HotkeyHandler:
         if event.type != e_ecodes.EV_KEY:
             return
 
-        code = event.value
+        code = event.code
         key_state = event.value  # 0=up, 1=down, 2=repeat
 
         name = self._key_code_to_name(code)
