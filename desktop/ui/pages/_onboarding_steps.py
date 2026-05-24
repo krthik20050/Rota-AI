@@ -247,20 +247,69 @@ def build_step_api_keys(dialog) -> QWidget:
     lay.addWidget(num)
     lay.addSpacing(4)
 
-    title = QLabel("Connect Cloud Services")
+    title = QLabel("Choose Your Setup")
     title.setObjectName("StepTitle")
     lay.addWidget(title)
     lay.addSpacing(8)
 
     body = QLabel(
-        "Both fields are optional: skip if you already have keys set up. "
-        "Gemini handles smart text formatting; Groq powers cloud transcription. "
-        "Keys are stored locally and can be changed in Settings anytime."
+        "Pick how you want to use Rota AI. You can change this anytime in Settings."
     )
     body.setObjectName("StepBody")
     body.setWordWrap(True)
     lay.addWidget(body)
-    lay.addSpacing(14)
+    lay.addSpacing(16)
+
+    # ── Path A: Quick Start ──
+    quick_btn = QPushButton("⚡ Quick Start (Recommended)")
+    quick_btn.setObjectName("PathQuickBtn")
+    quick_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    quick_btn.setFixedHeight(48)
+    quick_btn.clicked.connect(lambda: _select_path(dialog, "quick"))
+    lay.addWidget(quick_btn)
+
+    quick_desc = QLabel(
+        "Use cloud transcription and formatting with free-tier API keys. "
+        "No keys needed to start — Rota will guide you through getting them."
+    )
+    quick_desc.setObjectName("PathDesc")
+    quick_desc.setWordWrap(True)
+    lay.addWidget(quick_desc)
+
+    lay.addSpacing(12)
+
+    # ── Path B: Custom API Keys ──
+    custom_frame = QFrame()
+    custom_frame.setObjectName("PathCustomFrame")
+    custom_lay = QVBoxLayout(custom_frame)
+    custom_lay.setContentsMargins(16, 12, 16, 12)
+    custom_lay.setSpacing(8)
+
+    custom_header = QHBoxLayout()
+    custom_title = QLabel("🔧 Custom API Keys")
+    custom_title.setObjectName("PathTitle")
+    custom_header.addWidget(custom_title)
+    custom_header.addStretch()
+    custom_switch = QPushButton("Use Custom Keys")
+    custom_switch.setObjectName("PathSwitchBtn")
+    custom_switch.setCursor(Qt.CursorShape.PointingHandCursor)
+    custom_switch.clicked.connect(lambda: _select_path(dialog, "custom"))
+    custom_header.addWidget(custom_switch)
+    custom_lay.addLayout(custom_header)
+
+    custom_desc = QLabel(
+        "Bring your own Gemini and/or Groq API keys for cloud transcription "
+        "and text formatting. Keys are stored locally on your device."
+    )
+    custom_desc.setObjectName("PathDesc")
+    custom_desc.setWordWrap(True)
+    custom_lay.addWidget(custom_desc)
+
+    # Key inputs (hidden by default, shown when "custom" is selected)
+    dialog._api_keys_container = QWidget()
+    api_form = QVBoxLayout(dialog._api_keys_container)
+    api_form.setContentsMargins(0, 8, 0, 0)
+    api_form.setSpacing(6)
 
     def _resolve_key(config_key: str, env_var: str) -> str:
         if dialog._config:
@@ -269,17 +318,17 @@ def build_step_api_keys(dialog) -> QWidget:
                 return v
         return os.environ.get(env_var, "")
 
-    gem_lbl = QLabel("Gemini API Key  (optional)")
+    gem_lbl = QLabel("Gemini API Key")
     gem_lbl.setObjectName("FieldLabel")
-    lay.addWidget(gem_lbl)
+    api_form.addWidget(gem_lbl)
     gem_hint = QLabel("aistudio.google.com → Get API Key   (starts with AIza…)")
     gem_hint.setObjectName("FieldHint")
-    lay.addWidget(gem_hint)
+    api_form.addWidget(gem_hint)
     gem_row = QHBoxLayout()
     gem_row.setSpacing(8)
     dialog._gemini_input = QLineEdit()
     dialog._gemini_input.setObjectName("ApiInput")
-    dialog._gemini_input.setPlaceholderText("AIzaSy… (or leave blank if already set in .env)")
+    dialog._gemini_input.setPlaceholderText("AIzaSy…")
     dialog._gemini_input.setEchoMode(QLineEdit.EchoMode.Password)
     dialog._gemini_input.setText(_resolve_key("gemini_api_key", "GEMINI_API_KEY"))
     gem_row.addWidget(dialog._gemini_input, 1)
@@ -289,21 +338,19 @@ def build_step_api_keys(dialog) -> QWidget:
     gem_open.clicked.connect(lambda: QDesktopServices.openUrl(
         QUrl("https://aistudio.google.com/app/apikey")))
     gem_row.addWidget(gem_open)
-    lay.addLayout(gem_row)
+    api_form.addLayout(gem_row)
 
-    lay.addSpacing(10)
-
-    groq_lbl = QLabel("Groq API Key  (optional, for cloud transcription)")
+    groq_lbl = QLabel("Groq API Key  (for cloud transcription)")
     groq_lbl.setObjectName("FieldLabel")
-    lay.addWidget(groq_lbl)
+    api_form.addWidget(groq_lbl)
     groq_hint = QLabel("console.groq.com → API Keys   (starts with gsk_…)")
     groq_hint.setObjectName("FieldHint")
-    lay.addWidget(groq_hint)
+    api_form.addWidget(groq_hint)
     groq_row = QHBoxLayout()
     groq_row.setSpacing(8)
     dialog._groq_input = QLineEdit()
     dialog._groq_input.setObjectName("ApiInput")
-    dialog._groq_input.setPlaceholderText("gsk_… (or leave blank if already set in .env)")
+    dialog._groq_input.setPlaceholderText("gsk_…")
     dialog._groq_input.setEchoMode(QLineEdit.EchoMode.Password)
     dialog._groq_input.setText(_resolve_key("groq_api_key", "GROQ_API_KEY"))
     groq_row.addWidget(dialog._groq_input, 1)
@@ -313,14 +360,68 @@ def build_step_api_keys(dialog) -> QWidget:
     groq_open.clicked.connect(lambda: QDesktopServices.openUrl(
         QUrl("https://console.groq.com/keys")))
     groq_row.addWidget(groq_open)
-    lay.addLayout(groq_row)
+    api_form.addLayout(groq_row)
+
+    dialog._gemini_input.textChanged.connect(lambda: _select_path(dialog, "custom"))
+    dialog._groq_input.textChanged.connect(lambda: _select_path(dialog, "custom"))
+
+    dialog._api_keys_container.setVisible(False)
+    custom_lay.addWidget(dialog._api_keys_container)
 
     dialog._api_status = QLabel("")
     dialog._api_status.setObjectName("StatusLabel")
-    lay.addWidget(dialog._api_status)
+    custom_lay.addWidget(dialog._api_status)
+
+    lay.addWidget(custom_frame)
+
+    # ── Path C: Local Only ──
+    local_frame = QFrame()
+    local_frame.setObjectName("PathLocalFrame")
+    local_lay = QVBoxLayout(local_frame)
+    local_lay.setContentsMargins(16, 10, 16, 10)
+    local_row = QHBoxLayout()
+    local_icon = QLabel("💻")
+    local_icon.setObjectName("PathIcon")
+    local_row.addWidget(local_icon)
+    local_title = QLabel("Local Only (No Cloud)")
+    local_title.setObjectName("PathTitle")
+    local_row.addWidget(local_title)
+    local_row.addStretch()
+    local_switch = QPushButton("Go Local")
+    local_switch.setObjectName("PathSwitchLocalBtn")
+    local_switch.setCursor(Qt.CursorShape.PointingHandCursor)
+    local_switch.clicked.connect(lambda: _select_path(dialog, "local"))
+    local_row.addWidget(local_switch)
+    local_lay.addLayout(local_row)
+    local_desc = QLabel(
+        "Everything runs on your device. No API keys, no internet required after "
+        "model download. Privacy-first approach."
+    )
+    local_desc.setObjectName("PathDesc")
+    local_desc.setWordWrap(True)
+    local_lay.addWidget(local_desc)
+    lay.addWidget(local_frame)
 
     lay.addStretch()
     return w
+
+
+def _select_path(dialog, path: str):
+    """Handle path selection in API keys step."""
+    dialog._api_path = path
+    if path == "quick":
+        dialog._api_keys_container.setVisible(False)
+        dialog._api_status.setText("Quick Start selected. You'll be guided to get free API keys after setup.")
+        dialog._api_status.setObjectName("StatusOk")
+    elif path == "custom":
+        dialog._api_keys_container.setVisible(True)
+        dialog._api_status.setText("")
+    elif path == "local":
+        dialog._api_keys_container.setVisible(False)
+        dialog._config.set("groq_api_key", "")
+        dialog._config.set("gemini_api_key", "")
+        dialog._api_status.setText("Local-only mode. No cloud transcription or formatting.")
+        dialog._api_status.setObjectName("StatusOk")
 
 
 def build_step_model(dialog) -> QWidget:

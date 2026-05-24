@@ -227,7 +227,10 @@ class OnboardingDialog(QDialog):
             elif step == 2:
                 self._config.set("model_size", self._model_combo.currentData() or "base.en")
             elif step == 3:
-                self._config.set("hotkey", self._hotkey_combo.currentData() or "f9")
+                # Hotkey is already set by capture_hotkey() -> config.set("hotkey", ...)
+                # Just ensure a fallback is present
+                if not self._config.get("hotkey"):
+                    self._config.set("hotkey", "tab")
         except Exception:
             pass   # never block navigation on a UI read error
 
@@ -271,8 +274,8 @@ class OnboardingDialog(QDialog):
             return
         lines = []
         try:
-            hk = getattr(self, "_hotkey_combo", None)
-            hk_val = (hk.currentText() if hk else None) or self._config.get("hotkey", "f9").upper()
+            from ui.pages._onboarding_steps import _hotkey_display_name
+            hk_val = _hotkey_display_name(self._config.get("hotkey", "tab") or "tab")
             lines.append(f"● Hotkey: {hk_val}")
             mdl = getattr(self, "_model_combo", None)
             mdl_val = (mdl.currentData() if mdl else None) or self._config.get("model_size", "base.en")
