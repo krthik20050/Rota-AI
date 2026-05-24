@@ -62,7 +62,7 @@ def _dpapi_encrypt(plaintext: str) -> str | None:
     if _IS_LINUX or not plaintext:
         return None
     try:
-        import base64, win32crypt
+        import base64, importlib as _importlib; win32crypt = _importlib.import_module('win32crypt')
         encrypted = win32crypt.CryptProtectData(
             plaintext.encode("utf-8"), None, None, None, None, 0
         )
@@ -77,7 +77,7 @@ def _dpapi_decrypt(blob_b64: str) -> str | None:
     if _IS_LINUX or not blob_b64:
         return None
     try:
-        import base64, win32crypt
+        import base64, importlib as _importlib; win32crypt = _importlib.import_module('win32crypt')
         encrypted = base64.b64decode(blob_b64)
         _, plaintext = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)
         return plaintext.decode("utf-8")
@@ -128,7 +128,7 @@ class ConfigManager:
     DEFAULT_CONFIG = {
         "groq_api_key": "",
         "gemini_api_key": "",
-        "hotkey": "f9",
+        "hotkey": "tab",
         "hotkey_mode": "toggle",
         "model_size": "small.en",
         "ai_enabled": True,
@@ -257,7 +257,7 @@ class ConfigManager:
 
     def _handle_startup_windows(self):
         """Register/unregister via Windows registry (HKCU\\Run)."""
-        import winreg as reg
+        import importlib as _importlib; reg = _importlib.import_module('winreg')
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         app_name = "RotaAI"
 

@@ -185,7 +185,7 @@ class HotkeyHandler:
 
     def __init__(
         self,
-        hotkey: str = "f9",
+        hotkey: str = "tab",
         mode: str = MODE_TOGGLE,
         start_callback: Callable[[], None] | None = None,
         stop_callback: Callable[[], None] | None = None,
