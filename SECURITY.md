@@ -13,16 +13,17 @@ If you find a security vulnerability, please open a GitHub Issue with the `secur
 
 **What stays local:**
 
-| Data | Windows Path | Linux Path |
-|------|-------------|-----------|
-| Config | `%APPDATA%\RotaAI\config.json` | `~/.config/rota-ai/config.json` |
-| History | `%APPDATA%\RotaAI\history.db` | `~/.local/share/rota-ai/history.db` |
-| Dictionary | `%APPDATA%\RotaAI\personal_dictionary.json` | `~/.local/share/rota-ai/personal_dictionary.json` |
-| Sessions | `%APPDATA%\RotaAI\sessions.db` | `~/.local/share/rota-ai/sessions.db` |
+| Data | Windows Path | Linux Path | macOS Path |
+|------|-------------|-----------|------------|
+| Config | `%APPDATA%\RotaAI\config.json` | `~/.config/rota-ai/config.json` | `~/Library/Application Support/RotaAI/config.json` |
+| History | `%APPDATA%\RotaAI\history.db` | `~/.local/share/rota-ai/history.db` | `~/Library/Application Support/RotaAI/history.db` |
+| Dictionary | `%APPDATA%\RotaAI\personal_dictionary.json` | `~/.local/share/rota-ai/personal_dictionary.json` | `~/Library/Application Support/RotaAI/personal_dictionary.json` |
+| Sessions | `%APPDATA%\RotaAI\sessions.db` | `~/.local/share/rota-ai/sessions.db` | `~/Library/Application Support/RotaAI/sessions.db` |
 
 **API key encryption at rest:**
 - **Windows:** DPAPI (win32crypt, AES-256, current user account only)
 - **Linux:** keyring (Freedesktop Secret Service / GNOME Keyring)
+- **macOS:** keyring (macOS Keychain)
 
 No Rota AI server exists. Zero telemetry.
 
@@ -30,7 +31,7 @@ No Rota AI server exists. Zero telemetry.
 
 | Control | Status |
 |---------|--------|
-| API keys encrypted at rest | ✅ (Windows DPAPI / Linux keyring) |
+| API keys encrypted at rest | ✅ (Windows DPAPI / Linux keyring / macOS Keychain) |
 | Gemini key in HTTP header, not URL | ✅ |
 | Ollama URL restricted to localhost/private networks | ✅ |
 | Rate limiting on Gemini (30/min) and Groq (20/min) | ✅ |
@@ -49,7 +50,7 @@ No Rota AI server exists. Zero telemetry.
 - **History DB plaintext** — `history.db` contains all transcribed text in plaintext SQLite. Any process running as your user can read it. SQLite encryption (SQLCipher) is a future improvement.
 - **Clipboard window** — During text injection, the clipboard briefly holds the injected text (~150 ms). This is unavoidable with the Ctrl+V paste method.
 - **Injection scope** — Rota injects into the foreground window. Terminals are blocked, but any other app is a valid target by design.
-- **Global hotkey** — Requires OS-level keyboard access (evdev on Linux, pynput on Windows).
+- **Global hotkey** — Requires OS-level keyboard access (evdev on Linux, pynput on Windows, pynput + Quartz on macOS).
 
 ## Bring Your Own Keys
 

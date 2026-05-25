@@ -15,15 +15,19 @@ Rota AI is a cross-platform desktop voice dictation app built with Python, PyQt6
 | Transcription (primary) | Groq Whisper API (cloud) |
 | Transcription (fallback) | faster-whisper (local, CTranslate2) |
 | AI Cleanup | Gemini API / Groq Llama / Ollama |
-| Text Injection (Windows) | keybd_event (Ctrl+V paste) |
-| Text Injection (Linux) | xdotool / wtype / dotool + clipboard |
-| Hotkey Capture (Windows) | pynput |
-| Hotkey Capture (Linux) | evdev |
-| Config Storage | JSON file (encrypted at rest) |
-| Secret Storage (Windows) | DPAPI (win32crypt) |
-| Secret Storage (Linux) | keyring (Secret Service / GNOME Keyring) |
-| Packaging (Windows) | PyInstaller + Inno Setup |
-| Packaging (Linux) | PyInstaller + AppImage |
+|| Text Injection (Windows) | keybd_event (Ctrl+V paste) |
+|| Text Injection (Linux) | xdotool / wtype / dotool + clipboard |
+|| Text Injection (macOS) | AXUIElement + NSPasteboard + AppleScript Cmd+V |
+|| Hotkey Capture (Windows) | pynput |
+|| Hotkey Capture (Linux) | evdev |
+|| Hotkey Capture (macOS) | pynput + Quartz CGEventTap |
+|| Config Storage | JSON file (encrypted at rest) |
+|| Secret Storage (Windows) | DPAPI (win32crypt) |
+|| Secret Storage (Linux) | keyring (Secret Service / GNOME Keyring) |
+|| Secret Storage (macOS) | keyring (macOS Keychain) |
+|| Packaging (Windows) | PyInstaller + Inno Setup |
+|| Packaging (Linux) | PyInstaller + AppImage |
+|| Packaging (macOS) | PyInstaller + .app bundle |
 
 ## Project Structure
 
@@ -101,13 +105,16 @@ The `plat/` module is the key to cross-platform support. All platform-specific c
 plat/__init__.py
 ├── get_hotkey_handler()  → Windows: audio.hotkey.HotkeyHandler (pynput)
 │                           Linux:   plat.linux_hotkey.HotkeyHandler (evdev)
+│                           macOS:   plat.macos_hotkey.HotkeyHandler (pynput + Quartz)
 ├── get_injector()        → Windows: injection.injector.TextInjector (keybd_event)
 │                           Linux:   plat.linux_injector.TextInjector (xdotool)
+│                           macOS:   plat.macos_injector.TextInjector (AXUIElement)
 ├── get_window_detector() → Windows: injection.field_detector
 │                           Linux:   plat.linux_window (AT-SPI + xlib)
+│                           macOS:   plat.macos_window (AXUIElement + NSWorkspace)
 └── ...
-```
 
+**Rule:** Code outside `plat/`, `injection/`, and `plat/macos_*` must never import platform-specific modules directly. Always go through `plat/`.
 **Rule:** Code outside `plat/` and `injection/` must never import Windows-specific modules directly. Always go through `plat/`.
 
 ## Audio Pipeline
@@ -138,7 +145,9 @@ Hotkey pressed
 |----------|------------|-----------|
 | Windows | `%APPDATA%\RotaAI\config.json` | `%APPDATA%\RotaAI\` |
 | Linux | `~/.config/rota-ai/config.json` | `~/.local/share/rota-ai/` |
+| macOS | `~/Library/Application Support/RotaAI/config.json` | `~/Library/Application Support/RotaAI/` |
 
 API keys are encrypted at rest:
 - **Windows:** DPAPI (win32crypt, AES-256, user-bound)
 - **Linux:** keyring (Freedesktop Secret Service / GNOME Keyring)
+- **macOS:** keyring (macOS Keychain)
