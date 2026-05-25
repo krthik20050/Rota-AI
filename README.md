@@ -667,13 +667,15 @@ The Rota AI application itself is about 25 MB. Dependencies (PyQt6, torch, etc.)
 
 **Windows:** Windows 10 or 11, Python 3.10+
 
+**macOS:** macOS 12 (Monterey) or later, Python 3.10+. Apple Silicon (M1/M2/M3) or Intel. Rosetta 2 not required — native ARM64 Python recommended.
+
 **Linux:** Ubuntu 20.04+, Fedora 36+, Arch (or any distro with evdev + X11/Wayland). Python 3.10+. User must be in the `input` group for hotkey detection.
 
-**Both platforms:**
+**All platforms:**
 - 4 GB RAM minimum (8 GB recommended)
 - Microphone (built in or external)
 - For local transcription: 8 GB RAM for base/small, 16 GB for medium/large
-- For GPU transcription: NVIDIA GPU with 6+ GB VRAM recommended (RTX 3050 or better)
+- For GPU transcription: NVIDIA GPU with 6+ GB VRAM recommended (RTX 3050 or better). Apple Silicon runs via Metal (faster-whisper auto-detects).
 - For CPU only transcription: any modern quad core processor
 
 ---
@@ -692,14 +694,20 @@ Python 3.10 or newer. `run.bat` auto detects your Python installation. If you ha
 
 ### I found a bug. Where do I report it?
 
-Open an issue on GitHub. I read every single issue and try to respond quickly. Include your Windows version, Python version, chosen backend, and steps to reproduce.
+Open an issue on GitHub. I read every single issue and try to respond quickly. Include your OS version, Python version, chosen backend, and steps to reproduce. For macOS, also include whether you're on Apple Silicon or Intel.
 
 ---
 
 ## Known Issues
 
 > [!WARNING]
-> **Platform support**: Rota AI supports Windows 10/11 and Linux (AppImage). macOS support is planned.
+> **Platform support**: Rota AI supports Windows 10/11, macOS 12+, and Linux (AppImage). macOS support is in early testing — report issues on GitHub.
+
+> [!NOTE]
+> **macOS permissions**: On first launch, you must grant Microphone, Accessibility, and Input Monitoring permissions in System Settings. The app will not function correctly without all three. If hotkeys don't work, check Input Monitoring. If text injection fails, check Accessibility.
+
+> [!NOTE]
+> **macOS — pyobjc required**: macOS system integration requires `pyobjc`. Install via `pip install -r requirements.txt`. If you see `ImportError: No module named 'AppKit'`, reinstall requirements.
 
 > [!NOTE]
 > **Linux — media pause not supported**: On Windows, Rota pauses system audio (Spotify, YouTube, etc.) while recording. On Linux this feature is a no-op. PipeWire/PulseAudio integration is planned.
