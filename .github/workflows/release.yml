@@ -75,8 +75,11 @@ jobs:
       - name: Build RotaAI.exe
         shell: pwsh
         run: |
-          cd "$env:GITHUB_WORKSPACE"
-          pyinstaller rota-ai.spec --clean --noconfirm
+          $specPath = Join-Path $env:GITHUB_WORKSPACE "rota-ai.spec"
+          Write-Host "Spec path: $specPath"
+          Write-Host "Exists: $(Test-Path $specPath)"
+          Get-ChildItem $env:GITHUB_WORKSPACE -Filter "*.spec"
+          pyinstaller $specPath --clean --noconfirm
 
       - name: Install Inno Setup
         shell: pwsh
