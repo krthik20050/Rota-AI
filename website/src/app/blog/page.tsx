@@ -54,7 +54,7 @@ export default function BlogPage() {
           {posts.map((post) => (
             <Link
               key={post.slug}
-              href={`/blog/${post.slug}`}
+              href={`/blog/${encodeURIComponent(post.slug)}`}
               className="block py-8 border-b border-white/[.06] group"
             >
               <div className="flex items-center gap-3 mb-3">

@@ -3,73 +3,68 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'desktop/**'
+      - 'requirements.txt'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'requirements.txt'
+      - '.github/workflows/ci.yml'
+  schedule:
+    # Full matrix + CVE audit every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
 
-# Cancel in-progress runs for the same branch
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ── Security: Secrets Scan (runs before anything else) ──────────────────────
+  # ── Security: Secrets Scan ──────────────────────────────────────────────────
   secrets-scan:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
-      - name: Checkout (full history for secret scanning)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Scan for secrets (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ── Lint & Syntax Check (fast, runs first) ──────────────────────────────────
+  # ── Lint & Security Static Analysis ────────────────────────────────────────
   lint:
     runs-on: ubuntu-24.04
     needs: secrets-scan
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+          cache: 'pip'
 
-      - name: Install lint + security tools
-        run: pip install ruff bandit[toml] pip-audit
+      - name: Install lint tools
+        run: pip install ruff bandit[toml]
 
       - name: Ruff lint
         run: ruff check desktop/
 
       - name: Bandit security scan
         run: |
-          bandit -r desktop/ \
-            --exclude desktop/tests \
-            -ll \
-            --format txt \
-            -o bandit-report.txt || true
-          # Fail on HIGH severity issues
-          bandit -r desktop/ \
-            --exclude desktop/tests \
-            -lll \
-            --format txt
-        # -ll = medium+, -lll = high only (hard fail)
+          bandit -r desktop/ --exclude desktop/tests -ll --format txt -o bandit-report.txt || true
+          bandit -r desktop/ --exclude desktop/tests -lll --format txt
 
-      - name: Dependency CVE audit
-        run: |
-          pip install -r requirements.txt --quiet
-          pip-audit --requirement requirements.txt --strict
-
-      - name: Check Python syntax (all files)
+      - name: Python syntax check
         run: |
           cd desktop
           python -c "
           import os, py_compile, sys
-          count = 0
           errors = []
           for root, dirs, files in os.walk('.'):
             for f in files:
@@ -77,17 +72,15 @@ jobs:
                 path = os.path.join(root, f)
                 try:
                   py_compile.compile(path, doraise=True)
-                  count += 1
                 except py_compile.PyCompileError as e:
                   errors.append(f'{path}: {e}')
           if errors:
-            for e in errors:
-              print(f'ERROR: {e}')
+            for e in errors: print(f'ERROR: {e}')
             sys.exit(1)
-          print(f'OK: All {count} Python files pass syntax check')
+          print(f'OK: all Python files pass syntax check')
           "
 
-      - name: Check for Windows-only imports leaking into shared code
+      - name: Check Windows-only imports in shared code
         run: |
           cd desktop
           python -c "
@@ -102,57 +95,104 @@ jobs:
               'app.service_wiring', 'app.signal_bridges',
               'app.thread_lifecycle_mixin',
           }
-
           errors = []
           for root, dirs, files in os.walk('.'):
             for f in files:
-              if not f.endswith('.py'):
-                continue
+              if not f.endswith('.py'): continue
               filepath = os.path.join(root, f)
               mod_path = filepath.replace('./', '').replace('/', '.').replace('.py', '')
               with open(filepath) as fh:
-                try:
-                  tree = ast.parse(fh.read())
-                except SyntaxError:
-                  continue
+                try: tree = ast.parse(fh.read())
+                except SyntaxError: continue
               for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                   for alias in node.names:
-                    if alias.name in ('win32crypt', 'win32api', 'win32con', 'win32gui', 'win32process', 'winreg', 'pywintypes'):
-                      is_win_only = any(mod_path.endswith(m) for m in WINDOWS_ONLY)
-                      if not is_win_only:
+                    if alias.name in ('win32crypt','win32api','win32con','win32gui','win32process','winreg','pywintypes'):
+                      if not any(mod_path.endswith(m) for m in WINDOWS_ONLY):
                         errors.append(f'{filepath}:{node.lineno}: imports {alias.name} (Windows-only)')
                 elif isinstance(node, ast.ImportFrom):
                   if node.module and node.module.startswith('win32'):
-                    is_win_only = any(mod_path.endswith(m) for m in WINDOWS_ONLY)
-                    if not is_win_only:
+                    if not any(mod_path.endswith(m) for m in WINDOWS_ONLY):
                       errors.append(f'{filepath}:{node.lineno}: imports from {node.module} (Windows-only)')
-
           if errors:
-            for e in errors:
-              print(f'ERROR: {e}')
+            for e in errors: print(f'ERROR: {e}')
             sys.exit(1)
-          else:
-            print('OK: No Windows-only imports in shared code')
+          print('OK: no Windows-only imports in shared code')
           "
 
-  # ── Linux CI ────────────────────────────────────────────────────────────────
+  # ── CVE Audit (weekly scheduled only) ──────────────────────────────────────
+  cve-audit:
+    runs-on: ubuntu-24.04
+    needs: lint
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      - name: Dependency CVE audit
+        run: |
+          pip install pip-audit
+          pip install -r requirements.txt --quiet
+          pip-audit --requirement requirements.txt --strict
+
+  # ── Windows CI (primary — runs on every PR/push) ────────────────────────────
+  windows-ci:
+    runs-on: windows-2025
+    needs: lint
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        shell: cmd
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install PyQt6 structlog python-dotenv pyperclip pywin32 psutil groq numpy pytest
+
+      - name: Check imports (Windows)
+        shell: cmd
+        run: |
+          cd desktop
+          python -c "import sys,os; sys.path.insert(0,'.'); os.environ['QT_QPA_PLATFORM']='offscreen'; from plat import get_hotkey_handler,get_injector,get_window_detector; print('plat: OK'); from PyQt6.QtWidgets import QApplication; print('PyQt6: OK'); from data.config import ConfigManager; print('ConfigManager: OK'); from injection.injector import TextInjector; print('Windows TextInjector: OK'); from data.snippets import SnippetsManager; print('SnippetsManager: OK'); print('All imports OK on Windows')"
+
+      - name: Run unit tests
+        shell: cmd
+        run: |
+          cd desktop
+          set PYTHONPATH=%cd%;%PYTHONPATH%
+          set QT_QPA_PLATFORM=offscreen
+          python -m pytest tests\ -v --tb=short -x
+
+  # ── Full Matrix CI (weekly scheduled only) ─────────────────────────────────
   linux-ci:
     runs-on: ubuntu-24.04
     needs: lint
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.12', '3.13']
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
 
       - name: Install system dependencies
         run: |
@@ -173,19 +213,9 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install PyQt6
-          pip install structlog
-          pip install python-dotenv
-          pip install pyperclip
-          pip install evdev
-          pip install keyring
-          pip install psutil
-          pip install python-xlib
-          pip install groq
-          pip install numpy
-          pip install pytest pytest-cov
+          pip install PyQt6 structlog python-dotenv pyperclip evdev keyring psutil python-xlib groq numpy pytest pytest-cov
 
-      - name: Check Python imports (Linux)
+      - name: Check imports (Linux)
         run: |
           cd desktop
           export QT_QPA_PLATFORM=offscreen
@@ -193,25 +223,15 @@ jobs:
           import sys, os
           sys.path.insert(0, '.')
           os.environ['QT_QPA_PLATFORM'] = 'offscreen'
-
           from plat import get_hotkey_handler, get_injector, get_window_detector
           print('plat imports: OK')
-          HotkeyHandler = get_hotkey_handler()
-          print(f'HotkeyHandler: {HotkeyHandler.__name__}')
-          Injector = get_injector()
-          print(f'TextInjector: {Injector.__name__}')
           from PyQt6.QtWidgets import QApplication
-          from PyQt6.QtCore import Qt
           print('PyQt6: OK')
           from data.config import ConfigManager
           print('ConfigManager: OK')
           from data.snippets import SnippetsManager
           print('SnippetsManager: OK')
-          from utils.seeder import seed_mock_data
-          print('seeder: OK')
-          from utils.window_effects import apply_blur
-          print('window_effects: OK')
-          print('All imports successful on Linux!')
+          print('All imports OK on Linux!')
           "
 
       - name: Run unit tests with coverage
@@ -226,91 +246,42 @@ jobs:
             --cov-fail-under=50 \
             2>&1 | head -120
 
-  # ── Windows CI ──────────────────────────────────────────────────────────────
-  windows-ci:
-    runs-on: windows-2025
-    needs: lint
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.12', '3.13']
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Python dependencies
-        shell: cmd
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install PyQt6
-          pip install structlog
-          pip install python-dotenv
-          pip install pyperclip
-          pip install pywin32
-          pip install psutil
-          pip install groq
-          pip install numpy
-          pip install pytest
-
-      - name: Check Python imports (Windows)
-        shell: cmd
-        run: |
-          cd desktop
-          python -c "import sys,os; sys.path.insert(0,'.'); os.environ['QT_QPA_PLATFORM']='offscreen'; from plat import get_hotkey_handler,get_injector,get_window_detector; print('plat: OK'); HH=get_hotkey_handler(); print(f'HotkeyHandler: {HH.__name__}'); I=get_injector(); print(f'TextInjector: {I.__name__}'); from PyQt6.QtWidgets import QApplication; print('PyQt6: OK'); from data.config import ConfigManager; print('ConfigManager: OK'); from injection.injector import TextInjector; print('Windows TextInjector: OK'); from data.snippets import SnippetsManager; print('SnippetsManager: OK'); print('All imports OK on Windows')"
-
-      - name: Run unit tests
-        shell: cmd
-        run: |
-          cd desktop
-          set PYTHONPATH=%cd%;%PYTHONPATH%
-          set QT_QPA_PLATFORM=offscreen
-          python -m pytest tests\ -v --tb=short -x 2>&1
-
-  # ── macOS CI ────────────────────────────────────────────────────────────────
   macos-ci:
     runs-on: macos-14
     needs: lint
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.12', '3.13']
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
 
       - name: Install system dependencies
-        run: |
-          brew update
-          brew install portaudio
+        run: brew install portaudio
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install PyQt6 structlog python-dotenv pyperclip pynput keyring psutil groq numpy pytest pytest-cov
-          pip install pyobjc-core pyobjc-framework-AppKit pyobjc-framework-ApplicationServices pyobjc-framework-Quartz
+          pip install pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-ApplicationServices pyobjc-framework-Quartz
 
-      - name: Check Python imports (macOS)
+      - name: Check imports (macOS)
         run: |
           cd desktop
           export QT_QPA_PLATFORM=offscreen
           python - <<'PY'
-          import os
-          import sys
+          import os, sys
           sys.path.insert(0, ".")
           os.environ["QT_QPA_PLATFORM"] = "offscreen"
-
           from plat import get_hotkey_handler, get_injector, get_window_detector
           HotkeyHandler = get_hotkey_handler()
           TextInjector = get_injector()

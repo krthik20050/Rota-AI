@@ -19,7 +19,7 @@ export function getAllPosts(): BlogPost[] {
 
   return files
     .map((file) => {
-      const slug = file.replace(/\.md$/, "");
+      const slug = file.replace(/\.md$/, "").replace(/[^a-zA-Z0-9_-]/g, "-");
       const raw = fs.readFileSync(path.join(BLOG_DIR, file), "utf-8");
       const { data, content } = matter(raw);
       return {

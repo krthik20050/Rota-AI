@@ -223,6 +223,13 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Install Python dependencies
+        run: |
+          brew install portaudio
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r macos/requirements-macos.txt
+          pip install pyinstaller
+
       - name: Build macOS app zip
         env:
           MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}

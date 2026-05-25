@@ -34,7 +34,7 @@ psutil>=5.9.0,<7.0.0
 
 # macOS Accessibility / Quartz / AppKit (auto-installed on macOS only)
 pyobjc-framework-ApplicationServices>=10.0; sys_platform == "darwin"
-pyobjc-framework-AppKit>=10.0; sys_platform == "darwin"
+pyobjc-framework-Cocoa>=10.0; sys_platform == "darwin"
 pyobjc-framework-Quartz>=10.0; sys_platform == "darwin"
 pyobjc-core>=10.0; sys_platform == "darwin"
 

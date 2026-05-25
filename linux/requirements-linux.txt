@@ -45,5 +45,5 @@ psutil>=5.9.0,<7.0.0
 python-xlib>=0.33,<1.0.0
 
 # Testing
-pytest>=8.0,<9.0.0
+pytest>=9.0.3,<10.0.0
 pytest-qt>=4.4,<5.0.0
