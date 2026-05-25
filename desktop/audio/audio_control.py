@@ -1,13 +1,16 @@
 import os
+import sys
 import structlog
-import win32api
-import win32con
-from ctypes import cast, POINTER
-from comtypes import CLSCTX_ALL
-
-from injection.app_detector import get_active_app
 
 logger = structlog.get_logger(__name__)
+
+_IS_WINDOWS = sys.platform == "win32"
+
+if _IS_WINDOWS:
+    from injection.app_detector import get_active_app
+else:
+    def get_active_app():
+        return None
 
 MEDIA_PROCESS_NAMES = {
     "spotify.exe",
@@ -64,6 +67,8 @@ class SystemAudioController:
 
     def _get_master_volume_interface(self):
         try:
+            from ctypes import cast, POINTER
+            from comtypes import CLSCTX_ALL
             from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
             devices = AudioUtilities.GetSpeakers()
             if not devices:
@@ -167,6 +172,23 @@ class SystemAudioController:
 
         return False
 
+    def _pactl_mute(self, mute: bool) -> bool:
+        """Mute/unmute the default sink via pactl (Linux). Returns True on success."""
+        import shutil
+        import subprocess
+        if not shutil.which("pactl"):
+            return False
+        try:
+            val = "1" if mute else "0"
+            result = subprocess.run(
+                ["pactl", "set-sink-mute", "@DEFAULT_SINK@", val],
+                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            return result.returncode == 0
+        except Exception as e:
+            logger.warning("pactl_mute_failed", mute=mute, error=str(e))
+            return False
+
     def pause_or_mute(self):
         """
         Called when recording starts. Pauses or mutes background audio.
@@ -180,15 +202,20 @@ class SystemAudioController:
             logger.info("bg_audio_control_start", mode=mode)
 
             if mode == "mute":
-                volume = self._get_master_volume_interface()
-                if volume:
-                    try:
-                        if not bool(volume.GetMute()):
-                            volume.SetMute(1, None)
-                            self._muted_by_us = True
-                            logger.debug("master_volume_muted")
-                    except Exception as e:
-                        logger.error("failed_to_mute_master_volume", error=str(e))
+                if not _IS_WINDOWS:
+                    if self._pactl_mute(True):
+                        self._muted_by_us = True
+                        logger.debug("master_volume_muted_pactl")
+                else:
+                    volume = self._get_master_volume_interface()
+                    if volume:
+                        try:
+                            if not bool(volume.GetMute()):
+                                volume.SetMute(1, None)
+                                self._muted_by_us = True
+                                logger.debug("master_volume_muted")
+                        except Exception as e:
+                            logger.error("failed_to_mute_master_volume", error=str(e))
 
             elif mode == "pause":
                 try:
@@ -197,11 +224,17 @@ class SystemAudioController:
                     # If it's actually playing → pause it.
                     # If it's already paused → sending the key starts it, then
                     #   resume sends the key again → ends up paused. Net: safe.
-                    if self._has_playing_media_session():
+                    if _IS_WINDOWS and self._has_playing_media_session():
                         logger.info("media_session_detected_pausing")
+                        import win32api, win32con
                         win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
                         win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
                         self._media_paused = True
+                    elif not _IS_WINDOWS:
+                        # Linux: mute via pactl as the most reliable cross-desktop approach
+                        if self._pactl_mute(True):
+                            self._muted_by_us = True
+                            logger.info("media_muted_via_pactl")
                     else:
                         logger.info("bg_audio_control_skipped", mode=mode, reason="no_playing_media_session")
                 except Exception as e:
@@ -222,21 +255,27 @@ class SystemAudioController:
 
             logger.info("bg_audio_control_stop", mode=mode)
 
-            if mode == "mute" and self._muted_by_us:
-                volume = self._get_master_volume_interface()
-                if volume:
-                    try:
-                        volume.SetMute(0, None)
-                        logger.debug("master_volume_unmuted")
-                    except Exception as e:
-                        logger.error("failed_to_unmute_master_volume", error=str(e))
+            if self._muted_by_us:
+                if not _IS_WINDOWS:
+                    self._pactl_mute(False)
+                    logger.debug("master_volume_unmuted_pactl")
+                else:
+                    volume = self._get_master_volume_interface()
+                    if volume:
+                        try:
+                            volume.SetMute(0, None)
+                            logger.debug("master_volume_unmuted")
+                        except Exception as e:
+                            logger.error("failed_to_unmute_master_volume", error=str(e))
                 self._muted_by_us = False
 
             elif mode == "pause" and self._media_paused:
                 try:
                     logger.info("resuming_media")
-                    win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
-                    win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    if _IS_WINDOWS:
+                        import win32api, win32con
+                        win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
+                        win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
                 except Exception as e:
                     logger.error("failed_to_resume_media", error=str(e))
                 self._media_paused = False

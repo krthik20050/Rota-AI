@@ -197,9 +197,9 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
                            stderr=proc.stderr.decode(errors="replace"))
 
         elif tool == KeyboardTool.DOTOOL:
-            # dotool uses a simple protocol: "keydown keycode" then "keyup keycode"
+            # dotool protocol: "keydown <code>" / "keyup <code>" one per line
             # KEY_LEFTCTRL = 29, KEY_V = 47
-            commands = "key 29\nsleep 50\nkey 47\nkey 29 up\nkey 47 up\n"
+            commands = "keydown 29\nkeydown 47\nsleep 50\nkeyup 47\nkeyup 29\n"
             proc = subprocess.run(
                 ["dotool"],
                 input=commands.encode("utf-8"),
@@ -250,7 +250,7 @@ def _send_backspace_key(tool: KeyboardTool) -> bool:
 
         elif tool == KeyboardTool.DOTOOL:
             # KEY_BACKSPACE = 14
-            commands = "key 14\nsleep 50\nkey 14 up\n"
+            commands = "keydown 14\nsleep 50\nkeyup 14\n"
             proc = subprocess.run(
                 ["dotool"],
                 input=commands.encode("utf-8"),
@@ -484,7 +484,7 @@ class TextInjector:
             # Attempt focus restoration if field_info is available.
             if field_info:
                 try:
-                    from injection.field_detector import restore_focus_and_click
+                    from plat.linux_window import restore_focus_and_click
                     restored = restore_focus_and_click(field_info)
                     if not restored:
                         logger.warning("focus_restore_skipped_or_failed",
@@ -644,7 +644,7 @@ class TextInjector:
             restored = True
             if last_field:
                 try:
-                    from injection.field_detector import restore_focus_and_click
+                    from plat.linux_window import restore_focus_and_click
                     restored = restore_focus_and_click(last_field)
                 except Exception:
                     restored = False

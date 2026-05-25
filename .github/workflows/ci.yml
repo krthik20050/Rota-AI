@@ -56,7 +56,7 @@ jobs:
           WINDOWS_ONLY = {
               'injection.injector', 'injection.field_detector',
               'injection.field_reader', 'injection.app_detector',
-              'audio.hotkey', 'app.instance_guard',
+              'audio.hotkey', 'audio.audio_control', 'app.instance_guard',
               'app.hotkey_mixin', 'app.processing_pipeline_mixin',
               'app.recording_state_mixin', 'app.transcriber_mixin',
               'app.service_wiring', 'app.signal_bridges',

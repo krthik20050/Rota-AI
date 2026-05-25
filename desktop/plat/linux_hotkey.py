@@ -29,6 +29,61 @@ try:
 except ImportError:
     evdev = None  # type: ignore[assignment]
 
+try:
+    import pynput as _pynput_available
+except ImportError:
+    _pynput_available = None  # type: ignore[assignment]
+
+
+# ---------------------------------------------------------------------------
+# pynput key → canonical name mapping
+# ---------------------------------------------------------------------------
+
+def _build_pynput_key_map() -> dict:
+    """Build {pynput.Key.xxx: canonical_name} mapping."""
+    if _pynput_available is None:
+        return {}
+    from pynput.keyboard import Key
+    m: dict = {
+        Key.ctrl: "ctrl", Key.ctrl_l: "ctrl", Key.ctrl_r: "ctrl",
+        Key.shift: "shift", Key.shift_l: "shift", Key.shift_r: "shift",
+        Key.alt: "alt", Key.alt_l: "alt", Key.alt_r: "alt",
+        Key.alt_gr: "alt", Key.cmd: "meta", Key.cmd_l: "meta", Key.cmd_r: "meta",
+        Key.tab: "tab", Key.space: "space", Key.enter: "enter",
+        Key.backspace: "backspace", Key.esc: "esc",
+        Key.delete: "delete", Key.insert: "insert",
+        Key.home: "home", Key.end: "end",
+        Key.page_up: "pageup", Key.page_down: "pagedown",
+        Key.up: "up", Key.down: "down", Key.left: "left", Key.right: "right",
+        Key.caps_lock: "capslock", Key.num_lock: "numlock",
+        Key.scroll_lock: "scrolllock", Key.pause: "pause",
+        Key.print_screen: "sysrq",
+    }
+    for i in range(1, 25):
+        fkey = getattr(Key, f"f{i}", None)
+        if fkey is not None:
+            m[fkey] = f"f{i}"
+    return m
+
+
+_PYNPUT_KEY_MAP: dict = {}
+
+
+def _pynput_key_name(key) -> str | None:
+    """Convert a pynput key event to a canonical name string."""
+    global _PYNPUT_KEY_MAP
+    if not _PYNPUT_KEY_MAP:
+        _PYNPUT_KEY_MAP = _build_pynput_key_map()
+    name = _PYNPUT_KEY_MAP.get(key)
+    if name:
+        return name
+    # Regular character key
+    if _pynput_available is not None:
+        from pynput.keyboard import KeyCode
+        if isinstance(key, KeyCode) and key.char:
+            return key.char.lower()
+    return None
+
 # ---------------------------------------------------------------------------
 # evdev key-code → canonical name mapping
 # We only map the keys we care about for hotkey matching, not the entire
@@ -105,6 +160,50 @@ def _parse_hotkey_str(hotkey: str) -> tuple[frozenset[str], str]:
     return mods, main
 
 
+def _capture_hotkey_pynput(timeout: float = 8.0) -> str | None:
+    """Record next key combo using pynput (X11, no input-group needed)."""
+    if _pynput_available is None:
+        return None
+    from pynput import keyboard as pynput_kb
+
+    result: dict = {"hotkey": None}
+    done = threading.Event()
+    held_mods: set[str] = set()
+
+    def on_press(key):
+        name = _pynput_key_name(key)
+        if name is None:
+            return
+        if name == "esc":
+            done.set()
+            return False
+        is_mod = name in ("ctrl", "shift", "alt", "meta")
+        if is_mod:
+            held_mods.add(name)
+            return
+        parts = [m for m in ("ctrl", "shift", "alt", "meta") if m in held_mods]
+        parts.append(name)
+        result["hotkey"] = "+".join(parts)
+        done.set()
+        return False
+
+    def on_release(key):
+        if done.is_set():
+            return False
+        name = _pynput_key_name(key)
+        if name in ("ctrl", "shift", "alt", "meta"):
+            held_mods.discard(name)
+
+    listener = pynput_kb.Listener(on_press=on_press, on_release=on_release)
+    listener.start()
+    done.wait(timeout=timeout)
+    try:
+        listener.stop()
+    except Exception:
+        pass
+    return result["hotkey"]
+
+
 def capture_hotkey(timeout: float = 8.0) -> str | None:
     """Record the next key combination the user presses (Linux/evdev version).
     
@@ -124,7 +223,10 @@ def capture_hotkey(timeout: float = 8.0) -> str | None:
         import glob
         import select
     except ImportError:
-        logger.error("capture_hotkey: evdev not available")
+        logger.warning("capture_hotkey: evdev not available, trying pynput")
+        if os.environ.get("DISPLAY") and _pynput_available is not None:
+            return _capture_hotkey_pynput(timeout=timeout)
+        logger.error("capture_hotkey: no backend available")
         return None
 
     # Discover keyboard devices
@@ -146,7 +248,10 @@ def capture_hotkey(timeout: float = 8.0) -> str | None:
             keyboards.append(dev)
 
     if not keyboards:
-        logger.error("capture_hotkey: no keyboard devices found")
+        logger.warning("capture_hotkey: no evdev keyboard devices found, trying pynput")
+        if os.environ.get("DISPLAY") and _pynput_available is not None:
+            return _capture_hotkey_pynput(timeout=timeout)
+        logger.error("capture_hotkey: no backend available")
         return None
 
     # Build reverse lookup: evdev key code → name
@@ -363,6 +468,9 @@ class HotkeyHandler:
         # Pre-discover devices so we don't have to re-do it each time
         self._devices: list[InputDevice] = []
 
+        # pynput listener (used as fallback when evdev is unavailable)
+        self._pynput_listener = None
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -394,20 +502,37 @@ class HotkeyHandler:
             action()
 
     def start_listening(self) -> bool:
-        """Start the evdev listener thread. Returns True on success."""
+        """Start the evdev listener thread, with pynput fallback on X11.
+
+        Returns True on success.  If evdev cannot open any keyboard device
+        (user not in the 'input' group) AND we are on an X11 session,
+        automatically falls back to pynput which works without extra setup.
+        """
         self.stop_listening()
 
-        if evdev is None:
-            logger.error("evdev_not_installed")
-            return False
+        # --- Try evdev first ---
+        evdev_ok = False
+        if evdev is not None:
+            try:
+                self._devices = _discover_keyboard_devices()
+            except Exception:
+                logger.exception("hotkey_device_discovery_failed")
+                self._devices = []
+            evdev_ok = bool(self._devices)
 
-        try:
-            self._devices = _discover_keyboard_devices()
-        except Exception:
-            logger.exception("hotkey_device_discovery_failed")
-            self._devices = []
+        if not evdev_ok:
+            # --- pynput fallback (X11 only) ---
+            if os.environ.get("DISPLAY") and _pynput_available is not None:
+                logger.info(
+                    "evdev_unavailable_falling_back_to_pynput",
+                    hint=(
+                        "Hotkey running via pynput (X11). Works without input-group membership. "
+                        "Wayland users: add yourself to the 'input' group for evdev support."
+                    ),
+                )
+                return self._start_pynput_listener()
 
-        if not self._devices:
+            # No backend available — surface a clear error
             logger.error(
                 "no_keyboard_devices_found",
                 hint=(
@@ -472,9 +597,93 @@ class HotkeyHandler:
         )
         return True
 
+    def _start_pynput_listener(self) -> bool:
+        """Start a pynput keyboard listener (X11 fallback, no input-group needed)."""
+        if _pynput_available is None:
+            logger.error("pynput_not_installed")
+            return False
+        from pynput import keyboard as pynput_kb
+
+        self._listener_stop.clear()
+
+        def on_press(key):
+            if self._listener_stop.is_set():
+                return False
+            name = _pynput_key_name(key)
+            if name is None:
+                return
+            is_mod = name in ("ctrl", "shift", "alt", "meta")
+            if is_mod:
+                self._held_mods.add(name)
+
+            if not self._hotkey_main and self._hotkey_mods:
+                if self._held_mods >= self._hotkey_mods and not self._modifier_chord_active:
+                    self._modifier_chord_active = True
+                    self._modifier_chord_dirty = False
+                    if self.mode == self.MODE_HOLD:
+                        self._handle_press()
+                elif self._modifier_chord_active and not is_mod:
+                    self._modifier_chord_dirty = True
+            else:
+                if name == self._hotkey_main and self._held_mods >= self._hotkey_mods:
+                    self._handle_press()
+
+            # Extra hotkeys
+            if self._extra_hotkeys:
+                for mods, main, callback in self._extra_hotkeys:
+                    if self._held_mods >= mods and name == main:
+                        try:
+                            callback()
+                        except Exception:
+                            logger.exception("extra_hotkey_callback_failed_pynput")
+
+        def on_release(key):
+            if self._listener_stop.is_set():
+                return False
+            name = _pynput_key_name(key)
+            if name is None:
+                return
+            is_mod = name in ("ctrl", "shift", "alt", "meta")
+
+            if not self._hotkey_main and self._hotkey_mods:
+                if is_mod and name in self._hotkey_mods and self._modifier_chord_active:
+                    was_dirty = self._modifier_chord_dirty
+                    self._modifier_chord_active = False
+                    self._modifier_chord_dirty = False
+                    with self._lock:
+                        self._is_key_pressed = False
+                    if self.mode == self.MODE_HOLD:
+                        self._handle_release()
+                    elif not was_dirty:
+                        self._handle_press()
+            else:
+                if name == self._hotkey_main and self._held_mods >= self._hotkey_mods:
+                    self._handle_release()
+
+            if is_mod:
+                self._held_mods.discard(name)
+
+        try:
+            listener = pynput_kb.Listener(on_press=on_press, on_release=on_release)
+            listener.start()
+            self._pynput_listener = listener
+            self.backend = "pynput"
+            logger.info("global_hotkey_started", extra={"backend": "pynput", "hotkey": self.hotkey})
+            return True
+        except Exception:
+            logger.exception("pynput_listener_start_failed")
+            return False
+
     def stop_listening(self) -> None:
         """Stop the listener and ungrab devices."""
         self._listener_stop.set()
+
+        if self._pynput_listener is not None:
+            try:
+                self._pynput_listener.stop()
+            except Exception:
+                pass
+            self._pynput_listener = None
 
         if self._listener_thread is not None:
             try:
@@ -507,6 +716,11 @@ class HotkeyHandler:
         logger.info("global_hotkey_stopped")
 
     def is_healthy(self) -> bool:
+        if self.backend == "pynput":
+            return (
+                self._pynput_listener is not None
+                and self._pynput_listener.is_alive()
+            )
         if self.backend == "evdev":
             return (
                 self._listener_thread is not None
@@ -741,6 +955,12 @@ class HotkeyHandler:
             except Exception:
                 pass
             logger.info("hotkey_listener_loop_exited")
+
+    @classmethod
+    def capture_hotkey(cls, timeout: float = 8.0) -> str | None:
+        """Classmethod wrapper so callers can use HotkeyHandler.capture_hotkey()
+        consistently across platforms (matches Windows HotkeyHandler API)."""
+        return capture_hotkey(timeout=timeout)
 
 
 # Pre-compute modifier key codes for fast lookup
