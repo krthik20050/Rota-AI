@@ -29,8 +29,18 @@ pyperclip>=1.8.2,<2.0.0
 pyautogui>=0.9.54,<1.0.0
 
 # Field focus capture (Windows)
-pywin32>=306,<400
+pywin32>=306,<400; sys_platform == "win32"
 psutil>=5.9.0,<7.0.0
+
+# macOS Accessibility / Quartz / AppKit (auto-installed on macOS only)
+pyobjc-framework-ApplicationServices>=10.0; sys_platform == "darwin"
+pyobjc-framework-AppKit>=10.0; sys_platform == "darwin"
+pyobjc-framework-Quartz>=10.0; sys_platform == "darwin"
+pyobjc-core>=10.0; sys_platform == "darwin"
+
+# Linux-specific
+evdev>=1.7.0; sys_platform == "linux"
+keyring>=25.0; sys_platform != "win32"
 
 # Voice activity detection (silence stripping)
 torch>=2.0.0,<3.0.0
@@ -45,4 +55,10 @@ noisereduce>=3.0,<4.0.0
 # Testing
 pytest>=8.0,<9.0.0
 pytest-qt>=4.4,<5.0.0
+pytest-cov>=5.0,<7.0.0
 
+# Dev tooling (lint, security, pre-commit)
+ruff>=0.11.0,<1.0.0
+bandit[toml]>=1.8.0,<2.0.0
+pip-audit>=2.7.0,<3.0.0
+pre-commit>=3.7.0,<4.0.0

@@ -43,7 +43,7 @@ class PillOverlay(QWidget):
 
     STATE_WIDTHS = {
         PillState.IDLE: 42,
-        PillState.RECORDING: 152,   # room for X + waveform + stop button
+        PillState.RECORDING: 152,  # room for X + waveform + stop button
         PillState.TRANSCRIBING: 150,
         PillState.PROCESSING: 150,
         PillState.DONE: 118,
@@ -190,7 +190,9 @@ class PillOverlay(QWidget):
         # Disable mouse events — no buttons visible after recording
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self._waveform.set_active(False)
-        self._animate_width(self.STATE_WIDTHS[PillState.TRANSCRIBING], QEasingCurve.Type.OutCubic, 260)
+        self._animate_width(
+            self.STATE_WIDTHS[PillState.TRANSCRIBING], QEasingCurve.Type.OutCubic, 260
+        )
         self._ellipsis_index = 0
         self._ellipsis_timer.start(500)
         self._text_opacity = 0.0
@@ -407,6 +409,7 @@ class PillOverlay(QWidget):
         super().showEvent(event)
         if sys.platform == "win32":
             apply_dwm_transparency(int(self.winId()))
+        # macOS/Linux: transparency handled by the compositor/WM
 
     # ── Mouse events (active only in RECORDING state) ─────────────────────────
 
@@ -462,10 +465,20 @@ class PillOverlay(QWidget):
             text = label + self._ellipsis_frames[self._ellipsis_index]
             draw_centered_text(painter, text, self.TEXT_COLOR, self._font, w, h, self._text_opacity)
         elif s == PillState.DONE:
-            draw_done(painter, self._font, w, h, self._done_scale, self._text_opacity, self.DONE_TEXT_COLOR)
+            draw_done(
+                painter,
+                self._font,
+                w,
+                h,
+                self._done_scale,
+                self._text_opacity,
+                self.DONE_TEXT_COLOR,
+            )
         elif s == PillState.ERROR:
             text = self._truncated_partial_text() or "Error"
-            draw_centered_text(painter, text, self.ERROR_TEXT_COLOR, self._font, w, h, self._text_opacity)
+            draw_centered_text(
+                painter, text, self.ERROR_TEXT_COLOR, self._font, w, h, self._text_opacity
+            )
 
     def set_partial_text(self, text: str) -> None:
         self._partial_text = (text or "").strip()

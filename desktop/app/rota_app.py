@@ -5,34 +5,33 @@ import os
 import socket
 import sys
 import threading
-from typing import Callable
+from collections.abc import Callable
 
 import structlog
-
-from PyQt6.QtCore import QObject, QSocketNotifier, QTimer, Qt, pyqtSlot
+from PyQt6.QtCore import QObject, QSocketNotifier, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import QApplication
 
+from ai.auto_improvement import AutoImprovementSystem
 from app.health_check import HealthCheckReport, StartupHealthChecker
+from app.hotkey_mixin import HotkeyMixin
+from app.instance_guard import release_instance_mutex
+from app.logging_config import log_event
+from app.processing_pipeline_mixin import ProcessingPipelineMixin
+from app.recording_state_mixin import RecordingStateMixin
 from app.service_wiring import build_app_services
+from app.signal_bridges import HotkeySignalBridge, RecordingState
+
+# Mixins — each handles a coherent subsystem
+from app.thread_lifecycle_mixin import ThreadLifecycleMixin
+from app.transcriber_mixin import TranscriberMixin
+from data.snippets import SnippetsManager
 from plat import get_hotkey_handler as _get_hotkey_handler
 from ui.history_window import HistoryWindow
 from ui.main_window import MainWindow
 from ui.overlay.pill_overlay import PillOverlay
 from ui.settings_window import SettingsWindow
-from ui.tray import RotaTrayIcon
-from data.snippets import SnippetsManager
-from ai.auto_improvement import AutoImprovementSystem
-from app.instance_guard import release_instance_mutex
-from app.logging_config import log_event
-from app.signal_bridges import HotkeySignalBridge, RecordingState
 from ui.toast import Toast
-
-# Mixins — each handles a coherent subsystem
-from app.thread_lifecycle_mixin import ThreadLifecycleMixin
-from app.recording_state_mixin import RecordingStateMixin
-from app.transcriber_mixin import TranscriberMixin
-from app.processing_pipeline_mixin import ProcessingPipelineMixin
-from app.hotkey_mixin import HotkeyMixin
+from ui.tray import RotaTrayIcon
 
 logger = structlog.get_logger(__name__)
 
@@ -79,6 +78,7 @@ class RotaApp(
             personal_dict=self.ai_processor.personal_dict if self.ai_processor else None
         )
         from audio.audio_control import SystemAudioController
+
         self.audio_controller = SystemAudioController(self.config)
 
         self.state = RecordingState.IDLE
@@ -140,14 +140,23 @@ class RotaApp(
         self.main_window.setAttribute(Qt.WidgetAttribute.WA_NativeWindow, True)
 
         self._onboarding_pending = not self.config.get("onboarding_complete", False)
-        if self._onboarding_pending:
+
+        # macOS: show dependency/permission setup wizard before anything else
+        self._macos_setup_pending = False
+        if sys.platform == "darwin":
+            from plat.macos_setup import is_setup_done
+            self._macos_setup_pending = not is_setup_done()
+
+        if self._macos_setup_pending:
+            self._show_macos_setup()
+        elif self._onboarding_pending:
             self._show_onboarding()
         else:
             self.main_window.show()
 
         log_event("main_window_created", visible=self.main_window.isVisible())
         QTimer.singleShot(0, self._log_window_visible)
-        if not self._onboarding_pending:
+        if not self._onboarding_pending and not self._macos_setup_pending:
             QTimer.singleShot(0, self._deferred_startup)
 
         self.tray = self._create_tray()
@@ -155,8 +164,29 @@ class RotaApp(
         self._pipeline_runner: Callable[[str], None] | None = None
         self._refresh_debug_window()
 
+    def _show_macos_setup(self):
+        from ui.macos_first_run import MacOSSetupWizard
+        self._macos_setup_dlg = MacOSSetupWizard(parent=None)
+        self._macos_setup_dlg.setup_done.connect(self._on_macos_setup_done)
+        screen = self.app.primaryScreen().availableGeometry()
+        self._macos_setup_dlg.move(
+            screen.center().x() - self._macos_setup_dlg.width() // 2,
+            screen.center().y() - self._macos_setup_dlg.height() // 2,
+        )
+        self._macos_setup_dlg.show()
+
+    def _on_macos_setup_done(self):
+        self._macos_setup_dlg = None
+        self._macos_setup_pending = False
+        if self._onboarding_pending:
+            QTimer.singleShot(50, self._show_onboarding)
+        else:
+            self.main_window.show()
+            QTimer.singleShot(100, self._deferred_startup)
+
     def _show_onboarding(self):
         from ui.onboarding import OnboardingDialog
+
         self._onboarding_dlg = OnboardingDialog(config=self.config, parent=None)
         self._onboarding_dlg.finished_signal.connect(self._on_onboarding_done)
         screen = self.app.primaryScreen().availableGeometry()
@@ -168,6 +198,7 @@ class RotaApp(
 
     def _on_onboarding_done(self):
         from app.service_wiring import _inject_api_keys
+
         _inject_api_keys(self.config)
         if self.ai_processor is not None:
             self.ai_processor.update_api_keys(
@@ -217,12 +248,18 @@ class RotaApp(
             pruned_h = self.history.prune_old_entries(history_days)
             pruned_s = self.session_store.prune_old_sessions(history_days)
             if pruned_h or pruned_s:
-                logger.info("startup_db_pruned", history_rows=pruned_h, session_rows=pruned_s, days=history_days)
+                logger.info(
+                    "startup_db_pruned",
+                    history_rows=pruned_h,
+                    session_rows=pruned_s,
+                    days=history_days,
+                )
         except Exception as e:
             logger.error("startup_db_prune_failed", error=str(e))
 
         try:
             from utils.seeder import seed_mock_data
+
             seeded = seed_mock_data(self.session_store)
             if seeded > 0:
                 logger.info("seeded_mock_history_sessions", count=seeded)
@@ -241,7 +278,9 @@ class RotaApp(
                 )
                 logger.info("undo_hotkey_registered")
             else:
-                logger.warning("undo_hotkey_skipped backend=%s", getattr(self.hotkey_handler, "backend", None))
+                logger.warning(
+                    "undo_hotkey_skipped backend=%s", getattr(self.hotkey_handler, "backend", None)
+                )
         except Exception as e:
             logger.warning("undo_hotkey_register_failed", error=str(e))
         logger.info("deferred_startup_done")
@@ -250,6 +289,10 @@ class RotaApp(
     def _run_startup_health_checks(self, hotkey_ok):
         if sys.platform == "win32":
             appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+        elif sys.platform == "darwin":
+            appdata_dir = os.path.join(
+                os.path.expanduser("~/Library/Application Support"), "RotaAI"
+            )
         else:
             xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
             appdata_dir = os.path.join(xdg_data, "rota-ai")
@@ -261,7 +304,9 @@ class RotaApp(
                 "Hotkey listener registered" if hotkey_ok else "F9 hotkey failed to register",
             ),
         )
-        checker.run_async(lambda report: QTimer.singleShot(0, lambda: self._on_health_report(report)))
+        checker.run_async(
+            lambda report: QTimer.singleShot(0, lambda: self._on_health_report(report))
+        )
 
     def _on_health_report(self, report: HealthCheckReport):
         self._health_report = report
@@ -273,7 +318,9 @@ class RotaApp(
             status="failed" if critical else ("degraded" if degraded else "ok"),
             checks=[item.__dict__ for item in report.checks],
         )
-        self.main_window.update_health_status("critical" if critical else ("degraded" if degraded else "ok"), issues)
+        self.main_window.update_health_status(
+            "critical" if critical else ("degraded" if degraded else "ok"), issues
+        )
         if critical:
             self._recording_enabled = False
             self.main_window.set_recording_enabled(False, "F9 disabled: startup checks failed")
@@ -394,13 +441,17 @@ class RotaApp(
             self._start_hotkey_listener()
 
             if self.transcriber is not None:
-                self.transcriber.transcription_quality = str(self.config.get("transcription_quality", "balanced"))
+                self.transcriber.transcription_quality = str(
+                    self.config.get("transcription_quality", "balanced")
+                )
 
             if self.ai_processor is not None:
                 self.ai_processor.writing_mode = self.config.get("writing_mode", "clean")
                 self.ai_processor.ai_provider = self.config.get("ai_provider", "gemini")
                 self.ai_processor.ollama_model = self.config.get("ollama_model", "llama3.2:1b")
-                self.ai_processor.ollama_url = self.config.get("ollama_url", "http://localhost:11434").rstrip("/")
+                self.ai_processor.ollama_url = self.config.get(
+                    "ollama_url", "http://localhost:11434"
+                ).rstrip("/")
                 self.ai_processor.update_api_keys(
                     groq_key=os.environ.get("GROQ_API_KEY", ""),
                     gemini_key=os.environ.get("GEMINI_API_KEY", ""),
@@ -408,7 +459,10 @@ class RotaApp(
 
             new_model_size = str(self.config.get("model_size") or "base")
             new_cpu_threads = int(self.config.get("cpu_threads", 0))
-            if self._current_model_size != new_model_size or self._current_cpu_threads != new_cpu_threads:
+            if (
+                self._current_model_size != new_model_size
+                or self._current_cpu_threads != new_cpu_threads
+            ):
                 self._current_model_size = new_model_size
                 self._current_cpu_threads = new_cpu_threads
                 self._load_transcriber_async(new_model_size)
@@ -477,7 +531,6 @@ class RotaApp(
         QTimer.singleShot(8000, self._start_update_check)
 
     def _start_update_check(self):
-        import webbrowser
         from app.version import __version__
         from services.updater import check_for_update
 
@@ -489,6 +542,7 @@ class RotaApp(
 
     def _show_update_toast(self, latest: str, url: str) -> None:
         import webbrowser
+
         self._active_toast = Toast(
             f"Update available: v{latest} — click to download",
             on_click=lambda: webbrowser.open(url),

@@ -1,5 +1,6 @@
-import sqlite3
 import os
+import sqlite3
+import sys
 import threading
 
 """
@@ -20,8 +21,12 @@ class HistoryManager:
 
     def __init__(self, db_path=None):
         if db_path is None:
-            # Save to %APPDATA%/RotaAI/history.db
-            appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+            if sys.platform == "darwin":
+                appdata_dir = os.path.join(
+                    os.path.expanduser("~/Library/Application Support"), "RotaAI"
+                )
+            else:
+                appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
             if not os.path.exists(appdata_dir):
                 os.makedirs(appdata_dir)
             db_path = os.path.join(appdata_dir, "history.db")
@@ -52,21 +57,27 @@ class HistoryManager:
         """Adds a new transcription entry and maintains the 200 entry limit."""
         with self._write_lock:
             cursor = self._conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO history (raw_text, cleaned_text, is_prompt)
                 VALUES (?, ?, ?)
-            """, (raw_text, cleaned_text, is_prompt))
+            """,
+                (raw_text, cleaned_text, is_prompt),
+            )
 
             # Enforce limit of 200 entries
             cursor.execute("SELECT COUNT(*) FROM history")
             count = cursor.fetchone()[0]
             if count > 200:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     DELETE FROM history
                     WHERE id IN (
                         SELECT id FROM history ORDER BY id ASC LIMIT ?
                     )
-                """, (count - 200,))
+                """,
+                    (count - 200,),
+                )
 
             self._conn.commit()
 
@@ -78,12 +89,15 @@ class HistoryManager:
             sanitized = search_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             # SECURITY: Limit search query length to prevent abuse
             sanitized = sanitized[:200]
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, timestamp, raw_text, cleaned_text, is_prompt
                 FROM history
                 WHERE raw_text LIKE ? ESCAPE '\\' OR cleaned_text LIKE ? ESCAPE '\\'
                 ORDER BY id DESC
-            """, (f"%{sanitized}%", f"%{sanitized}%"))
+            """,
+                (f"%{sanitized}%", f"%{sanitized}%"),
+            )
         else:
             cursor.execute("""
                 SELECT id, timestamp, raw_text, cleaned_text, is_prompt

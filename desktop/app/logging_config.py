@@ -35,8 +35,14 @@ def configure_logging():
         except Exception:
             pass
 
-    # Primary: AppData (always writable on Windows)
-    _add_file_handler(os.path.join(os.environ.get("APPDATA", "."), "RotaAI", "rota.log"))
+    # Primary: platform-specific app data directory
+    import sys
+
+    if sys.platform == "darwin":
+        _appdata_dir = os.path.join(os.path.expanduser("~/Library/Application Support"), "RotaAI")
+    else:
+        _appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+    _add_file_handler(os.path.join(_appdata_dir, "rota.log"))
 
     # Secondary: project logs/ dir for easy dev access
     _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

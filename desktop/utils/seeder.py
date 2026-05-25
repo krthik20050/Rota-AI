@@ -4,7 +4,6 @@ import json
 import os
 import random
 import sys
-import time
 import uuid
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
@@ -69,6 +68,7 @@ APP_LIST = [
     ("Outlook", "mail"),
 ]
 
+
 def seed_mock_data(session_store: SessionStore) -> int:
     """
     Idempotent seeder: Checks if the database is empty, and if so, seeds
@@ -86,6 +86,8 @@ def seed_mock_data(session_store: SessionStore) -> int:
     # SECURITY: Don't seed if config already exists (app has been configured)
     if sys.platform == "win32":
         appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+    elif sys.platform == "darwin":
+        appdata_dir = os.path.join(os.path.expanduser("~/Library/Application Support"), "RotaAI")
     else:
         xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
         appdata_dir = os.path.join(xdg_data, "rota-ai")
@@ -95,18 +97,18 @@ def seed_mock_data(session_store: SessionStore) -> int:
 
     count = 0
     now = datetime.now()
-    
+
     # Generate 25 sessions over the past 30 days
     # We will spread them with a higher probability on weekdays to create a natural heatmap.
     timestamps = []
     current_date = now - timedelta(days=30)
-    
+
     # Keep adding days and sessions
     while current_date <= now:
         # 75% chance of a dictation session on a weekday, 20% on weekend
         is_weekend = current_date.weekday() >= 5
         chance = 0.20 if is_weekend else 0.75
-        
+
         if random.random() < chance:
             # 1 to 3 sessions on that day
             num_sessions = random.randint(1, 3)
@@ -116,18 +118,18 @@ def seed_mock_data(session_store: SessionStore) -> int:
                     hour = random.randint(9, 18)
                 else:
                     hour = random.choice([7, 8, 19, 20, 21, 22])
-                
+
                 minute = random.randint(0, 59)
                 second = random.randint(0, 59)
                 session_time = current_date.replace(hour=hour, minute=minute, second=second)
                 if session_time <= now:
                     timestamps.append(session_time)
-        
+
         current_date += timedelta(days=1)
-        
+
     # Sort chronological
     timestamps.sort()
-    
+
     # We only need 25-30, let's limit if too many, or expand if too few
     if len(timestamps) < 25:
         # Force add some more
@@ -142,35 +144,37 @@ def seed_mock_data(session_store: SessionStore) -> int:
         text = sample["text"]
         app_name = sample["app"]
         app_cat = sample["category"]
-        
+
         # Randomize content slightly
         words_list = text.split()
         total_words = len(words_list)
-        
+
         # Calculate scores
         # Clarity depends on filler words. Filler count is random between 0 and 3
         filler_count = random.randint(0, 3)
         filler_ratio = filler_count / max(1, total_words)
-        
-        clarity_score = max(55, min(100, int(round(100 - (filler_ratio * 200) + random.randint(-5, 5)))))
+
+        clarity_score = max(
+            55, min(100, int(round(100 - (filler_ratio * 200) + random.randint(-5, 5))))
+        )
         conciseness_score = random.randint(70, 98)
-        
+
         # WPM: Speaking is typically 120 - 160 WPM
         wpm = random.randint(120, 160)
         recording_seconds = float(total_words / (wpm / 60.0))
-        
+
         started_at = ts.timestamp()
         ended_at = started_at + recording_seconds
-        
+
         # App context
         app_ctx = {"app_name": app_name, "category": app_cat, "tone": "professional"}
-        
+
         # Filler phrases count
         phrases = {}
         for filler in sample["fillers"]:
             if random.random() < 0.7:
                 phrases[filler] = random.randint(1, 2)
-                
+
         # Generate insight
         if clarity_score >= 85:
             summary = "Your speech is exceptionally clear and structured."
@@ -200,11 +204,12 @@ def seed_mock_data(session_store: SessionStore) -> int:
             filler_count=filler_count,
             phrases_json=json.dumps(phrases) if phrases else "",
         )
-        
+
         # Add to DB
         # To bypass CURRENT_TIMESTAMP of sqlite, we will manually insert with custom created_at
         with session_store._write_lock:
             import sqlite3
+
             with sqlite3.connect(session_store.db_path) as conn:
                 conn.execute(
                     """
@@ -212,7 +217,7 @@ def seed_mock_data(session_store: SessionStore) -> int:
                         session_id, started_at, ended_at, recording_seconds,
                         words, wpm, filler_ratio, clarity_score, conciseness_score,
                         insight_summary, insight_suggestion,
-                        audio_path, transcript_text, app_context, backend_used, 
+                        audio_path, transcript_text, app_context, backend_used,
                         filler_count, phrases_json, created_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
@@ -234,10 +239,10 @@ def seed_mock_data(session_store: SessionStore) -> int:
                         record.backend_used,
                         record.filler_count,
                         record.phrases_json,
-                        ts.strftime("%Y-%m-%d %H:%M:%S")
+                        ts.strftime("%Y-%m-%d %H:%M:%S"),
                     ),
                 )
                 conn.commit()
         count += 1
-        
+
     return count

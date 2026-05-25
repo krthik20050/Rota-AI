@@ -1,8 +1,9 @@
 import json
 import os
-import sys
-from utils.log import get_logger
 import re
+import sys
+
+from utils.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -14,6 +15,7 @@ logger = get_logger(__name__)
 
 _IS_LINUX = sys.platform.startswith("linux")
 _IS_WINDOWS = sys.platform == "win32"
+_IS_MACOS = sys.platform == "darwin"
 
 _ENCRYPTED_KEYS = frozenset({"groq_api_key", "gemini_api_key"})
 
@@ -22,7 +24,7 @@ def _encrypt(plaintext: str) -> str | None:
     """Encrypt a string. Returns encrypted blob or None on failure."""
     if not plaintext:
         return None
-    if _IS_LINUX:
+    if _IS_LINUX or _IS_MACOS:
         return _keyring_encrypt(plaintext)
     else:
         return _dpapi_encrypt(plaintext)
@@ -34,7 +36,7 @@ def _decrypt(blob: str) -> str | None:
         return None
     if blob.startswith("dpapi:"):
         return _dpapi_decrypt(blob[6:])
-    if _IS_LINUX:
+    if _IS_LINUX or _IS_MACOS:
         return _keyring_decrypt(blob)
     return blob  # legacy plaintext
 
@@ -42,6 +44,7 @@ def _decrypt(blob: str) -> str | None:
 def _keyring_encrypt(plaintext: str) -> str | None:
     try:
         from plat.linux_secrets import encrypt_secret
+
         return encrypt_secret(plaintext)
     except Exception:
         logger.warning("keyring_encrypt_failed")
@@ -51,6 +54,7 @@ def _keyring_encrypt(plaintext: str) -> str | None:
 def _keyring_decrypt(stored: str) -> str | None:
     try:
         from plat.linux_secrets import decrypt_secret
+
         return decrypt_secret(stored)
     except Exception:
         logger.warning("keyring_decrypt_failed")
@@ -59,14 +63,15 @@ def _keyring_decrypt(stored: str) -> str | None:
 
 def _dpapi_encrypt(plaintext: str) -> str | None:
     """Encrypt a string via DPAPI. Returns base64 blob or None on failure."""
-    if _IS_LINUX or not plaintext:
+    if _IS_LINUX or _IS_MACOS or not plaintext:
         return None
     try:
-        import base64, importlib as _importlib; win32crypt = _importlib.import_module('win32crypt')
-        encrypted = win32crypt.CryptProtectData(
-            plaintext.encode("utf-8"), None, None, None, None, 0
-        )
-        return base64.b64encode(encrypted).decode("ascii")
+        import base64
+        import importlib as _importlib
+
+        win32crypt = _importlib.import_module("win32crypt")
+        encrypted = win32crypt.CryptProtectData(plaintext.encode("utf-8"), None, None, None, 0)
+        return "dpapi:" + base64.b64encode(encrypted).decode("ascii")
     except Exception:
         logger.warning("dpapi_encrypt_failed")
         return None
@@ -74,31 +79,35 @@ def _dpapi_encrypt(plaintext: str) -> str | None:
 
 def _dpapi_decrypt(blob_b64: str) -> str | None:
     """Decrypt a DPAPI base64 blob. Returns plaintext or None on failure."""
-    if _IS_LINUX or not blob_b64:
+    if _IS_LINUX or _IS_MACOS or not blob_b64:
         return None
     try:
-        import base64, importlib as _importlib; win32crypt = _importlib.import_module('win32crypt')
+        import base64
+        import importlib as _importlib
+
+        win32crypt = _importlib.import_module("win32crypt")
         encrypted = base64.b64decode(blob_b64)
-        _, plaintext = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)
+        _, plaintext = win32crypt.CryptUnprotectData(encrypted, None, None, None, None, 0)
         return plaintext.decode("utf-8")
     except Exception:
         logger.warning("dpapi_decrypt_failed")
         return None
 
+
 # SECURITY: Allowed Ollama URL patterns (localhost/private networks only)
 _OLLAMA_URL_ALLOWED_PATTERNS = [
-    re.compile(r'^https?://localhost(:\d+)?(/.*)?$', re.I),
-    re.compile(r'^https?://127\.0\.0\.1(:\d+)?(/.*)?$', re.I),
-    re.compile(r'^https?://10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?(/.*)?$', re.I),
-    re.compile(r'^https?://172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}(:\d+)?(/.*)?$', re.I),
-    re.compile(r'^https?://192\.168\.\d{1,3}\.\d{1,3}(:\d+)?(/.*)?$', re.I),
-    re.compile(r'^https?://\[::1\](:\d+)?(/.*)?$', re.I),
+    re.compile(r"^https?://localhost(:\d+)?(/.*)?$", re.I),
+    re.compile(r"^https?://127\.0\.0\.1(:\d+)?(/.*)?$", re.I),
+    re.compile(r"^https?://10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?(/.*)?$", re.I),
+    re.compile(r"^https?://172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}(:\d+)?(/.*)?$", re.I),
+    re.compile(r"^https?://192\.168\.\d{1,3}\.\d{1,3}(:\d+)?(/.*)?$", re.I),
+    re.compile(r"^https?://\[::1\](:\d+)?(/.*)?$", re.I),
 ]
 # SECURITY: Block these URL patterns (cloud metadata, link-local, etc.)
 _OLLAMA_URL_BLOCKED_PATTERNS = [
-    re.compile(r'^https?://169\.254\.\d{1,3}\.\d{1,3}', re.I),  # AWS/cloud metadata
-    re.compile(r'^https?://metadata\.google\.internal', re.I),   # GCP metadata
-    re.compile(r'^https?://\[fd00', re.I),                        # IPv6 link-local
+    re.compile(r"^https?://169\.254\.\d{1,3}\.\d{1,3}", re.I),  # AWS/cloud metadata
+    re.compile(r"^https?://metadata\.google\.internal", re.I),  # GCP metadata
+    re.compile(r"^https?://\[fd00", re.I),  # IPv6 link-local
 ]
 
 
@@ -125,6 +134,7 @@ class ConfigManager:
     SECURITY: API keys stored in config.json should be encrypted at rest.
     The onboarding wizard writes keys here; they are loaded into memory at runtime.
     """
+
     DEFAULT_CONFIG = {
         "groq_api_key": "",
         "gemini_api_key": "",
@@ -150,7 +160,13 @@ class ConfigManager:
     def __init__(self, config_path=None):
         if config_path is None:
             if _IS_LINUX:
-                config_dir = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "rota-ai")
+                config_dir = os.path.join(
+                    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "rota-ai"
+                )
+            elif _IS_MACOS:
+                config_dir = os.path.join(
+                    os.path.expanduser("~/Library/Application Support"), "RotaAI"
+                )
             else:
                 config_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
             if not os.path.exists(config_dir):
@@ -165,12 +181,14 @@ class ConfigManager:
         """Loads configuration from JSON file."""
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
+                with open(self.config_path, encoding="utf-8") as f:
                     loaded_config = json.load(f)
                     # SECURITY: Validate Ollama URL on load
                     if "ollama_url" in loaded_config:
                         if not _is_ollama_url_allowed(loaded_config["ollama_url"]):
-                            logger.warning("ollama_url_blocked", blocked_url=loaded_config["ollama_url"])
+                            logger.warning(
+                                "ollama_url_blocked", blocked_url=loaded_config["ollama_url"]
+                            )
                             loaded_config["ollama_url"] = self.DEFAULT_CONFIG["ollama_url"]
                     # SECURITY: Decrypt DPAPI-protected keys. The stored value is
                     # either a "dpapi:<blob>" string or a legacy plaintext key.
@@ -201,11 +219,15 @@ class ConfigManager:
             save_config = dict(self.config)
             for key in _ENCRYPTED_KEYS:
                 plaintext = save_config.get(key, "")
-                if plaintext and not plaintext.startswith("dpapi:") and not plaintext.startswith("keyring:"):
+                if (
+                    plaintext
+                    and not plaintext.startswith("dpapi:")
+                    and not plaintext.startswith("keyring:")
+                ):
                     blob = _encrypt(plaintext)
                     if blob:
                         save_config[key] = blob
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(save_config, f, indent=4)
 
             self._handle_startup()
@@ -233,17 +255,37 @@ class ConfigManager:
         Registers/unregisters the application for session startup.
 
         Windows: Uses winreg (HKCU\\...\\Run)
+        macOS:   Uses launchd plist (~/Library/LaunchAgents/)
         Linux:   Uses XDG autostart .desktop file
         """
         if _IS_LINUX:
             self._handle_startup_linux()
+        elif _IS_MACOS:
+            self._handle_startup_macos()
         else:
             self._handle_startup_windows()
+
+    def _handle_startup_macos(self):
+        """Register/unregister via launchd plist."""
+        try:
+            from plat.macos_startup import register_startup, unregister_startup
+
+            if self.config.get("startup_enabled"):
+                exe_path = sys.executable
+                if exe_path and os.path.isfile(exe_path):
+                    register_startup(exe_path)
+                else:
+                    logger.error("startup_invalid_exe_path", path=exe_path)
+            else:
+                unregister_startup()
+        except Exception:
+            logger.exception("Failed to update macOS startup registration")
 
     def _handle_startup_linux(self):
         """Register/unregister via XDG autostart."""
         try:
             from plat.linux_startup import register_startup, unregister_startup
+
             if self.config.get("startup_enabled"):
                 exe_path = sys.executable
                 if exe_path and os.path.isfile(exe_path):
@@ -257,7 +299,9 @@ class ConfigManager:
 
     def _handle_startup_windows(self):
         """Register/unregister via Windows registry (HKCU\\Run)."""
-        import importlib as _importlib; reg = _importlib.import_module('winreg')
+        import importlib as _importlib
+
+        reg = _importlib.import_module("winreg")
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         app_name = "RotaAI"
 
