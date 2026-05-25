@@ -124,10 +124,10 @@ jobs:
             libsecret-1-dev \
             xvfb xdotool wl-clipboard xclip \
             python3-pyatspi \
-            libxcb-xinerama0 libxkbcommon0 libegl1 libgl1-mesa-glx \
+            libxcb-xinerama0 libxkbcommon0 libegl1 libgl1 \
             libfontconfig1 libdbus-1-3 libx11-xcb1 libxcb-glx0 \
             libxcb-keysyms1 libxcb-image0 libxcb-shm0 libxcb-icccm4 \
-            libxcb-sync0 libxcb-xfixes0 libxcb-shape0 libxcb-randr0 \
+            libxcb-sync1 libxcb-xfixes0 libxcb-shape0 libxcb-randr0 \
             libxcb-render-util0
 
       - name: Install Python dependencies
@@ -141,6 +141,7 @@ jobs:
           pip install keyring
           pip install psutil
           pip install python-xlib
+          pip install groq
           pip install pytest
 
       - name: Check Python imports (Linux)
@@ -207,6 +208,7 @@ jobs:
           pip install pyperclip
           pip install pywin32
           pip install psutil
+          pip install groq
           pip install pytest
 
       - name: Check Python imports (Windows)
