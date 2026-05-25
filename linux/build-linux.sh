@@ -44,8 +44,8 @@ pyinstaller \
 
 echo -e "${GREEN}[3/5] Creating AppImage metadata...${NC}"
 
-# .desktop file
-cat > "${APP_DIR}/usr/share/applications/rota-ai.desktop" << 'DESKTOP'
+# .desktop file (must exist in AppDir root for appimagetool)
+cat > "${APP_DIR}/rota-ai.desktop" << 'DESKTOP'
 [Desktop Entry]
 Type=Application
 Name=Rota AI
@@ -56,6 +56,7 @@ Terminal=false
 Categories=Utility;Accessibility;
 Keywords=voice;dictation;accessibility;transcription;
 DESKTOP
+cp "${APP_DIR}/rota-ai.desktop" "${APP_DIR}/usr/share/applications/rota-ai.desktop"
 
 # AppRun script
 cat > "${APP_DIR}/AppRun" << 'APPRUN'

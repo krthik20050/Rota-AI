@@ -46,13 +46,18 @@ if ! brew list portaudio >/dev/null 2>&1; then
 fi
 
 echo -e "${GREEN}[2/5] Preparing Python environment...${NC}"
-if [[ ! -d ".venv" ]]; then
-    python3 -m venv .venv
+if [[ "${CI:-}" == "true" ]]; then
+    # In CI, deps are pre-installed by the workflow — skip venv
+    echo "CI environment: using pre-installed Python environment"
+else
+    if [[ ! -d ".venv" ]]; then
+        python3 -m venv .venv
+    fi
+    source .venv/bin/activate
+    python -m pip install --upgrade pip setuptools wheel
+    pip install -r macos/requirements-macos.txt
+    pip install pyinstaller
 fi
-source .venv/bin/activate
-python -m pip install --upgrade pip setuptools wheel
-pip install -r macos/requirements-macos.txt
-pip install pyinstaller
 
 echo -e "${GREEN}[3/5] Building .app with PyInstaller...${NC}"
 rm -rf build "${DIST_DIR}/RotaAI" "${APP_PATH}" "${ZIP_PATH}"
