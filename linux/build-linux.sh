@@ -99,6 +99,7 @@ else
 fi
 
 echo -e "${GREEN}[5/5] Building AppImage...${NC}"
+mkdir -p "${DIST_DIR}"
 cd "${DIST_DIR}"
 ARCH=$(uname -m) "${APPIMAGETOOL}" "${APP_DIR}" "RotaAI-${ARCH}.AppImage"
 

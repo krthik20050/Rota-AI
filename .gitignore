@@ -71,6 +71,7 @@ diagnostic_trace_results*.json
 
 # PyInstaller spec files — contain absolute local paths
 *.spec
+!rota-ai.spec
 
 # Scratch / working files
 scratch/
