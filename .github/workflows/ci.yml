@@ -299,7 +299,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install PyQt6 structlog python-dotenv pyperclip pynput keyring psutil groq numpy pytest pytest-cov
-          pip install pyobjc-core pyobjc-framework-AppKit pyobjc-framework-ApplicationServices pyobjc-framework-Quartz
+          pip install pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-ApplicationServices pyobjc-framework-Quartz
 
       - name: Check Python imports (macOS)
         run: |
