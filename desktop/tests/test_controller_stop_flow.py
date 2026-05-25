@@ -84,7 +84,7 @@ def test_completed_processing_is_not_dropped_if_thread_cleanup_runs_first(monkey
         get_dashboard_metrics=lambda: {"today": {}, "lifetime": {}, "latest": None},
     )
     app.insights_service = SimpleNamespace(
-        build_insight=lambda _text: SimpleNamespace(
+        build_insight=lambda _text, **kwargs: SimpleNamespace(
             summary="Clear dictation",
             suggestion="",
             clarity_score=90,
