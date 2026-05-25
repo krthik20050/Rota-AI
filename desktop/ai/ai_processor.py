@@ -292,7 +292,7 @@ class AIProcessor:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=8) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
                 candidates = body.get("candidates", [])
                 if candidates:
@@ -466,7 +466,7 @@ class AIProcessor:
                 ],
                 temperature=0.1,
                 max_tokens=2048,
-                timeout=10,
+                timeout=6,
             )
             cleaned = response.choices[0].message.content.strip()
             if cleaned:

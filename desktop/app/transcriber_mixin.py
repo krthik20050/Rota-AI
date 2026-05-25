@@ -72,7 +72,6 @@ class TranscriberMixin:
             return
 
         self.transcriber = transcriber
-        self._transcriber_loading = False
         self._transcriber_error = None
         if actual_model_size != requested_model_size:
             self._current_model_size = actual_model_size

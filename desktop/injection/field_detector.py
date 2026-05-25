@@ -153,7 +153,7 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
         if not hwnd:
             return False
         user32.SetForegroundWindow(hwnd)
-        time.sleep(0.05)
+        time.sleep(0.02)
         return True
     except Exception as e:
         logger.warning("focus_restore_error", error=str(e))
@@ -254,17 +254,17 @@ def focus_text_input(input_info: dict[str, Any]) -> bool:
         parent = user32.GetAncestor(child_hwnd, 2)  # GA_ROOT = 2
         if parent:
             user32.SetForegroundWindow(parent)
-            time.sleep(0.05)
+            time.sleep(0.02)
 
         # Click the center of the text field
         cx = (rect[0] + rect[2]) // 2
         cy = (rect[1] + rect[3]) // 2
         user32.SetCursorPos(cx, cy)
-        time.sleep(0.03)
+        time.sleep(0.01)
         user32.mouse_event(0x0002, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTDOWN
-        time.sleep(0.03)
+        time.sleep(0.01)
         user32.mouse_event(0x0004, 0, 0, 0, 0)  # MOUSEEVENTF_LEFTUP
-        time.sleep(0.06)
+        time.sleep(0.03)
 
         # Verify focus landed on the right window
         focused_hwnd = user32.GetForegroundWindow()

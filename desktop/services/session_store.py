@@ -42,11 +42,15 @@ _MIGRATION_COLUMNS: list[tuple[str, str]] = [
 
 
 class SessionStore:
-    """Stores session analytics + transcript history with per-session context."""
+    """Stores session analytics + transcript history with per-session context.
+    Uses a single persistent connection to avoid per-call open/close overhead.
+    """
 
     def __init__(self, db_path: str = "data/history.db"):
         self.db_path = db_path
         self._write_lock = threading.Lock()
+        # Persistent connection — check_same_thread=False + _write_lock keeps writes safe.
+        self._conn = sqlite3.connect(db_path, check_same_thread=False, timeout=5)
         self._init_db()
 
     # ------------------------------------------------------------------ #
@@ -54,36 +58,35 @@ class SessionStore:
     # ------------------------------------------------------------------ #
 
     def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA synchronous=NORMAL")
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS sessions (
-                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-                    session_id          TEXT UNIQUE NOT NULL,
-                    started_at          REAL NOT NULL,
-                    ended_at            REAL NOT NULL,
-                    recording_seconds   REAL NOT NULL DEFAULT 0.0,
-                    words               INTEGER NOT NULL DEFAULT 0,
-                    wpm                 INTEGER NOT NULL DEFAULT 0,
-                    filler_ratio        REAL NOT NULL DEFAULT 0.0,
-                    clarity_score       INTEGER NOT NULL DEFAULT 0,
-                    conciseness_score   INTEGER NOT NULL DEFAULT 0,
-                    insight_summary     TEXT NOT NULL DEFAULT '',
-                    insight_suggestion  TEXT NOT NULL DEFAULT '',
-                    audio_path          TEXT DEFAULT '',
-                    transcript_text     TEXT DEFAULT '',
-                    app_context         TEXT DEFAULT '',
-                    backend_used        TEXT DEFAULT '',
-                    filler_count        INTEGER DEFAULT 0,
-                    phrases_json        TEXT DEFAULT '',
-                    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-                """
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA synchronous=NORMAL")
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sessions (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id          TEXT UNIQUE NOT NULL,
+                started_at          REAL NOT NULL,
+                ended_at            REAL NOT NULL,
+                recording_seconds   REAL NOT NULL DEFAULT 0.0,
+                words               INTEGER NOT NULL DEFAULT 0,
+                wpm                 INTEGER NOT NULL DEFAULT 0,
+                filler_ratio        REAL NOT NULL DEFAULT 0.0,
+                clarity_score       INTEGER NOT NULL DEFAULT 0,
+                conciseness_score   INTEGER NOT NULL DEFAULT 0,
+                insight_summary     TEXT NOT NULL DEFAULT '',
+                insight_suggestion  TEXT NOT NULL DEFAULT '',
+                audio_path          TEXT DEFAULT '',
+                transcript_text     TEXT DEFAULT '',
+                app_context         TEXT DEFAULT '',
+                backend_used        TEXT DEFAULT '',
+                filler_count        INTEGER DEFAULT 0,
+                phrases_json        TEXT DEFAULT '',
+                created_at          DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-            conn.commit()
-            self._migrate(conn)
+            """
+        )
+        self._conn.commit()
+        self._migrate(self._conn)
 
     def _migrate(self, conn: sqlite3.Connection) -> None:
         """Add any missing columns (idempotent)."""
@@ -101,37 +104,36 @@ class SessionStore:
     def add_session(self, item: SessionRecord) -> None:
         """Original write API — backward-compatible with existing callers."""
         with self._write_lock:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO sessions (
-                        session_id, started_at, ended_at, recording_seconds,
-                        words, wpm, filler_ratio, clarity_score, conciseness_score,
-                        insight_summary, insight_suggestion,
-                        audio_path, transcript_text, app_context, backend_used, filler_count, phrases_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        item.session_id,
-                        item.started_at,
-                        item.ended_at,
-                        item.recording_seconds,
-                        item.words,
-                        item.wpm,
-                        item.filler_ratio,
-                        item.clarity_score,
-                        item.conciseness_score,
-                        item.insight_summary,
-                        item.insight_suggestion,
-                        item.audio_path,
-                        item.transcript_text,
-                        item.app_context,
-                        item.backend_used,
-                        item.filler_count,
-                        item.phrases_json,
-                    ),
-                )
-                conn.commit()
+            self._conn.execute(
+                """
+                INSERT OR REPLACE INTO sessions (
+                    session_id, started_at, ended_at, recording_seconds,
+                    words, wpm, filler_ratio, clarity_score, conciseness_score,
+                    insight_summary, insight_suggestion,
+                    audio_path, transcript_text, app_context, backend_used, filler_count, phrases_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    item.session_id,
+                    item.started_at,
+                    item.ended_at,
+                    item.recording_seconds,
+                    item.words,
+                    item.wpm,
+                    item.filler_ratio,
+                    item.clarity_score,
+                    item.conciseness_score,
+                    item.insight_summary,
+                    item.insight_suggestion,
+                    item.audio_path,
+                    item.transcript_text,
+                    item.app_context,
+                    item.backend_used,
+                    item.filler_count,
+                    item.phrases_json,
+                ),
+            )
+            self._conn.commit()
 
     def save_session(
         self,
@@ -188,23 +190,21 @@ class SessionStore:
         """
         days = max(1, min(int(days), 3650))  # clamp 1 day – 10 years
         with self._write_lock:
-            with sqlite3.connect(self.db_path) as conn:
-                cur = conn.execute(
-                    "DELETE FROM sessions WHERE created_at < datetime('now', ? || ' days')",
-                    (f"-{days}",),
-                )
-                conn.commit()
-                return cur.rowcount
+            cur = self._conn.execute(
+                "DELETE FROM sessions WHERE created_at < datetime('now', ? || ' days')",
+                (f"-{days}",),
+            )
+            self._conn.commit()
+            return cur.rowcount
 
     def delete_session(self, session_id: str) -> bool:
         """Delete session by session_id. Returns True if a row was deleted."""
         with self._write_lock:
-            with sqlite3.connect(self.db_path) as conn:
-                cur = conn.execute(
-                    "DELETE FROM sessions WHERE session_id = ?", (session_id,)
-                )
-                conn.commit()
-                return cur.rowcount > 0
+            cur = self._conn.execute(
+                "DELETE FROM sessions WHERE session_id = ?", (session_id,)
+            )
+            self._conn.commit()
+            return cur.rowcount > 0
 
     # ------------------------------------------------------------------ #
     #  Read operations
@@ -216,42 +216,40 @@ class SessionStore:
 
     def get_history(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Return all sessions newest-first, up to limit."""
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                "SELECT * FROM sessions ORDER BY created_at DESC LIMIT ?", (limit,)
-            )
-            rows = cur.fetchall()
-            return [self._row_to_dict(r, cur) for r in rows]
+        cur = self._conn.execute(
+            "SELECT * FROM sessions ORDER BY created_at DESC LIMIT ?", (limit,)
+        )
+        rows = cur.fetchall()
+        return [self._row_to_dict(r, cur) for r in rows]
 
     def get_last_n(self, n: int) -> List[Dict[str, Any]]:
         """Return the last n sessions (newest-first)."""
         return self.get_history(limit=n)
 
     def get_latest(self) -> Optional[dict]:
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                """
-                SELECT session_id, words, wpm, filler_ratio, clarity_score, conciseness_score,
-                       insight_summary, insight_suggestion, created_at
-                FROM sessions
-                ORDER BY created_at DESC
-                LIMIT 1
-                """
-            )
-            row = cur.fetchone()
-            if row is None:
-                return None
-            return {
-                "session_id": row[0],
-                "words": row[1],
-                "wpm": row[2],
-                "filler_ratio": row[3],
-                "clarity_score": row[4],
-                "conciseness_score": row[5],
-                "insight_summary": row[6],
-                "insight_suggestion": row[7],
-                "created_at": row[8] or datetime.utcnow().isoformat(),
-            }
+        cur = self._conn.execute(
+            """
+            SELECT session_id, words, wpm, filler_ratio, clarity_score, conciseness_score,
+                   insight_summary, insight_suggestion, created_at
+            FROM sessions
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return {
+            "session_id": row[0],
+            "words": row[1],
+            "wpm": row[2],
+            "filler_ratio": row[3],
+            "clarity_score": row[4],
+            "conciseness_score": row[5],
+            "insight_summary": row[6],
+            "insight_suggestion": row[7],
+            "created_at": row[8] or datetime.utcnow().isoformat(),
+        }
 
     def _aggregate(self, today_only: bool) -> dict:
         where = (
@@ -259,16 +257,15 @@ class SessionStore:
             if today_only
             else ""
         )
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                f"""
-                SELECT COALESCE(SUM(words), 0),
-                       COALESCE(SUM(recording_seconds), 0.0),
-                       COUNT(*)
-                FROM sessions {where}
-                """
-            )
-            row = cur.fetchone() or (0, 0.0, 0)
+        cur = self._conn.execute(
+            f"""
+            SELECT COALESCE(SUM(words), 0),
+                   COALESCE(SUM(recording_seconds), 0.0),
+                   COUNT(*)
+            FROM sessions {where}
+            """
+        )
+        row = cur.fetchone() or (0, 0.0, 0)
         words = int(row[0] or 0)
         secs = float(row[1] or 0.0)
         mins = secs / 60.0
@@ -289,30 +286,28 @@ class SessionStore:
     def get_daily_word_counts(self, days: int = 91) -> dict:
         """Returns {YYYY-MM-DD: word_count} for the last N days."""
         days = max(1, min(int(days), 3650))  # validate — prevents SQL injection via f-string
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                """
-                SELECT date(started_at, 'unixepoch', 'localtime') AS day,
-                       COALESCE(SUM(words), 0) AS total
-                FROM sessions
-                WHERE started_at >= strftime('%s', 'now', 'localtime', ? || ' days')
-                GROUP BY day
-                """,
-                (f"-{days}",),
-            )
-            return {row[0]: int(row[1]) for row in cur.fetchall()}
+        cur = self._conn.execute(
+            """
+            SELECT date(started_at, 'unixepoch', 'localtime') AS day,
+                   COALESCE(SUM(words), 0) AS total
+            FROM sessions
+            WHERE started_at >= strftime('%s', 'now', 'localtime', ? || ' days')
+            GROUP BY day
+            """,
+            (f"-{days}",),
+        )
+        return {row[0]: int(row[1]) for row in cur.fetchall()}
 
     def get_streak(self) -> dict:
         """Returns daily_streak and weekly_streak (consecutive days/weeks with ≥1 session)."""
         from datetime import date, timedelta
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                """
-                SELECT DISTINCT date(started_at, 'unixepoch', 'localtime') AS day
-                FROM sessions WHERE words > 0 ORDER BY day DESC
-                """
-            )
-            days_list = [row[0] for row in cur.fetchall()]
+        cur = self._conn.execute(
+            """
+            SELECT DISTINCT date(started_at, 'unixepoch', 'localtime') AS day
+            FROM sessions WHERE words > 0 ORDER BY day DESC
+            """
+        )
+        days_list = [row[0] for row in cur.fetchall()]
 
         today = date.today()
 
@@ -349,16 +344,15 @@ class SessionStore:
             "all":   "",
         }
         where = where_map.get(range_key, "")
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                f"""
-                SELECT COALESCE(SUM(words), 0),
-                       COALESCE(SUM(recording_seconds), 0.0),
-                       COUNT(*)
-                FROM sessions {where}
-                """
-            )
-            row = cur.fetchone() or (0, 0.0, 0)
+        cur = self._conn.execute(
+            f"""
+            SELECT COALESCE(SUM(words), 0),
+                   COALESCE(SUM(recording_seconds), 0.0),
+                   COUNT(*)
+            FROM sessions {where}
+            """
+        )
+        row = cur.fetchone() or (0, 0.0, 0)
         words = int(row[0] or 0)
         secs  = float(row[1] or 0.0)
         mins  = secs / 60.0
@@ -376,27 +370,31 @@ class SessionStore:
     def get_total_phrases(self) -> Dict[str, int]:
         """Aggregate phrase counts across all sessions."""
         total: Dict[str, int] = {}
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                "SELECT phrases_json FROM sessions WHERE phrases_json != '' AND phrases_json IS NOT NULL"
-            )
-            for row in cur.fetchall():
+        cur = self._conn.execute(
+            "SELECT phrases_json FROM sessions WHERE phrases_json != '' AND phrases_json IS NOT NULL"
+        )
+        for row in cur.fetchall():
+            try:
                 phrases = json.loads(row[0])
                 for phrase, count in phrases.items():
                     total[phrase] = total.get(phrase, 0) + count
+            except Exception:
+                pass
         return total
 
     def get_app_usage(self) -> Dict[str, int]:
         """Count sessions per app."""
         usage: Dict[str, int] = {}
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                "SELECT app_context FROM sessions WHERE app_context != '' AND app_context IS NOT NULL"
-            )
-            for row in cur.fetchall():
+        cur = self._conn.execute(
+            "SELECT app_context FROM sessions WHERE app_context != '' AND app_context IS NOT NULL"
+        )
+        for row in cur.fetchall():
+            try:
                 ctx = json.loads(row[0])
                 app_name = ctx.get("app_name", "unknown")
                 usage[app_name] = usage.get(app_name, 0) + 1
+            except Exception:
+                pass
         return usage
 
 

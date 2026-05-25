@@ -15,6 +15,7 @@ class HistoryManager:
     """
     Manages a SQLite database to store transcription history.
     Limits the number of entries to 200.
+    Uses a single persistent connection to avoid per-call open/close overhead.
     """
 
     def __init__(self, db_path=None):
@@ -27,98 +28,93 @@ class HistoryManager:
 
         self.db_path = db_path
         self._write_lock = threading.Lock()
+        # Persistent connection — check_same_thread=False + _write_lock keeps writes safe.
+        # WAL mode allows concurrent reads without locking.
+        self._conn = sqlite3.connect(db_path, check_same_thread=False, timeout=5)
         self._init_db()
 
     def _init_db(self):
         """Initializes the database schema."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL;")
-            cursor.execute("PRAGMA synchronous=NORMAL;")
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    raw_text TEXT,
-                    cleaned_text TEXT,
-                    is_prompt BOOLEAN
-                )
-            """)
-            conn.commit()
+        self._conn.execute("PRAGMA journal_mode=WAL;")
+        self._conn.execute("PRAGMA synchronous=NORMAL;")
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                raw_text TEXT,
+                cleaned_text TEXT,
+                is_prompt BOOLEAN
+            )
+        """)
+        self._conn.commit()
 
     def add_entry(self, raw_text, cleaned_text, is_prompt):
         """Adds a new transcription entry and maintains the 200 entry limit."""
         with self._write_lock:
-            with sqlite3.connect(self.db_path, timeout=5) as conn:
-                cursor = conn.cursor()
+            cursor = self._conn.cursor()
+            cursor.execute("""
+                INSERT INTO history (raw_text, cleaned_text, is_prompt)
+                VALUES (?, ?, ?)
+            """, (raw_text, cleaned_text, is_prompt))
+
+            # Enforce limit of 200 entries
+            cursor.execute("SELECT COUNT(*) FROM history")
+            count = cursor.fetchone()[0]
+            if count > 200:
                 cursor.execute("""
-                    INSERT INTO history (raw_text, cleaned_text, is_prompt)
-                    VALUES (?, ?, ?)
-                """, (raw_text, cleaned_text, is_prompt))
+                    DELETE FROM history
+                    WHERE id IN (
+                        SELECT id FROM history ORDER BY id ASC LIMIT ?
+                    )
+                """, (count - 200,))
 
-                # Enforce limit of 200 entries
-                cursor.execute("SELECT COUNT(*) FROM history")
-                count = cursor.fetchone()[0]
-                if count > 200:
-                    cursor.execute("""
-                        DELETE FROM history
-                        WHERE id IN (
-                            SELECT id FROM history ORDER BY id ASC LIMIT ?
-                        )
-                    """, (count - 200,))
-
-                conn.commit()
+            self._conn.commit()
 
     def get_entries(self, search_query=None):
         """Retrieves history rows newest-first: (id, timestamp, raw_text, cleaned_text, is_prompt)."""
-        with sqlite3.connect(self.db_path, timeout=5) as conn:
-            cursor = conn.cursor()
-            if search_query:
-                # SECURITY: Sanitize search query to prevent LIKE injection
-                # Escape special characters for LIKE patterns
-                sanitized = search_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-                # SECURITY: Limit search query length to prevent abuse
-                sanitized = sanitized[:200]
-                cursor.execute("""
-                    SELECT id, timestamp, raw_text, cleaned_text, is_prompt
-                    FROM history
-                    WHERE raw_text LIKE ? ESCAPE '\\' OR cleaned_text LIKE ? ESCAPE '\\'
-                    ORDER BY id DESC
-                """, (f"%{sanitized}%", f"%{sanitized}%"))
-            else:
-                cursor.execute("""
-                    SELECT id, timestamp, raw_text, cleaned_text, is_prompt
-                    FROM history
-                    ORDER BY id DESC
-                """)
-            return cursor.fetchall()
+        cursor = self._conn.cursor()
+        if search_query:
+            # SECURITY: Sanitize search query to prevent LIKE injection
+            sanitized = search_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            # SECURITY: Limit search query length to prevent abuse
+            sanitized = sanitized[:200]
+            cursor.execute("""
+                SELECT id, timestamp, raw_text, cleaned_text, is_prompt
+                FROM history
+                WHERE raw_text LIKE ? ESCAPE '\\' OR cleaned_text LIKE ? ESCAPE '\\'
+                ORDER BY id DESC
+            """, (f"%{sanitized}%", f"%{sanitized}%"))
+        else:
+            cursor.execute("""
+                SELECT id, timestamp, raw_text, cleaned_text, is_prompt
+                FROM history
+                ORDER BY id DESC
+            """)
+        return cursor.fetchall()
 
     def get_entry(self, entry_id: int):
         """Returns a single entry (id, timestamp, raw_text, cleaned_text, is_prompt) or None."""
-        with sqlite3.connect(self.db_path, timeout=5) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT id, timestamp, raw_text, cleaned_text, is_prompt FROM history WHERE id = ?",
-                (entry_id,),
-            )
-            return cursor.fetchone()
+        cursor = self._conn.cursor()
+        cursor.execute(
+            "SELECT id, timestamp, raw_text, cleaned_text, is_prompt FROM history WHERE id = ?",
+            (entry_id,),
+        )
+        return cursor.fetchone()
 
     def update_entry(self, entry_id: int, cleaned_text: str):
         """Updates the cleaned_text field of an existing entry."""
         with self._write_lock:
-            with sqlite3.connect(self.db_path, timeout=5) as conn:
-                conn.execute(
-                    "UPDATE history SET cleaned_text = ? WHERE id = ?",
-                    (cleaned_text, entry_id),
-                )
-                conn.commit()
+            self._conn.execute(
+                "UPDATE history SET cleaned_text = ? WHERE id = ?",
+                (cleaned_text, entry_id),
+            )
+            self._conn.commit()
 
     def delete_entry(self, entry_id: int):
         """Deletes a single history entry by ID."""
         with self._write_lock:
-            with sqlite3.connect(self.db_path, timeout=5) as conn:
-                conn.execute("DELETE FROM history WHERE id = ?", (entry_id,))
-                conn.commit()
+            self._conn.execute("DELETE FROM history WHERE id = ?", (entry_id,))
+            self._conn.commit()
 
     def prune_old_entries(self, days: int) -> int:
         """
@@ -127,20 +123,18 @@ class HistoryManager:
         """
         days = max(1, min(int(days), 3650))  # clamp 1 day – 10 years
         with self._write_lock:
-            with sqlite3.connect(self.db_path, timeout=5) as conn:
-                cur = conn.execute(
-                    "DELETE FROM history WHERE timestamp < datetime('now', ? || ' days')",
-                    (f"-{days}",),
-                )
-                conn.commit()
-                return cur.rowcount
+            cur = self._conn.execute(
+                "DELETE FROM history WHERE timestamp < datetime('now', ? || ' days')",
+                (f"-{days}",),
+            )
+            self._conn.commit()
+            return cur.rowcount
 
     def clear_all(self):
         """Deletes ALL history entries. Use with caution."""
         with self._write_lock:
-            with sqlite3.connect(self.db_path, timeout=5) as conn:
-                conn.execute("DELETE FROM history")
-                conn.commit()
+            self._conn.execute("DELETE FROM history")
+            self._conn.commit()
 
 
 if __name__ == "__main__":

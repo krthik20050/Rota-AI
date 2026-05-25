@@ -263,13 +263,17 @@ class ConfigManager:
 
         try:
             key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_path, 0, reg.KEY_SET_VALUE)
+        except Exception:
+            logger.exception("Failed to open startup registry key")
+            return
+
+        try:
             if self.config.get("startup_enabled"):
                 exe_path = sys.executable
 
                 # SECURITY: Validate executable path
                 if not exe_path or not os.path.isfile(exe_path):
                     logger.error("startup_invalid_exe_path", path=exe_path)
-                    reg.CloseKey(key)
                     return
 
                 # SECURITY: Block paths in temp directories
@@ -282,7 +286,6 @@ class ConfigManager:
                 for temp_dir in temp_dirs:
                     if temp_dir and exe_lower.startswith(temp_dir.lower()):
                         logger.error("startup_blocked_temp_path", path=exe_path)
-                        reg.CloseKey(key)
                         return
 
                 if "pythonw.exe" in exe_lower or "python.exe" in exe_lower:
@@ -296,6 +299,7 @@ class ConfigManager:
                     reg.DeleteValue(key, app_name)
                 except FileNotFoundError:
                     pass
-            reg.CloseKey(key)
         except Exception:
             logger.exception("Failed to update startup registry value")
+        finally:
+            reg.CloseKey(key)
