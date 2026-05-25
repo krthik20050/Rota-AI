@@ -73,13 +73,29 @@ jobs:
           pip install pyinstaller
 
       - name: Build RotaAI.exe
-        run: pyinstaller rota-ai.spec --clean --noconfirm
+        shell: pwsh
+        run: |
+          cd "$env:GITHUB_WORKSPACE"
+          pyinstaller rota-ai.spec --clean --noconfirm
 
       - name: Install Inno Setup
         shell: pwsh
         run: |
           winget install JRSoftware.InnoSetup --silent --accept-package-agreements --accept-source-agreements
-          Start-Sleep -Seconds 10
+          $deadline = (Get-Date).AddSeconds(120)
+          $candidates = @(
+            "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
+            "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+            "C:\Program Files\Inno Setup 6\ISCC.exe"
+          )
+          while ((Get-Date) -lt $deadline) {
+            foreach ($path in $candidates) {
+              if (Test-Path $path) { Write-Host "Inno Setup ready at $path"; exit 0 }
+            }
+            Start-Sleep -Seconds 5
+          }
+          Write-Error "Inno Setup not found after 120s"
+          exit 1
 
       - name: Build RotaAI-Setup.exe
         shell: pwsh
@@ -191,7 +207,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Rota AI v${{ env.VERSION }}"
+          name: "Rota AI ${{ github.ref_name }}"
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
           files: |

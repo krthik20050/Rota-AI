@@ -24,7 +24,9 @@ mkdir -p "${APP_DIR}/usr/bin" "${APP_DIR}/usr/lib" "${APP_DIR}/usr/share/applica
 
 echo -e "${GREEN}[2/5] Building with PyInstaller...${NC}"
 cd "${REPO_DIR}"
-source "${VENV_DIR}/bin/activate"
+if [ -f "${VENV_DIR}/bin/activate" ]; then
+    source "${VENV_DIR}/bin/activate"
+fi
 export PYTHONPATH="${REPO_DIR}/desktop:${PYTHONPATH:-}"
 
 pyinstaller \
