@@ -10,7 +10,7 @@ Provides:
 
 Required Python packages:
   - pyobjc-framework-ApplicationServices (for AXUIElement)
-  - pyobjc-framework-AppKit (for NSWorkspace)
+  - pyobjc-framework-Cocoa (for NSWorkspace)
 
 Reference: VoiceType macOS backend (Honeybee1023/VoiceType)
 """

@@ -18,7 +18,7 @@ Injection priority:
 
 Required Python packages:
   - pyobjc-framework-ApplicationServices (for AXUIElement)
-  - pyobjc-framework-AppKit (for NSPasteboard)
+  - pyobjc-framework-Cocoa (for NSPasteboard)
   - pynput (for keyboard simulation)
 
 Reference: VoiceType macOS backend (Honeybee1023/VoiceType)

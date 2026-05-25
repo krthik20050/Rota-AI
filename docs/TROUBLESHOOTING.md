@@ -262,7 +262,7 @@ xattr -dr com.apple.quarantine /path/to/RotaAI.app
 pip install pynput
 pip install pyobjc-framework-Quartz
 pip install pyobjc-framework-ApplicationServices
-pip install pyobjc-framework-AppKit
+pip install pyobjc-framework-Cocoa
 ```
 
 ### App works in terminal but not when double-clicked

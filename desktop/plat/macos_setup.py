@@ -196,7 +196,7 @@ def install_pyobjc() -> tuple[bool, str]:
 
     packages = [
         "pyobjc-core>=10.0",
-        "pyobjc-framework-AppKit>=10.0",
+        "pyobjc-framework-Cocoa>=10.0",
         "pyobjc-framework-ApplicationServices>=10.0",
         "pyobjc-framework-Quartz>=10.0",
     ]
