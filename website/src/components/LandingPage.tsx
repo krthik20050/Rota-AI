@@ -330,9 +330,14 @@ const FEATURES = [
   },
 ];
 
-const APPS = [
-  "Gmail", "Slack", "VS Code", "Notion", "Discord",
-  "Obsidian", "Chrome", "Cursor", "Telegram", "Figma",
+const APPS_DATA = [
+  { name: "Gmail",   domain: "gmail.com",               url: "https://gmail.com" },
+  { name: "Slack",   domain: "slack.com",               url: "https://slack.com" },
+  { name: "VS Code", domain: "code.visualstudio.com",   url: "https://code.visualstudio.com" },
+  { name: "Notion",  domain: "notion.so",               url: "https://notion.so" },
+  { name: "Discord", domain: "discord.com",             url: "https://discord.com" },
+  { name: "Obsidian",domain: "obsidian.md",             url: "https://obsidian.md" },
+  { name: "Chrome",  domain: "google.com",              url: "https://www.google.com/chrome" },
 ];
 
 const COMPARE_ROWS = [
@@ -372,6 +377,126 @@ const FAQ_ITEMS = [
   },
 ];
 
+/* ─── Share Button ──────────────────────────────────────────────────────────── */
+
+const SHARE_URL = "https://rotaai.app";
+const SHARE_TEXT = "I've been using Rota AI — free, open source voice dictation that actually works. No subscription, no account. Try it:";
+
+function ShareButton() {
+  const [open, setOpen] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(SHARE_URL);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = () => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      navigator.share({ title: "Rota AI", text: SHARE_TEXT, url: SHARE_URL }).catch(() => {});
+    } else {
+      setOpen((v) => !v);
+    }
+  };
+
+  const platforms = [
+    {
+      label: "X / Twitter",
+      icon: <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
+      href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(SHARE_TEXT)}&url=${encodeURIComponent(SHARE_URL)}`,
+    },
+    {
+      label: "LinkedIn",
+      icon: <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
+      href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(SHARE_URL)}`,
+    },
+    {
+      label: "Reddit",
+      icon: <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>,
+      href: `https://www.reddit.com/submit?url=${encodeURIComponent(SHARE_URL)}&title=${encodeURIComponent("Rota AI: free open source voice dictation for Windows, Mac and Linux")}`,
+    },
+    {
+      label: "WhatsApp",
+      icon: <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>,
+      href: `https://wa.me/?text=${encodeURIComponent(SHARE_TEXT + " " + SHARE_URL)}`,
+    },
+    {
+      label: "Instagram (copy link)",
+      icon: <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>,
+      href: null,
+    },
+  ];
+
+  return (
+    <div ref={ref} className="relative inline-block mt-8">
+      <button
+        onClick={handleShare}
+        className="flex items-center gap-2.5 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-[#fafafa] rounded-sm transition-all hover:bg-white/10"
+        style={{ border: "1px solid rgba(255,255,255,0.12)" }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+          <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
+        </svg>
+        Share Rota AI
+        <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 bottom-full mb-2 w-56 rounded-sm overflow-hidden z-50"
+          style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "0 16px 40px rgba(0,0,0,0.8)" }}
+        >
+          {platforms.map((p) =>
+            p.href ? (
+              <a
+                key={p.label}
+                href={p.href}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 px-4 py-3 text-xs text-[#a1a1aa] hover:text-white hover:bg-white/[.06] transition-colors"
+                onClick={() => setOpen(false)}
+              >
+                {p.icon}
+                {p.label}
+              </a>
+            ) : (
+              <button
+                key={p.label}
+                onClick={() => { copyLink(); setOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-xs text-[#a1a1aa] hover:text-white hover:bg-white/[.06] transition-colors"
+                style={{ background: "none", border: "none", cursor: "pointer", font: "inherit" }}
+              >
+                {p.icon}
+                {copied ? "Link copied!" : p.label}
+              </button>
+            )
+          )}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <button
+              onClick={() => { copyLink(); setOpen(false); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs text-[#a1a1aa] hover:text-white hover:bg-white/[.06] transition-colors"
+              style={{ background: "none", border: "none", cursor: "pointer", font: "inherit" }}
+            >
+              <ExternalLink className="w-4 h-4" />
+              {copied ? "Copied!" : "Copy link"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Nav ───────────────────────────────────────────────────────────────────── */
 
 function Nav({ onDownloadClick }: { onDownloadClick: () => void }) {
@@ -384,23 +509,15 @@ function Nav({ onDownloadClick }: { onDownloadClick: () => void }) {
 
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-10 h-14 transition-colors duration-200"
+      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-10 h-18 transition-colors duration-200"
       style={{
         borderBottom: `1px solid ${scrolled ? "rgba(255,255,255,0.06)" : "transparent"}`,
         background: scrolled ? "rgba(9,9,11,0.92)" : "transparent",
         backdropFilter: scrolled ? "blur(16px)" : "none",
       }}
     >
-      <Link href="/" className="flex items-center gap-2.5">
-        <div
-          className="w-6 h-6 flex items-center justify-center"
-          style={{ background: "#e4f222", borderRadius: 2 }}
-        >
-          <Mic className="w-3 h-3 text-black" />
-        </div>
-        <span className="text-sm font-semibold tracking-[0.12em] uppercase text-[#fafafa]">
-          Rota AI
-        </span>
+      <Link href="/" className="flex items-center">
+        <img src="/logo.png" alt="Rota AI" className="h-11 sm:h-14 w-auto" />
       </Link>
 
       <div className="hidden sm:flex items-center gap-8 text-xs tracking-[0.18em] uppercase text-[#71717a]">
@@ -642,8 +759,8 @@ export function LandingPage() {
           </FadeIn>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/[.04]">
             {FEATURES.map((feat, i) => (
-              <FadeIn key={i} delay={0.05 * i}>
-                <div className={`p-8 bg-[#09090b] ${feat.large ? "md:col-span-2 lg:col-span-1" : ""}`}>
+              <FadeIn key={i} delay={0.05 * i} className="h-full">
+                <div className={`p-8 bg-[#09090b] h-full ${feat.large ? "md:col-span-2 lg:col-span-1" : ""}`}>
                   <div
                     className="w-10 h-10 flex items-center justify-center mb-5"
                     style={{ background: "rgba(228,242,34,0.06)", borderRadius: 2 }}
@@ -668,17 +785,56 @@ export function LandingPage() {
           <FadeIn>
             <SectionLabel n="03" title="Works everywhere" />
           </FadeIn>
+          <FadeIn className="mb-14">
+            <h2
+              className="font-display uppercase leading-[0.92] tracking-[0.02em]"
+              style={{ fontSize: "clamp(36px, 5.5vw, 72px)", color: "#fafafa" }}
+            >
+              Any app.
+              <br />
+              <span style={{ color: "#e4f222" }}>Any text field.</span>
+            </h2>
+          </FadeIn>
           <FadeIn>
-            <div className="flex flex-wrap gap-2 mb-10">
-              {APPS.map((app) => (
-                <span
-                  key={app}
-                  className="px-4 py-2 text-xs uppercase tracking-[0.15em] text-[#71717a] border border-white/[.06] rounded-sm"
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+              {APPS_DATA.map((app) => (
+                <a
+                  key={app.name}
+                  href={app.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col items-center gap-3 p-6 border border-white/[.06] rounded-sm transition-all hover:border-white/20 hover:bg-white/[.02]"
                 >
-                  {app}
-                </span>
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${app.domain}&sz=64`}
+                    alt={app.name}
+                    className="w-10 h-10 rounded-sm"
+                  />
+                  <span className="text-xs uppercase tracking-[0.15em] text-[#71717a] group-hover:text-[#a1a1aa] transition-colors">
+                    {app.name}
+                  </span>
+                </a>
               ))}
             </div>
+            {/* Rota AI — center, bottom */}
+            <div className="flex justify-center mt-6">
+              <div
+                className="flex items-center gap-3 px-8 py-4 rounded-sm"
+                style={{
+                  border: "1px solid rgba(228,242,34,0.25)",
+                  background: "rgba(228,242,34,0.04)",
+                }}
+              >
+                <div className="w-9 h-9 bg-[#e4f222] flex items-center justify-center rounded-sm">
+                  <Mic size={18} className="text-black" />
+                </div>
+                <span className="text-sm font-semibold tracking-[0.15em] uppercase text-[#fafafa]">Rota AI</span>
+                <span className="text-xs text-[#71717a] tracking-wider">injects here</span>
+              </div>
+            </div>
+            <p className="text-center text-[11px] text-[#50545a] mt-4 uppercase tracking-[0.2em]">
+              + Cursor, Figma, Telegram, and every other text field
+            </p>
           </FadeIn>
         </div>
       </section>
@@ -784,67 +940,8 @@ export function LandingPage() {
               Download Rota AI
             </button>
 
-            {/* Share row */}
-            <div className="flex items-center gap-4 mt-8">
-              <span className="text-[10px] uppercase tracking-[0.2em] text-[#52525b] font-bold">Share</span>
-              <div className="flex items-center gap-2">
-                {/* Twitter / X */}
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("I've been using Rota AI. Free, open source voice dictation that actually works. No subscription, no account. Try it:")}&url=${encodeURIComponent("https://website-omega-lemon-57.vercel.app")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  data-umami-event="share-twitter"
-                  className="flex items-center justify-center w-8 h-8 rounded-sm transition-all hover:bg-white/10"
-                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-                  title="Share on X / Twitter"
-                >
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#71717a] hover:fill-white" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                </a>
-                {/* LinkedIn */}
-                <a
-                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent("https://website-omega-lemon-57.vercel.app")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  data-umami-event="share-linkedin"
-                  className="flex items-center justify-center w-8 h-8 rounded-sm transition-all hover:bg-white/10"
-                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-                  title="Share on LinkedIn"
-                >
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#71717a] hover:fill-white" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                  </svg>
-                </a>
-                {/* Reddit */}
-                <a
-                  href={`https://www.reddit.com/submit?url=${encodeURIComponent("https://website-omega-lemon-57.vercel.app")}&title=${encodeURIComponent("Rota AI: free open source Wispr Flow alternative for Windows, Mac, and Linux")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  data-umami-event="share-reddit"
-                  className="flex items-center justify-center w-8 h-8 rounded-sm transition-all hover:bg-white/10"
-                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-                  title="Share on Reddit"
-                >
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#71717a] hover:fill-white" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/>
-                  </svg>
-                </a>
-                {/* Copy link */}
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText("https://website-omega-lemon-57.vercel.app");
-                  }}
-                  data-umami-event="share-copy-link"
-                  className="flex items-center gap-1.5 px-3 h-8 rounded-sm text-[10px] uppercase tracking-[0.15em] font-bold text-[#71717a] hover:text-white transition-all hover:bg-white/10"
-                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-                  title="Copy link"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Copy link
-                </button>
-              </div>
-            </div>
+            {/* Share */}
+            <ShareButton />
           </FadeIn>
         </div>
       </section>
