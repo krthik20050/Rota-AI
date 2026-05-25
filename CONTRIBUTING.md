@@ -10,6 +10,24 @@ cd Rota-AI
 run.bat
 ```
 
+### macOS
+
+```bash
+git clone https://github.com/krthik20050/Rota-AI.git
+cd Rota-AI
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python3 desktop/app/main.py
+```
+
+**macOS permissions required:**
+- **Microphone** — System Settings → Privacy & Security → Microphone → add Terminal
+- **Accessibility** — System Settings → Privacy & Security → Accessibility → add Terminal
+- **Input Monitoring** — System Settings → Privacy & Security → Input Monitoring → add Terminal
+
+Restart Terminal after granting permissions.
+
 ### Linux (Ubuntu/Debian/Fedora/Arch)
 
 ```bash

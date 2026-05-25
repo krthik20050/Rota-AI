@@ -12,9 +12,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── Security: Secrets Scan (runs before anything else) ──────────────────────
+  secrets-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (full history for secret scanning)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ── Lint & Syntax Check (fast, runs first) ──────────────────────────────────
   lint:
     runs-on: ubuntu-24.04
+    needs: secrets-scan
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,6 +38,31 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+
+      - name: Install lint + security tools
+        run: pip install ruff bandit[toml] pip-audit
+
+      - name: Ruff lint
+        run: ruff check desktop/
+
+      - name: Bandit security scan
+        run: |
+          bandit -r desktop/ \
+            --exclude desktop/tests \
+            -ll \
+            --format txt \
+            -o bandit-report.txt || true
+          # Fail on HIGH severity issues
+          bandit -r desktop/ \
+            --exclude desktop/tests \
+            -lll \
+            --format txt
+        # -ll = medium+, -lll = high only (hard fail)
+
+      - name: Dependency CVE audit
+        run: |
+          pip install -r requirements.txt --quiet
+          pip-audit --requirement requirements.txt --strict
 
       - name: Check Python syntax (all files)
         run: |
@@ -143,7 +183,7 @@ jobs:
           pip install python-xlib
           pip install groq
           pip install numpy
-          pip install pytest
+          pip install pytest pytest-cov
 
       - name: Check Python imports (Linux)
         run: |
@@ -174,12 +214,17 @@ jobs:
           print('All imports successful on Linux!')
           "
 
-      - name: Run unit tests
+      - name: Run unit tests with coverage
         run: |
           cd desktop
           export PYTHONPATH="${PWD}:$PYTHONPATH"
           export QT_QPA_PLATFORM=offscreen
-          python -m pytest tests/ -v --tb=short -x 2>&1 | head -80
+          python -m pytest tests/ -v --tb=short -x \
+            --cov=. \
+            --cov-omit="tests/*,*/__pycache__/*" \
+            --cov-report=term-missing \
+            --cov-fail-under=50 \
+            2>&1 | head -120
 
   # ── Windows CI ──────────────────────────────────────────────────────────────
   windows-ci:
@@ -226,3 +271,66 @@ jobs:
           set PYTHONPATH=%cd%;%PYTHONPATH%
           set QT_QPA_PLATFORM=offscreen
           python -m pytest tests\ -v --tb=short -x 2>&1
+
+  # ── macOS CI ────────────────────────────────────────────────────────────────
+  macos-ci:
+    runs-on: macos-14
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          brew update
+          brew install portaudio
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install PyQt6 structlog python-dotenv pyperclip pynput keyring psutil groq numpy pytest pytest-cov
+          pip install pyobjc-core pyobjc-framework-AppKit pyobjc-framework-ApplicationServices pyobjc-framework-Quartz
+
+      - name: Check Python imports (macOS)
+        run: |
+          cd desktop
+          export QT_QPA_PLATFORM=offscreen
+          python - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, ".")
+          os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
+          from plat import get_hotkey_handler, get_injector, get_window_detector
+          HotkeyHandler = get_hotkey_handler()
+          TextInjector = get_injector()
+          window = get_window_detector()
+          print(f"HotkeyHandler: {HotkeyHandler.__name__}")
+          print(f"TextInjector: {TextInjector.__name__}")
+          print(f"Window detector: {window.__name__}")
+          from plat import macos_hotkey, macos_injector, macos_setup, macos_startup, macos_window
+          print("macOS platform imports: OK")
+          from PyQt6.QtWidgets import QApplication
+          print("PyQt6: OK")
+          from data.config import ConfigManager
+          print("ConfigManager: OK")
+          from data.snippets import SnippetsManager
+          print("SnippetsManager: OK")
+          PY
+
+      - name: Run unit tests
+        run: |
+          cd desktop
+          export PYTHONPATH="${PWD}:$PYTHONPATH"
+          export QT_QPA_PLATFORM=offscreen
+          python -m pytest tests/ -v --tb=short -x

@@ -108,7 +108,7 @@ cd Rota-AI
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python main.py
+python3 desktop/app/main.py
 ```
 
 On first run, Rota will prompt you to grant system permissions. Three are required:

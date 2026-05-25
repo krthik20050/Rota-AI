@@ -188,3 +188,110 @@ run.bat
 ```powershell
 pip install pywin32
 ```
+
+## macOS
+
+### "Accessibility permission required" / Hotkey doesn't work
+
+**Symptom:** Rota starts but pressing the hotkey does nothing, or shows a permission error.
+
+**Cause:** macOS requires Accessibility and Input Monitoring permissions for global hotkey capture.
+
+**Fix:**
+
+```
+1. Open System Settings → Privacy & Security → Accessibility
+2. Click the lock icon to make changes
+3. Add Terminal.app (or your terminal emulator like iTerm2)
+4. If running from an IDE (VS Code, Cursor), add that app instead/also
+5. Restart the terminal/IDE after granting permission
+6. Also grant Input Monitoring permission in:
+   System Settings → Privacy & Security → Input Monitoring
+```
+
+### "This app can't be opened" / Gatekeeper warning
+
+**Symptom:** macOS blocks the app from opening.
+
+**Fix:**
+
+```bash
+# Remove quarantine attribute
+xattr -dr com.apple.quarantine /path/to/RotaAI.app
+
+# Or allow in System Settings → Privacy & Security → Security
+# Click "Open Anyway" after the first blocked attempt
+```
+
+### Text injection doesn't work
+
+**Symptom:** Transcription works but text doesn't appear in the target app.
+
+**Cause:** macOS Accessibility permission is required for text injection.
+
+**Fix:**
+
+```
+1. Open System Settings → Privacy & Security → Accessibility
+2. Add Terminal.app (or your IDE)
+3. Restart the terminal
+4. If using AppleScript injection (default), also grant Automation permission
+   when prompted
+```
+
+### App crashes on startup with "Operation not permitted"
+
+**Symptom:** Crash on macOS 14+ with TCC (Transparency, Consent, and Control) errors.
+
+**Cause:** macOS TCC requires explicit permission grants.
+
+**Fix:**
+
+```
+1. System Settings → Privacy & Security → Accessibility → Add your app/terminal
+2. System Settings → Privacy & Security → Input Monitoring → Add your app/terminal
+3. System Settings → Privacy & Security → Automation → Allow AppleScript
+4. Restart the app after granting all permissions
+```
+
+### "No module named 'pynput'" or "No module named 'Quartz'"
+
+**Fix:**
+
+```bash
+pip install pynput
+pip install pyobjc-framework-Quartz
+pip install pyobjc-framework-ApplicationServices
+pip install pyobjc-framework-AppKit
+```
+
+### App works in terminal but not when double-clicked
+
+**Symptom:** App runs from terminal but crashes when opening `.app` bundle.
+
+**Cause:** The `.app` bundle doesn't inherit your shell environment.
+
+**Fix:**
+
+```bash
+# Run from terminal to see the actual error:
+/path/to/RotaAI.app/Contents/MacOS/RotaAI
+
+# Or build in debug mode:
+pyinstaller rota-ai.spec --clean --noconfirm --windowed
+```
+
+### Audio recording doesn't work
+
+**Symptom:** No audio captured when speaking.
+
+**Fix:**
+
+```
+1. System Settings → Privacy & Security → Microphone
+2. Add Terminal.app (or your IDE)
+3. Restart the terminal
+
+# Check if microphone is detected:
+python3 -c "import sounddevice; print(sounddevice.query_devices())"
+```
