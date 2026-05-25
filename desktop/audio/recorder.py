@@ -75,7 +75,7 @@ class AudioRecorder(QObject):
         """Enable silence-based auto-stop. seconds=0 disables it."""
         self._auto_stop_s = max(0.0, seconds)
 
-    def _audio_callback(self, indata, frames, time, status):
+    def _audio_callback(self, indata, frames, _callback_time, status):
         """Callback function to receive audio data from the stream."""
         if status:
             logger.warning("Audio callback status: %s", status)
@@ -126,11 +126,11 @@ class AudioRecorder(QObject):
             if err:
                 raise RuntimeError(
                     f"Audio input backend unavailable: {err}. "
-                    "Check that a microphone is connected and the Windows Audio service is running."
+                    "Check that a microphone is connected and the audio service is running."
                 )
             raise RuntimeError(
                 "Audio input is still initializing. Wait a moment and try again. "
-                "If this persists, restart the app or check the Windows Audio service."
+                "If this persists, restart the app or check your audio service."
             )
 
         # Reset silence-detection state for each new recording

@@ -26,6 +26,26 @@ echo "          Linux Launcher"
 echo "============================================"
 echo ""
 
+# --- 0. Check 'input' group membership (required for evdev hotkey access) ---
+if ! groups | grep -qw "input"; then
+    # User is not in 'input' group at all
+    echo -e "${RED}[ERROR] Your user is not in the 'input' group.${NC}"
+    echo ""
+    echo "  Rota AI needs read access to /dev/input/event* to detect hotkeys."
+    echo "  Fix:"
+    echo "    sudo usermod -aG input \$USER"
+    echo "    then log out and back in."
+    echo ""
+    echo "  If you just ran setup-linux.sh, the group was added but your"
+    echo "  current session doesn't see it yet. Two options:"
+    echo "    1. Log out and log back in (permanent fix)."
+    echo "    2. Run this instead for the current session only:"
+    echo "       newgrp input"
+    echo ""
+    echo "  After 'newgrp input', re-run this script in the new shell."
+    exit 1
+fi
+
 # --- 1. Check Python ---
 PY=""
 if command -v python3 &>/dev/null; then
@@ -52,7 +72,7 @@ if [ -f "${REQ_FILE}" ]; then
     if ! pip install -r "${REQ_FILE}" --disable-pip-version-check 2>&1; then
         echo -e "${RED}  [ERROR] Dependency installation failed.${NC}"
         echo "  Try manually: pip install -r ${REQ_FILE}"
-        echo "  If system packages are missing, run: bash "${SCRIPT_DIR}/setup-linux.sh""
+        echo "  If system packages are missing, run: bash ${SCRIPT_DIR}/setup-linux.sh"
         exit 1
     fi
     echo -e "${GREEN}  Dependencies installed.${NC}"

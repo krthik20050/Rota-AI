@@ -618,29 +618,43 @@ def _start_hotkey_capture(dialog):
     dialog._hotkey_status.setText("Press your desired key combination now")
     dialog._hotkey_status.setObjectName("StatusOk")
 
-    # Capture in a background thread so UI stays responsive
+    # Capture in a background thread so UI stays responsive.
+    # CRITICAL: Qt widgets are NOT thread-safe. Never touch them from here.
+    # All widget mutations are posted back to the main thread via QTimer.singleShot.
     def _capture():
+        result = None
+        error_msg = ""
         try:
             from plat import get_hotkey_handler
             HotkeyHandlerClass = get_hotkey_handler()
             result = HotkeyHandlerClass.capture_hotkey(timeout=8.0)
-            # Update UI on main thread
-            from PyQt6.QtCore import QTimer
-            if result:
-                dialog._config.set("hotkey", result)
-                dialog._hotkey_pill.setText(_hotkey_display_name(result))
-                dialog._hotkey_status.setText(f"Set to: {_hotkey_display_name(result)}")
-                dialog._hotkey_status.setObjectName("StatusOk")
-            else:
-                dialog._hotkey_status.setText("Cancelled. Try again or use Settings to change.")
-                dialog._hotkey_status.setObjectName("FieldHint")
-        except Exception as e:
-            dialog._hotkey_status.setText(f"Error: {e}")
-            dialog._hotkey_status.setObjectName("StatusError")
-        finally:
-            dialog._hotkey_record_btn.setEnabled(True)
-            dialog._hotkey_record_btn.setText("🎤 Record Hotkey")
-            dialog._hotkey_cancel_btn.setVisible(False)
+        except Exception as exc:
+            error_msg = str(exc)
+
+        def _apply_result():
+            # Guard: dialog may have been closed while we were waiting.
+            if getattr(dialog, "_closing", False):
+                return
+            try:
+                if error_msg:
+                    dialog._hotkey_status.setText(f"Error: {error_msg}")
+                    dialog._hotkey_status.setObjectName("StatusError")
+                elif result:
+                    dialog._config.set("hotkey", result)
+                    dialog._hotkey_pill.setText(_hotkey_display_name(result))
+                    dialog._hotkey_status.setText(f"Set to: {_hotkey_display_name(result)}")
+                    dialog._hotkey_status.setObjectName("StatusOk")
+                else:
+                    dialog._hotkey_status.setText("Cancelled. Try again or use Settings to change.")
+                    dialog._hotkey_status.setObjectName("FieldHint")
+                dialog._hotkey_record_btn.setEnabled(True)
+                dialog._hotkey_record_btn.setText("🎤 Record Hotkey")
+                dialog._hotkey_cancel_btn.setVisible(False)
+            except RuntimeError:
+                pass  # widget already destroyed (dialog closed mid-capture)
+
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(0, _apply_result)
 
     t = threading.Thread(target=_capture, daemon=True)
     t.start()

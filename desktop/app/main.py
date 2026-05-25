@@ -43,6 +43,28 @@ from app.controller import (
 )
 
 
+def _show_crash_dialog(title: str, exc_type, exc_value, tb_str: str) -> None:
+    """Show a visible error dialog so users can report the exact error."""
+    try:
+        from PyQt6.QtWidgets import QApplication, QMessageBox
+        app = QApplication.instance()
+        if app is None:
+            return
+        msg = QMessageBox()
+        msg.setWindowTitle(title)
+        msg.setIcon(QMessageBox.Icon.Critical)
+        msg.setText(f"<b>{exc_type.__name__}:</b> {exc_value}")
+        msg.setInformativeText(
+            "Rota encountered an unexpected error.\n\n"
+            "Please copy the details below and report this at:\n"
+            "github.com/ruvnet/rota-ai/issues"
+        )
+        msg.setDetailedText(tb_str)
+        msg.exec()
+    except Exception:
+        pass  # dialog failed — stderr print below is the fallback
+
+
 def _excepthook(exc_type, exc_value, exc_tb):
     """Catch any unhandled exception on the main thread — log it, don't silently die."""
     if issubclass(exc_type, KeyboardInterrupt):
@@ -53,6 +75,7 @@ def _excepthook(exc_type, exc_value, exc_tb):
         logger.error("unhandled_main_thread_exception type=%s\n%s", exc_type.__name__, tb_str)
     except Exception:
         print(f"UNHANDLED EXCEPTION: {exc_type.__name__}: {exc_value}\n{tb_str}", file=sys.stderr)
+    _show_crash_dialog("Rota — Unexpected Error", exc_type, exc_value, tb_str)
 
 
 def _thread_excepthook(args):
@@ -66,6 +89,12 @@ def _thread_excepthook(args):
                      thread_name, args.exc_type.__name__, tb_str)
     except Exception:
         print(f"THREAD CRASH: {args.exc_type.__name__}: {args.exc_value}\n{tb_str}", file=sys.stderr)
+    _show_crash_dialog(
+        f"Rota — Thread Crash ({args.thread.name if args.thread else 'unknown'})",
+        args.exc_type,
+        args.exc_value,
+        tb_str,
+    )
 
 
 sys.excepthook = _excepthook

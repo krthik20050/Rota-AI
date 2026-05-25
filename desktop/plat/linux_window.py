@@ -201,9 +201,25 @@ def scan_for_text_inputs(window_id: int = 0) -> list[dict[str, Any]]:
 
     try:
         desktop = pyatspi.Registry.getDesktop(0)
+        # Prefer the active application; fall back to scanning all apps
+        active_apps = []
+        other_apps = []
         for app in desktop:
             try:
+                if app.getState().contains(pyatspi.STATE_ACTIVE):
+                    active_apps.append(app)
+                else:
+                    other_apps.append(app)
+            except Exception:
+                other_apps.append(app)
+
+        scan_order = active_apps + other_apps
+        for app in scan_order:
+            try:
                 _scan_children(app, TEXT_INPUT_ROLES, results, depth=0, max_depth=10)
+                # Stop after finding inputs in the active app
+                if active_apps and app in active_apps and results:
+                    break
             except Exception:
                 continue
     except Exception as e:
@@ -230,9 +246,10 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
     On Linux we use wmctrl/xdotool to activate the window.
     """
     try:
+        import shutil
         import subprocess
         window_id = field_info.get("window_id") if field_info else None
-        if window_id:
+        if window_id and shutil.which("xdotool"):
             subprocess.run(
                 ["xdotool", "windowactivate", str(window_id)],
                 timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -268,37 +285,59 @@ def get_active_app() -> AppContext:
 # Internal: AT-SPI implementations
 # ---------------------------------------------------------------------------
 
+def _find_focused_element(node, depth: int = 0, max_depth: int = 12):
+    """Recursively find the first AT-SPI node with STATE_FOCUSED."""
+    if depth > max_depth:
+        return None
+    try:
+        if node.getState().contains(pyatspi.STATE_FOCUSED):
+            return node
+    except Exception:
+        return None
+    try:
+        for i in range(node.childCount):
+            try:
+                child = node.getChildAtIndex(i)
+                found = _find_focused_element(child, depth + 1, max_depth)
+                if found is not None:
+                    return found
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return None
+
+
 def _fill_via_atspi(result: dict[str, Any]) -> None:
-    """Fill result dict using AT-SPI accessibility queries."""
+    """Fill result dict using AT-SPI accessibility queries (recursive search)."""
     desktop = pyatspi.Registry.getDesktop(0)
     for app in desktop:
         try:
             app_name = app.name or ""
-            # Check if this app has the focused element
-            for child in app:
-                try:
-                    state = child.getState()
-                    if state.contains(pyatspi.STATE_FOCUSED):
-                        result["process_name"] = _process_name_from_atspi(app)
-                        result["window_title"] = app_name
-                        result["focused_class"] = child.getRoleName() or ""
+            focused = _find_focused_element(app)
+            if focused is None:
+                continue
 
-                        # Determine if it's a text field
-                        role = child.getRoleName() or ""
-                        text_roles = {"text", "entry", "text box", "text area", "terminal"}
-                        result["is_text_field"] = role.lower() in text_roles
+            result["process_name"] = _process_name_from_atspi(app)
+            result["window_title"] = app_name
+            result["focused_class"] = focused.getRoleName() or ""
 
-                        # Try to get PID
-                        try:
-                            pid = app.get_process_id()
-                            if pid and pid > 0:
-                                result["pid"] = pid
-                        except Exception:
-                            pass
+            role = (focused.getRoleName() or "").lower()
+            text_roles = {"text", "entry", "text box", "text area", "terminal"}
+            try:
+                is_editable = focused.getState().contains(pyatspi.STATE_EDITABLE)
+            except Exception:
+                is_editable = False
+            result["is_text_field"] = role in text_roles or is_editable
 
-                        return
-                except Exception:
-                    continue
+            try:
+                pid = app.get_process_id()
+                if pid and pid > 0:
+                    result["pid"] = pid
+            except Exception:
+                pass
+
+            return
         except Exception:
             continue
 
@@ -352,7 +391,11 @@ def _scan_children(node, text_roles: set, results: list, depth: int, max_depth: 
 
     try:
         role = (node.getRoleName() or "").lower()
-        if role in text_roles:
+        try:
+            is_editable = node.getState().contains(pyatspi.STATE_EDITABLE)
+        except Exception:
+            is_editable = False
+        if role in text_roles or is_editable:
             try:
                 extents = node.queryComponent().getExtents(pyatspi.WINDOW_COORDS)
                 if extents:

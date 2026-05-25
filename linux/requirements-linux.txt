@@ -17,7 +17,7 @@ faster-whisper>=1.0.0,<2.0.0
 groq>=1.2.0,<2.0.0
 pydub>=0.25.1,<1.0.0
 python-dotenv>=1.0.0,<2.0.0
-audioop-lts>=0.2.0
+audioop-lts>=0.2.0; python_version >= "3.13"
 
 # Clipboard access (Linux: needs wl-clipboard or xclip system packages)
 pyperclip>=1.8.2,<2.0.0

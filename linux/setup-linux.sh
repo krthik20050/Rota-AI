@@ -132,9 +132,11 @@ echo ""
 echo -e "${GREEN}[2/6] Configuring user groups...${NC}"
 
 # 'input' group -- needed for evdev keyboard access (no root required)
+_NEEDS_RELOGIN=false
 if ! groups | grep -q '\binput\b'; then
     sudo usermod -aG input "$USER"
-    echo -e "${YELLOW}  Added '$USER' to 'input' group. Log out and back in for this to take effect.${NC}"
+    _NEEDS_RELOGIN=true
+    echo -e "${YELLOW}  Added '$USER' to 'input' group.${NC}"
 else
     echo "  User already in 'input' group."
 fi
@@ -258,3 +260,24 @@ print(f'  plat.HotkeyHandler: {HotkeyHandler.__name__}')
 print(f'  plat.TextInjector: {TextInjector.__name__}')
 " 2>&1
 
+# ============================================================================
+# FINAL: Relogin warning (shown last so it isn't buried)
+# ============================================================================
+if [ "${_NEEDS_RELOGIN}" = "true" ]; then
+    echo ""
+    echo -e "${RED}╔══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║  ACTION REQUIRED — READ BEFORE LAUNCHING ROTA AI        ║${NC}"
+    echo -e "${RED}╠══════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${RED}║  Your user was added to the 'input' group, but your     ║${NC}"
+    echo -e "${RED}║  CURRENT SESSION does not see this change yet.           ║${NC}"
+    echo -e "${RED}║                                                          ║${NC}"
+    echo -e "${RED}║  Hotkeys WILL NOT WORK until you do one of:             ║${NC}"
+    echo -e "${RED}║                                                          ║${NC}"
+    echo -e "${RED}║  Option 1 (permanent):  Log out and log back in.         ║${NC}"
+    echo -e "${RED}║                                                          ║${NC}"
+    echo -e "${RED}║  Option 2 (this session only):                           ║${NC}"
+    echo -e "${RED}║    newgrp input                                          ║${NC}"
+    echo -e "${RED}║    (then re-run ./linux/run.sh in the new shell)         ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+fi

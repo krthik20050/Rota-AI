@@ -50,7 +50,7 @@ def build_recording_section(dlg, parent):
 
     dlg.hotkey_status = QLabel("")
     dlg.hotkey_status.setObjectName("FieldHint")
-    form.addRow("", dlg.hotkey_status))
+    form.addRow("", dlg.hotkey_status)
 
     dlg.hotkey_mode_combo = NonScrollComboBox()
     dlg.hotkey_mode_combo.add_option("Hold to Record", "hold", recommended=True)
