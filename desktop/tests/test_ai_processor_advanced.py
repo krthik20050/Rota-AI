@@ -136,6 +136,7 @@ class MockConfig:
 
 
 @patch("audio.audio_control._IS_MACOS", False)
+@patch("audio.audio_control._IS_WINDOWS", True)
 @patch("audio.audio_control.SystemAudioController._get_master_volume_interface")
 def test_audio_controller_mute_mode(mock_get_volume):
     mock_volume = MagicMock()
