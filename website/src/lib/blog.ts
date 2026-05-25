@@ -14,6 +14,7 @@ export interface BlogPost {
 const BLOG_DIR = path.join(process.cwd(), "blog");
 
 export function getAllPosts(): BlogPost[] {
+  if (!fs.existsSync(BLOG_DIR)) return [];
   const files = fs.readdirSync(BLOG_DIR).filter((f) => f.endsWith(".md"));
 
   return files
