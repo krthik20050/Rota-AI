@@ -4,6 +4,7 @@ controller.py — backward-compat re-export shim.
 All logic lives in sub-modules; this file re-exports the public API that
 main.py and tests import from `app.controller`.
 """
+
 from __future__ import annotations
 
 import sys
@@ -12,20 +13,20 @@ import structlog
 from PyQt6.QtCore import QTimer
 
 from app.instance_guard import (
-    try_acquire_instance_mutex,
     release_instance_mutex,
     try_acquire_instance_listener,
+    try_acquire_instance_mutex,
     wake_existing_instance,
 )
 from app.logging_config import (
-    configure_logging,
     TailBufferLogHandler,
+    configure_logging,
     log_event,
 )
-from app.signal_bridges import HotkeySignalBridge, RecordingState
 from app.processor_thread import ProcessorThread, TranscriberLoadThread
-from ui.toast import Toast
 from app.rota_app import RotaApp
+from app.signal_bridges import HotkeySignalBridge, RecordingState
+from ui.toast import Toast
 
 logger = structlog.get_logger(__name__)
 

@@ -295,6 +295,23 @@ class SystemAudioController:
             logger.warning("pactl_mute_failed", mute=mute, error=str(e))
             return False
 
+    def _macos_set_output_muted(self, mute: bool) -> bool:
+        """Mute/unmute macOS output volume via AppleScript."""
+        import subprocess
+
+        script = "set volume output muted TRUE" if mute else "set volume output muted FALSE"
+        try:
+            result = subprocess.run(
+                ["osascript", "-e", script],
+                timeout=3,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return result.returncode == 0
+        except Exception as e:
+            logger.warning("macos_mute_failed", mute=mute, error=str(e))
+            return False
+
     def pause_or_mute(self):
         """
         Called when recording starts. Pauses or mutes background audio.
@@ -308,7 +325,11 @@ class SystemAudioController:
             logger.info("bg_audio_control_start", mode=mode)
 
             if mode == "mute":
-                if not _IS_WINDOWS:
+                if _IS_MACOS:
+                    if self._macos_set_output_muted(True):
+                        self._muted_by_us = True
+                        logger.debug("master_volume_muted_macos")
+                elif not _IS_WINDOWS:
                     if self._pactl_mute(True):
                         self._muted_by_us = True
                         logger.debug("master_volume_muted_pactl")
@@ -411,18 +432,8 @@ class SystemAudioController:
 
             if self._muted_by_us:
                 if _IS_MACOS:
-                    # macOS: unmute via osascript
-                    try:
-                        import subprocess
-
-                        subprocess.run(
-                            ["osascript", "-e", "set volume output muted FALSE"],
-                            timeout=3,
-                            capture_output=True,
-                        )
+                    if self._macos_set_output_muted(False):
                         logger.debug("master_volume_unmuted_osascript")
-                    except Exception as exc:
-                        logger.warning("macos_unmute_failed", error=str(exc))
                 elif not _IS_WINDOWS:
                     self._pactl_mute(False)
                     logger.debug("master_volume_unmuted_pactl")

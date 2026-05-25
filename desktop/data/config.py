@@ -20,42 +20,42 @@ _IS_MACOS = sys.platform == "darwin"
 _ENCRYPTED_KEYS = frozenset({"groq_api_key", "gemini_api_key"})
 
 
-def _encrypt(plaintext: str) -> str | None:
+def _encrypt(plaintext: str, key_name: str | None = None) -> str | None:
     """Encrypt a string. Returns encrypted blob or None on failure."""
     if not plaintext:
         return None
     if _IS_LINUX or _IS_MACOS:
-        return _keyring_encrypt(plaintext)
+        return _keyring_encrypt(plaintext, key_name=key_name)
     else:
         return _dpapi_encrypt(plaintext)
 
 
-def _decrypt(blob: str) -> str | None:
+def _decrypt(blob: str, key_name: str | None = None) -> str | None:
     """Decrypt a blob. Returns plaintext or None on failure."""
     if not blob:
         return None
     if blob.startswith("dpapi:"):
         return _dpapi_decrypt(blob[6:])
     if _IS_LINUX or _IS_MACOS:
-        return _keyring_decrypt(blob)
+        return _keyring_decrypt(blob, key_name=key_name)
     return blob  # legacy plaintext
 
 
-def _keyring_encrypt(plaintext: str) -> str | None:
+def _keyring_encrypt(plaintext: str, key_name: str | None = None) -> str | None:
     try:
         from plat.linux_secrets import encrypt_secret
 
-        return encrypt_secret(plaintext)
+        return encrypt_secret(plaintext, account=key_name or "api_keys")
     except Exception:
         logger.warning("keyring_encrypt_failed")
         return None
 
 
-def _keyring_decrypt(stored: str) -> str | None:
+def _keyring_decrypt(stored: str, key_name: str | None = None) -> str | None:
     try:
         from plat.linux_secrets import decrypt_secret
 
-        return decrypt_secret(stored)
+        return decrypt_secret(stored, account=key_name)
     except Exception:
         logger.warning("keyring_decrypt_failed")
         return None
@@ -202,6 +202,13 @@ class ConfigManager:
                                 # Can't decrypt (different machine/user?); clear it
                                 logger.warning("dpapi_key_unreadable", config_key=key)
                                 loaded_config[key] = ""
+                        elif raw and raw.startswith("keyring:"):
+                            decrypted = _decrypt(raw, key_name=key)
+                            if decrypted is not None:
+                                loaded_config[key] = decrypted
+                            else:
+                                logger.warning("keyring_key_unreadable", config_key=key)
+                                loaded_config[key] = ""
                     self.config.update(loaded_config)
             except Exception:
                 logger.exception("Failed to load config file: %s", self.config_path)
@@ -224,7 +231,7 @@ class ConfigManager:
                     and not plaintext.startswith("dpapi:")
                     and not plaintext.startswith("keyring:")
                 ):
-                    blob = _encrypt(plaintext)
+                    blob = _encrypt(plaintext, key_name=key)
                     if blob:
                         save_config[key] = blob
             with open(self.config_path, "w", encoding="utf-8") as f:

@@ -1,12 +1,11 @@
-import numpy as np
-import queue
-from utils.log import get_logger
-import time as _time
 import threading
-from typing import Optional
+import time as _time
 
-from PyQt6.QtCore import pyqtSignal, QObject
+import numpy as np
+from PyQt6.QtCore import QObject, pyqtSignal
+
 from audio.recording_session import RecordingSession
+from utils.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -26,6 +25,7 @@ def _load_sounddevice() -> None:
     global _sd, _sd_load_error
     try:
         import sounddevice as _mod
+
         with _sd_lock:
             _sd = _mod
         logger.info("sounddevice_loaded_ok")
@@ -64,10 +64,10 @@ class AudioRecorder(QObject):
         self._is_recording = False
         self._stream = None
         self._rms_value = 0.0
-        self._active_session: Optional[RecordingSession] = None
+        self._active_session: RecordingSession | None = None
         # Silence auto-stop state
-        self._auto_stop_s: float = 0.0      # 0 = disabled
-        self._silence_start: float = 0.0    # monotonic time silence started
+        self._auto_stop_s: float = 0.0  # 0 = disabled
+        self._silence_start: float = 0.0  # monotonic time silence started
         self._speech_detected: bool = False  # require speech before timing silence
         self._auto_stop_emitted: bool = False
 
@@ -92,7 +92,7 @@ class AudioRecorder(QObject):
             if self._auto_stop_s > 0 and not self._auto_stop_emitted:
                 if rms > _SILENCE_RMS:
                     self._speech_detected = True
-                    self._silence_start = 0.0          # reset on speech
+                    self._silence_start = 0.0  # reset on speech
                 elif self._speech_detected:
                     now = _time.monotonic()
                     if self._silence_start == 0.0:
@@ -100,9 +100,7 @@ class AudioRecorder(QObject):
                     elif now - self._silence_start >= self._auto_stop_s:
                         self._auto_stop_emitted = True
                         self.auto_stop_signal.emit()
-                        logger.info(
-                            "auto_stop_triggered silence_s=%.1f", self._auto_stop_s
-                        )
+                        logger.info("auto_stop_triggered silence_s=%.1f", self._auto_stop_s)
 
     @property
     def rms_amplitude(self):
@@ -143,13 +141,13 @@ class AudioRecorder(QObject):
         self._stream = sd.InputStream(
             samplerate=self.samplerate,
             channels=1,
-            dtype='float32',
+            dtype="float32",
             callback=self._audio_callback,
-            blocksize=self.chunk_size
+            blocksize=self.chunk_size,
         )
         self._stream.start()
 
-    def stop(self, session: Optional[RecordingSession] = None):
+    def stop(self, session: RecordingSession | None = None):
         """Stops the audio recording stream."""
         if not self._is_recording:
             return
@@ -167,7 +165,7 @@ class AudioRecorder(QObject):
         self._rms_value = 0.0
         self._active_session = None
 
-    def get_chunks(self, session: Optional[RecordingSession] = None):
+    def get_chunks(self, session: RecordingSession | None = None):
         """Generator that yields audio chunks from the session queue."""
         if session is None:
             session = self._active_session

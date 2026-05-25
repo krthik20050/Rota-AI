@@ -32,8 +32,9 @@ class _FastInfoLabel(QLabel):
 
     def _show_popup(self):
         self._close_popup()
-        from PyQt6.QtWidgets import QFrame as QF
         from PyQt6.QtCore import QPoint
+        from PyQt6.QtWidgets import QFrame as QF
+
         win = self.window()
         popup = QF(win)
         popup.setObjectName("InfoPopup")
@@ -42,7 +43,9 @@ class _FastInfoLabel(QLabel):
         lbl = QLabel(self._tooltip_text)
         lbl.setWordWrap(True)
         lbl.setMaximumWidth(300)
-        lbl.setStyleSheet("color: #E8E8EA; font-size: 12px; background: transparent; line-height: 1.5;")
+        lbl.setStyleSheet(
+            "color: #E8E8EA; font-size: 12px; background: transparent; line-height: 1.5;"
+        )
         lay.addWidget(lbl)
         popup.adjustSize()
         pos = self.mapTo(win, QPoint(self.width() + 8, -4))
@@ -71,7 +74,9 @@ def build_drill_slide(page, icon, title, subtitle, drill, metric_name, metric_va
     icon_lbl.setStyleSheet("font-size: 20px; background: transparent;")
     header.addWidget(icon_lbl)
     title_lbl = QLabel(title)
-    title_lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #E8E8EA; background: transparent;")
+    title_lbl.setStyleSheet(
+        "font-size: 12px; font-weight: 700; color: #E8E8EA; background: transparent;"
+    )
     header.addWidget(title_lbl, 1)
     lay.addLayout(header)
 
@@ -83,12 +88,16 @@ def build_drill_slide(page, icon, title, subtitle, drill, metric_name, metric_va
     drill_lbl = QLabel(drill)
     drill_lbl.setObjectName("InsightText")
     drill_lbl.setWordWrap(True)
-    drill_lbl.setStyleSheet("font-size: 10px; color: #AEAEB2; line-height: 1.5; background: transparent;")
+    drill_lbl.setStyleSheet(
+        "font-size: 10px; color: #AEAEB2; line-height: 1.5; background: transparent;"
+    )
     lay.addWidget(drill_lbl, 1)
 
     footer = QHBoxLayout()
     metric_lbl = QLabel(f"{metric_name}: {metric_value}")
-    metric_lbl.setStyleSheet("font-size: 10px; color: #86EFAC; font-weight: 600; background: transparent;")
+    metric_lbl.setStyleSheet(
+        "font-size: 10px; color: #86EFAC; font-weight: 600; background: transparent;"
+    )
     target_lbl = QLabel(target)
     target_lbl.setStyleSheet("font-size: 9px; color: #636366; background: transparent;")
     footer.addWidget(metric_lbl)
@@ -97,7 +106,11 @@ def build_drill_slide(page, icon, title, subtitle, drill, metric_name, metric_va
     lay.addLayout(footer)
 
     return {
-        "frame": frame, "icon_lbl": icon_lbl, "title_lbl": title_lbl,
-        "subtitle_lbl": subtitle_lbl, "drill_lbl": drill_lbl,
-        "metric_lbl": metric_lbl, "target_lbl": target_lbl,
+        "frame": frame,
+        "icon_lbl": icon_lbl,
+        "title_lbl": title_lbl,
+        "subtitle_lbl": subtitle_lbl,
+        "drill_lbl": drill_lbl,
+        "metric_lbl": metric_lbl,
+        "target_lbl": target_lbl,
     }

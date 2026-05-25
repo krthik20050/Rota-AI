@@ -1,27 +1,28 @@
 from __future__ import annotations
+
 import time
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QStackedWidget, QVBoxLayout, QWidget,
-    QProgressBar,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-from ui.components.circular_progress import CircularProgress
-from ui.components.heatmap_grid import HeatmapGrid
-from ui.components.trend_chart import SpeechTrendChart
-from ui.components.speedometer import SpeedometerWidget
 from ui.pages._insights_helpers import _FastInfoLabel, build_drill_slide
-from ui.pages._insights_updater import update_from_dashboard as _do_update
 from ui.pages._insights_updater import update_advanced_coaching as _do_advanced_coaching
+from ui.pages._insights_updater import update_from_dashboard as _do_update
 
-CLR_ACCENT         = "#86EFAC"
-CLR_BORDER         = "rgba(255, 255, 255, 0.05)"
-CLR_CARD           = "#191E1C"
-CLR_TEXT_PRIMARY   = "#F0F0F2"
+CLR_ACCENT = "#86EFAC"
+CLR_BORDER = "rgba(255, 255, 255, 0.05)"
+CLR_CARD = "#191E1C"
+CLR_TEXT_PRIMARY = "#F0F0F2"
 CLR_TEXT_SECONDARY = "#A0A0A5"
-CLR_TEXT_MUTED     = "#5A5A60"
+CLR_TEXT_MUTED = "#5A5A60"
 
 
 class InsightsPage(QWidget):
@@ -130,14 +131,18 @@ class InsightsPage(QWidget):
 
     def _build_usage_tab(self):
         from ui.pages._insights_usage_tab import build_usage_tab
+
         return build_usage_tab(self)
 
     def _build_speech_tab(self):
         from ui.pages._insights_speech_tab import build_speech_tab
+
         return build_speech_tab(self)
 
     def _build_drill_slide(self, icon, title, subtitle, drill, metric_name, metric_value, target):
-        return build_drill_slide(self, icon, title, subtitle, drill, metric_name, metric_value, target)
+        return build_drill_slide(
+            self, icon, title, subtitle, drill, metric_name, metric_value, target
+        )
 
     # ------------------------------------------------------------------
     # Carousel navigation
@@ -199,8 +204,8 @@ class InsightsPage(QWidget):
         if hasattr(self, "_insights_speedometer"):
             self._insights_speedometer.set_value_animated(words, duration=1400)
         if hasattr(self, "trend_chart"):
-            labels  = getattr(self, "_trend_labels",  [])
-            wpm     = getattr(self, "_trend_wpm",     [])
+            labels = getattr(self, "_trend_labels", [])
+            wpm = getattr(self, "_trend_wpm", [])
             clarity = getattr(self, "_trend_clarity", [])
             self.trend_chart.setTrendDataAnimated(labels, wpm, clarity)
         self._insights_anim_start = time.monotonic()

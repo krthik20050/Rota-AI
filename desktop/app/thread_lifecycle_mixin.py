@@ -1,11 +1,12 @@
 """Thread lifecycle helpers — mixed into RotaApp."""
+
 from __future__ import annotations
 
 import structlog
 from PyQt6.QtCore import QTimer
 
-from app.signal_bridges import RecordingState
 from app.logging_config import log_event
+from app.signal_bridges import RecordingState
 from ui.overlay.pill_state import PillState
 
 logger = structlog.get_logger(__name__)
@@ -26,7 +27,12 @@ class ThreadLifecycleMixin:
             and self._processing_session_id == session_id
             and session_id in self._sessions
         ):
-            log_event("processor_cleanup", "deferred", session_id=session_id, reason="awaiting_result_handler")
+            log_event(
+                "processor_cleanup",
+                "deferred",
+                session_id=session_id,
+                reason="awaiting_result_handler",
+            )
             return
         if (
             session_id is not None
@@ -105,6 +111,8 @@ class ThreadLifecycleMixin:
         logger.warning("processor_thread_cancel_timeout", correlation_id=session.id, reason=reason)
         thread.terminate()
         if not thread.wait(1000):
-            logger.critical("processor_thread_force_terminate_failed", correlation_id=session.id, reason=reason)
+            logger.critical(
+                "processor_thread_force_terminate_failed", correlation_id=session.id, reason=reason
+            )
             return False
         return True

@@ -2,13 +2,21 @@
 Standalone history window for Rota AI.
 Shows ALL history grouped by date, with working Transcript / Undo / Retry / Extract Audio.
 """
-from datetime import datetime, date as Date, timezone
+
+from datetime import UTC, datetime
+from datetime import date as Date
+
+import pyperclip
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QDialog, QLineEdit, QLabel, QScrollArea, QMessageBox,
-    QVBoxLayout, QHBoxLayout, QWidget
+    QDialog,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-import pyperclip
 
 from ui.components.history_item import HistoryItemWidget
 from utils.window_effects import apply_blur
@@ -152,7 +160,7 @@ class HistoryWindow(QDialog):
     def _parse_date(self, timestamp: str):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
             try:
-                dt_utc = datetime.strptime(timestamp.split(".")[0], fmt).replace(tzinfo=timezone.utc)
+                dt_utc = datetime.strptime(timestamp.split(".")[0], fmt).replace(tzinfo=UTC)
                 return dt_utc.astimezone().date()
             except ValueError:
                 continue
@@ -185,8 +193,9 @@ class HistoryWindow(QDialog):
 
         if self.ai_processor is None:
             QMessageBox.information(
-                self, "Retry",
-                "Smart formatting engine is not available. Enable Smart Formatting in Settings and restart."
+                self,
+                "Retry",
+                "Smart formatting engine is not available. Enable Smart Formatting in Settings and restart.",
             )
             return
 
@@ -199,9 +208,10 @@ class HistoryWindow(QDialog):
 
     def _handle_extract_audio(self, entry_id: int):
         QMessageBox.information(
-            self, "Extract Audio",
+            self,
+            "Extract Audio",
             "Audio is not stored for past recordings.\n\n"
-            "Rota stores text transcriptions only. Audio extraction is not available."
+            "Rota stores text transcriptions only. Audio extraction is not available.",
         )
 
     def _copy_text(self, text):

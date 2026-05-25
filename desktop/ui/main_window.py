@@ -10,24 +10,34 @@ Architecture:
 
 Kept under 500 lines — heavy widgets live in ui/pages/.
 """
+
 from __future__ import annotations
 
 import structlog
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import (
-    QApplication, QFrame, QHBoxLayout, QLabel,
-    QPushButton, QStackedWidget, QVBoxLayout, QWidget,
-)
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
-from ui.pages.home_page import HomePage
 from ui.pages.dictionary_page import DictionaryPage
-from ui.pages.snippets_page import SnippetsPage
+from ui.pages.home_page import HomePage
 from ui.pages.insights_page import InsightsPage
+from ui.pages.snippets_page import SnippetsPage
 from ui.styles.main_window_qss import (
+    CLR_ACCENT,
+    CLR_BASE,
+    CLR_ERROR,
+    CLR_WARNING,
+    SIDEBAR_W,
     WISPR_QSS,
-    CLR_BASE, CLR_ACCENT, CLR_ERROR, CLR_WARNING,
-    FONT_FAMILY, SIDEBAR_W,
 )
 from utils.window_effects import apply_blur
 
@@ -111,10 +121,10 @@ class MainWindow(QWidget):
         self.snippets_page = SnippetsPage(self.snippets_manager, parent=self)
 
         self.page_indexes = {
-            "home":       self.content_stack.addWidget(self.home_page),
-            "insights":   self.content_stack.addWidget(self.insights_page),
+            "home": self.content_stack.addWidget(self.home_page),
+            "insights": self.content_stack.addWidget(self.insights_page),
             "dictionary": self.content_stack.addWidget(self.dictionary_page),
-            "snippets":   self.content_stack.addWidget(self.snippets_page),
+            "snippets": self.content_stack.addWidget(self.snippets_page),
         }
         content.addWidget(self.content_stack, 1)
         container_v.addLayout(content, 1)
@@ -134,8 +144,8 @@ class MainWindow(QWidget):
         lay.addStretch()
 
         for char, obj_name, callback in [
-            ("─", "WinBtn",   self.showMinimized),
-            ("□", "MaxBtn",   self._toggle_maximize),
+            ("─", "WinBtn", self.showMinimized),
+            ("□", "MaxBtn", self._toggle_maximize),
             ("✕", "CloseBtn", self.hide),
         ]:
             btn = QPushButton(char)
@@ -187,10 +197,10 @@ class MainWindow(QWidget):
         lay.addSpacing(28)
 
         for key, label in [
-            ("home",       "Home"),
-            ("insights",   "Insights"),
+            ("home", "Home"),
+            ("insights", "Insights"),
             ("dictionary", "Dictionary"),
-            ("snippets",   "Snippets"),
+            ("snippets", "Snippets"),
         ]:
             btn = QPushButton(label)
             btn.setObjectName("NavBtn")
@@ -239,10 +249,10 @@ class MainWindow(QWidget):
     def update_state(self, state: str, session_id=None):
         self.state_value = state
         states = {
-            "IDLE":       ("● Ready",      CLR_ACCENT),
-            "LISTENING":  ("◉ Recording",  CLR_ERROR),
+            "IDLE": ("● Ready", CLR_ACCENT),
+            "LISTENING": ("◉ Recording", CLR_ERROR),
             "PROCESSING": ("◌ Processing", CLR_WARNING),
-            "ERROR":      ("✕ Error",      CLR_ERROR),
+            "ERROR": ("✕ Error", CLR_ERROR),
         }
         text, color = states.get(state, ("● Ready", CLR_ACCENT))
         self._status_pill.setText(text)
@@ -303,11 +313,20 @@ class MainWindow(QWidget):
         # overlay manages its own font — no action needed
 
     # Stub methods — satisfy controller interface without logic
-    def update_timings(self, timings): pass
-    def update_hotkey_status(self, msg): pass
-    def update_health_status(self, status, issues): pass
-    def set_error_details(self, msg): self._last_error_message = msg
-    def set_recording_enabled(self, enabled, reason=""): pass
+    def update_timings(self, timings):
+        pass
+
+    def update_hotkey_status(self, msg):
+        pass
+
+    def update_health_status(self, status, issues):
+        pass
+
+    def set_error_details(self, msg):
+        self._last_error_message = msg
+
+    def set_recording_enabled(self, enabled, reason=""):
+        pass
 
     # ══════════════════════════════════════════════════════════════
     # Window events

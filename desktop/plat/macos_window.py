@@ -17,7 +17,6 @@ Reference: VoiceType macOS backend (Honeybee1023/VoiceType)
 
 from __future__ import annotations
 
-import os
 import subprocess
 import time
 from dataclasses import dataclass
@@ -31,6 +30,7 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # AppContext dataclass — mirrors Windows/Linux versions
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AppContext:
@@ -46,55 +46,110 @@ class AppContext:
 
 _PROCESS_CATEGORY: dict[str, str] = {
     # Browsers
-    "google chrome": "browser", "chrome": "browser",
-    "firefox": "browser", "safari": "browser",
-    "microsoft edge": "browser", "brave browser": "browser",
-    "opera": "browser", "vivaldi": "browser", "arc": "browser",
-    "orion": "browser", "floorp": "browser",
+    "google chrome": "browser",
+    "chrome": "browser",
+    "firefox": "browser",
+    "safari": "browser",
+    "microsoft edge": "browser",
+    "brave browser": "browser",
+    "opera": "browser",
+    "vivaldi": "browser",
+    "arc": "browser",
+    "orion": "browser",
+    "floorp": "browser",
     # Editors
-    "visual studio code": "editor", "code": "editor",
-    "cursor": "editor", "sublime text": "editor",
-    "textedit": "editor", "bbedit": "editor",
-    "vim": "editor", "neovim": "editor", "emacs": "editor",
-    "xcode": "editor", "android studio": "editor",
-    "intellij idea": "editor", "pycharm": "editor",
-    "webstorm": "editor", "phpstorm": "editor",
-    "zed": "editor", "nova": "editor",
+    "visual studio code": "editor",
+    "code": "editor",
+    "cursor": "editor",
+    "sublime text": "editor",
+    "textedit": "editor",
+    "bbedit": "editor",
+    "vim": "editor",
+    "neovim": "editor",
+    "emacs": "editor",
+    "xcode": "editor",
+    "android studio": "editor",
+    "intellij idea": "editor",
+    "pycharm": "editor",
+    "webstorm": "editor",
+    "phpstorm": "editor",
+    "zed": "editor",
+    "nova": "editor",
     # Terminals
-    "terminal": "terminal", "iterm2": "terminal", "iterm": "terminal",
-    "alacritty": "terminal", "kitty": "terminal", "wezterm": "terminal",
-    "hyper": "terminal", "warp": "terminal", "tabby": "terminal",
+    "terminal": "terminal",
+    "iterm2": "terminal",
+    "iterm": "terminal",
+    "alacritty": "terminal",
+    "kitty": "terminal",
+    "wezterm": "terminal",
+    "hyper": "terminal",
+    "warp": "terminal",
+    "tabby": "terminal",
     "ghostty": "terminal",
     # Chat / Communication
-    "slack": "chat", "discord": "chat", "telegram": "chat",
-    "messages": "chat", "signal": "chat", "wechat": "chat",
-    "whatsapp": "chat", "zoom": "chat", "microsoft teams": "chat",
-    "element": "chat", "imessage": "chat",
+    "slack": "chat",
+    "discord": "chat",
+    "telegram": "chat",
+    "messages": "chat",
+    "signal": "chat",
+    "wechat": "chat",
+    "whatsapp": "chat",
+    "zoom": "chat",
+    "microsoft teams": "chat",
+    "element": "chat",
+    "imessage": "chat",
     # Email
-    "mail": "email", "microsoft outlook": "email",
-    "thunderbird": "email", "mimestream": "email",
-    "spark": "email", "airmail": "email",
+    "mail": "email",
+    "microsoft outlook": "email",
+    "thunderbird": "email",
+    "mimestream": "email",
+    "spark": "email",
+    "airmail": "email",
     # Notes
-    "obsidian": "notes", "notion": "notes", "logseq": "notes",
-    "bear": "notes", "craft": "notes", "apple notes": "notes",
-    "typora": "notes", "upnote": "notes",
+    "obsidian": "notes",
+    "notion": "notes",
+    "logseq": "notes",
+    "bear": "notes",
+    "craft": "notes",
+    "apple notes": "notes",
+    "typora": "notes",
+    "upnote": "notes",
     # Office
-    "microsoft word": "office", "microsoft excel": "office",
-    "microsoft powerpoint": "office", "libreoffice": "office",
-    "pages": "office", "numbers": "office", "keynote": "office",
+    "microsoft word": "office",
+    "microsoft excel": "office",
+    "microsoft powerpoint": "office",
+    "libreoffice": "office",
+    "pages": "office",
+    "numbers": "office",
+    "keynote": "office",
     # Media
-    "music": "media", "spotify": "media", "vlc": "media",
-    "quicktime player": "media", "iina": "media", "mpv": "media",
-    "podcasts": "media", "apple tv": "media",
+    "music": "media",
+    "spotify": "media",
+    "vlc": "media",
+    "quicktime player": "media",
+    "iina": "media",
+    "mpv": "media",
+    "podcasts": "media",
+    "apple tv": "media",
     # Design
-    "figma": "media", "sketch": "media", "affinity designer": "media",
-    "affinity photo": "media", "gimp": "media", "inkscape": "media",
+    "figma": "media",
+    "sketch": "media",
+    "affinity designer": "media",
+    "affinity photo": "media",
+    "gimp": "media",
+    "inkscape": "media",
 }
 
 _CATEGORY_TONE: dict[str, str] = {
-    "browser": "neutral", "editor": "technical", "terminal": "technical",
-    "chat": "casual", "email": "formal", "office": "formal",
-    "notes": "neutral", "media": "neutral", "other": "neutral",
+    "browser": "neutral",
+    "editor": "technical",
+    "terminal": "technical",
+    "chat": "casual",
+    "email": "formal",
+    "office": "formal",
+    "notes": "neutral",
+    "media": "neutral",
+    "other": "neutral",
 }
 
 
@@ -113,10 +168,11 @@ def _classify(process_name: str) -> tuple[str, str]:
 _AX_AVAILABLE = False
 try:
     from ApplicationServices import (
-        AXUIElementCreateSystemWide,
         AXUIElementCopyAttributeValue,
+        AXUIElementCreateSystemWide,
         kAXFocusedUIElementAttribute,
     )
+
     _AX_AVAILABLE = True
 except ImportError:
     logger.warning("pyobjc-framework-ApplicationServices not available; AX detection disabled")
@@ -125,6 +181,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Public API — mirrors Windows field_detector + Linux linux_window interface
 # ---------------------------------------------------------------------------
+
 
 def get_focused_field_info() -> dict[str, Any]:
     """
@@ -163,9 +220,10 @@ def get_focused_field_info() -> dict[str, Any]:
     # Get cursor position via AppleScript
     try:
         cursor_result = subprocess.run(
-            ["osascript", "-e",
-             "tell application \"System Events\" to get (mouse location)"],
-            capture_output=True, text=True, timeout=3,
+            ["osascript", "-e", 'tell application "System Events" to get (mouse location)'],
+            capture_output=True,
+            text=True,
+            timeout=3,
         )
         if cursor_result.returncode == 0:
             # Parse "{x, y}" format from AppleScript list
@@ -181,23 +239,28 @@ def get_focused_field_info() -> dict[str, Any]:
     if _AX_AVAILABLE:
         try:
             system = AXUIElementCreateSystemWide()
-            err, focused = AXUIElementCopyAttributeValue(
-                system, kAXFocusedUIElementAttribute, None
-            )
+            err, focused = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute, None)
             if err == 0 and focused is not None:
                 # Try to get the role (class) of the focused element
                 try:
                     from ApplicationServices import (
                         AXUIElementCopyAttributeValue as _copyAttr,
+                    )
+                    from ApplicationServices import (
                         kAXRoleAttribute,
                     )
+
                     err2, role = _copyAttr(focused, kAXRoleAttribute, None)
                     if err2 == 0 and role:
                         result["focused_class"] = str(role).lower()
                         # Determine if it's a text field based on role
                         text_roles = {
-                            "axtextfield", "axtextarea", "axsearchfield",
-                            "axsecuretextfield", "axwebarea", "axscrollarea",
+                            "axtextfield",
+                            "axtextarea",
+                            "axsearchfield",
+                            "axsecuretextfield",
+                            "axwebarea",
+                            "axscrollarea",
                         }
                         result["is_text_field"] = str(role).lower() in text_roles
                 except Exception:
@@ -213,14 +276,13 @@ def _capture_ax_element():
         return None
     try:
         from ApplicationServices import (
-            AXUIElementCreateSystemWide,
             AXUIElementCopyAttributeValue,
+            AXUIElementCreateSystemWide,
             kAXFocusedUIElementAttribute,
         )
+
         system = AXUIElementCreateSystemWide()
-        err, focused = AXUIElementCopyAttributeValue(
-            system, kAXFocusedUIElementAttribute, None
-        )
+        err, focused = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute, None)
         if err == 0 and focused is not None:
             return focused
     except Exception:
@@ -238,15 +300,14 @@ def get_field_text() -> str:
 
     try:
         from ApplicationServices import (
-            AXUIElementCreateSystemWide,
             AXUIElementCopyAttributeValue,
+            AXUIElementCreateSystemWide,
             kAXFocusedUIElementAttribute,
             kAXValueAttribute,
         )
+
         system = AXUIElementCreateSystemWide()
-        err, focused = AXUIElementCopyAttributeValue(
-            system, kAXFocusedUIElementAttribute, None
-        )
+        err, focused = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute, None)
         if err != 0 or focused is None:
             return ""
 
@@ -273,24 +334,22 @@ def scan_for_text_inputs(window_id: int = 0) -> list[dict[str, Any]]:
 
     results: list[dict[str, Any]] = []
     TEXT_INPUT_ROLES = {
-        "axtextfield", "axtextarea", "axsearchfield",
-        "axsecuretextfield", "axwebarea",
+        "axtextfield",
+        "axtextarea",
+        "axsearchfield",
+        "axsecuretextfield",
+        "axwebarea",
     }
 
     try:
         from ApplicationServices import (
-            AXUIElementCreateSystemWide,
             AXUIElementCopyAttributeValue,
+            AXUIElementCreateSystemWide,
             kAXFocusedUIElementAttribute,
-            kAXChildrenAttribute,
-            kAXRoleAttribute,
-            kAXPositionAttribute,
-            kAXSizeAttribute,
         )
+
         system = AXUIElementCreateSystemWide()
-        err, focused = AXUIElementCopyAttributeValue(
-            system, kAXFocusedUIElementAttribute, None
-        )
+        err, focused = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute, None)
         if err != 0 or focused is None:
             return []
 
@@ -311,28 +370,33 @@ def _scan_ax_element(element, text_roles: set, results: list, depth: int, max_de
     try:
         from ApplicationServices import (
             AXUIElementCopyAttributeValue as _copyAttr,
-            kAXRoleAttribute,
+        )
+        from ApplicationServices import (
             kAXChildrenAttribute,
             kAXPositionAttribute,
+            kAXRoleAttribute,
             kAXSizeAttribute,
         )
+
         err, role = _copyAttr(element, kAXRoleAttribute, None)
         if err == 0 and role and str(role).lower() in text_roles:
             # Get position and size
             err_pos, pos = _copyAttr(element, kAXPositionAttribute, None)
             err_size, size = _copyAttr(element, kAXSizeAttribute, None)
             if err_pos == 0 and err_size == 0 and pos and size:
-                x = pos.x if hasattr(pos, 'x') else 0
-                y = pos.y if hasattr(pos, 'y') else 0
-                w = size.width if hasattr(size, 'width') else 0
-                h = size.height if hasattr(size, 'height') else 0
+                x = pos.x if hasattr(pos, "x") else 0
+                y = pos.y if hasattr(pos, "y") else 0
+                w = size.width if hasattr(size, "width") else 0
+                h = size.height if hasattr(size, "height") else 0
                 if w > 20 and h > 10:
-                    results.append({
-                        "window_id": None,
-                        "class_name": str(role),
-                        "rect": (int(x), int(y), int(x + w), int(y + h)),
-                        "area": int(w * h),
-                    })
+                    results.append(
+                        {
+                            "window_id": None,
+                            "class_name": str(role),
+                            "rect": (int(x), int(y), int(x + w), int(y + h)),
+                            "area": int(w * h),
+                        }
+                    )
 
         err, children = _copyAttr(element, kAXChildrenAttribute, None)
         if err == 0 and children:
@@ -352,14 +416,13 @@ def focus_text_input(input_info: dict[str, Any]) -> bool:
 
     try:
         from ApplicationServices import (
-            AXUIElementCreateSystemWide,
             AXUIElementCopyAttributeValue,
+            AXUIElementCreateSystemWide,
             kAXFocusedUIElementAttribute,
         )
+
         system = AXUIElementCreateSystemWide()
-        err, focused = AXUIElementCopyAttributeValue(
-            system, kAXFocusedUIElementAttribute, None
-        )
+        err, focused = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute, None)
         if err == 0 and focused is not None:
             # Try to set focus via the AX API
             try:
@@ -367,6 +430,7 @@ def focus_text_input(input_info: dict[str, Any]) -> bool:
                     AXUIElementSetAttributeValue,
                     kAXFocusedAttribute,
                 )
+
                 AXUIElementSetAttributeValue(focused, kAXFocusedAttribute, True)
                 return True
             except Exception:
@@ -391,7 +455,8 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
         if process_name:
             subprocess.run(
                 ["osascript", "-e", f'tell application "{process_name}" to activate'],
-                timeout=3, capture_output=True,
+                timeout=3,
+                capture_output=True,
             )
             time.sleep(0.08)
             return True
@@ -400,9 +465,13 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
         if pid:
             # Try to activate by PID
             subprocess.run(
-                ["osascript", "-e",
-                 f'tell application "System Events" to set frontmost of (first process whose unix id is {pid}) to true'],
-                timeout=3, capture_output=True,
+                [
+                    "osascript",
+                    "-e",
+                    f'tell application "System Events" to set frontmost of (first process whose unix id is {pid}) to true',
+                ],
+                timeout=3,
+                capture_output=True,
             )
             time.sleep(0.08)
             return True
@@ -418,8 +487,9 @@ def warn_no_text_field_banner(process_name: str) -> None:
     logger.warning("no_text_field_detected", process_name=process_name or "unknown")
     try:
         # macOS system beep
-        subprocess.run(["afplay", "/System/Library/Sounds/Tink.aiff"],
-                       timeout=2, capture_output=True)
+        subprocess.run(
+            ["afplay", "/System/Library/Sounds/Tink.aiff"], timeout=2, capture_output=True
+        )
     except Exception:
         pass
 
@@ -448,11 +518,13 @@ def get_active_app() -> AppContext:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_frontmost_app_info() -> tuple[str | None, int | None]:
     """Get the frontmost app name and PID. Returns (name, pid) or (None, None)."""
     # Try NSWorkspace first (more reliable)
     try:
         from AppKit import NSWorkspace
+
         app = NSWorkspace.sharedWorkspace().frontmostApplication()
         if app:
             name = app.localizedName()
@@ -464,18 +536,28 @@ def _get_frontmost_app_info() -> tuple[str | None, int | None]:
     # Fallback: osascript
     try:
         result = subprocess.run(
-            ["osascript", "-e",
-             'tell application "System Events" to get name of first process whose frontmost is true'],
-            capture_output=True, text=True, timeout=5,
+            [
+                "osascript",
+                "-e",
+                'tell application "System Events" to get name of first process whose frontmost is true',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             name = result.stdout.strip() or None
             pid = None
             # Also get PID
             pid_result = subprocess.run(
-                ["osascript", "-e",
-                 'tell application "System Events" to get unix id of (first process whose frontmost is true)'],
-                capture_output=True, text=True, timeout=5,
+                [
+                    "osascript",
+                    "-e",
+                    'tell application "System Events" to get unix id of (first process whose frontmost is true)',
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if pid_result.returncode == 0:
                 try:

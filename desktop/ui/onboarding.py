@@ -8,6 +8,7 @@ Steps:
   3 — Hotkey  (interactive picker)
   4 — Ready
 """
+
 from __future__ import annotations
 
 import os
@@ -15,26 +16,30 @@ import threading
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QDialog, QFrame, QHBoxLayout, QPushButton,
-    QStackedWidget, QVBoxLayout,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
 )
 
-from utils.window_effects import apply_blur
-from ui.styles.onboarding_qss import ONBOARDING_QSS
 from ui.pages._onboarding_steps import (
-    build_step_welcome,
     build_step_api_keys,
-    build_step_model,
     build_step_hotkey,
+    build_step_model,
     build_step_ready,
+    build_step_welcome,
 )
+from ui.styles.onboarding_qss import ONBOARDING_QSS
+from utils.window_effects import apply_blur
 
 
 class OnboardingDialog(QDialog):
     """Full onboarding wizard. Emits finished_signal when done or skipped."""
 
     finished_signal = pyqtSignal()
-    _download_result = pyqtSignal(bool, str)   # success, error_msg — thread-safe
+    _download_result = pyqtSignal(bool, str)  # success, error_msg — thread-safe
 
     # Step indices: 0=Welcome, 1=API Keys, 2=Model, 3=Hotkey, 4=Ready
     _WELCOME = 0
@@ -83,7 +88,7 @@ class OnboardingDialog(QDialog):
         ctrl_row.setSpacing(0)
         ctrl_row.addStretch()
 
-        self._min_btn  = QPushButton("─")
+        self._min_btn = QPushButton("─")
         self._min_btn.setObjectName("WindowCtrlBtn")
         self._min_btn.setFixedSize(28, 28)
         self._min_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -188,6 +193,7 @@ class OnboardingDialog(QDialog):
         """Runs in background thread — only emits a signal, never touches Qt widgets."""
         try:
             from faster_whisper import WhisperModel
+
             WhisperModel(model_size, device="cpu", compute_type="int8")
             self._download_result.emit(True, "")
         except Exception as exc:
@@ -212,7 +218,7 @@ class OnboardingDialog(QDialog):
             self._download_status.setObjectName("StatusOk")
             self._download_status.setText("✓ Model ready")
             self._download_btn.setText("Downloaded ✓")
-        self._download_status.setStyleSheet("")   # force style refresh
+        self._download_status.setStyleSheet("")  # force style refresh
 
     # ── Navigation ──────────────────────────────────────────────────────────
 
@@ -223,7 +229,7 @@ class OnboardingDialog(QDialog):
         try:
             if step == 1:
                 self._config.set("gemini_api_key", self._gemini_input.text().strip())
-                self._config.set("groq_api_key",   self._groq_input.text().strip())
+                self._config.set("groq_api_key", self._groq_input.text().strip())
             elif step == 2:
                 self._config.set("model_size", self._model_combo.currentData() or "base.en")
             elif step == 3:
@@ -232,7 +238,7 @@ class OnboardingDialog(QDialog):
                 if not self._config.get("hotkey"):
                     self._config.set("hotkey", "tab")
         except Exception:
-            pass   # never block navigation on a UI read error
+            pass  # never block navigation on a UI read error
 
     def _show_step(self, idx: int):
         self._step = idx
@@ -275,19 +281,26 @@ class OnboardingDialog(QDialog):
         lines = []
         try:
             from ui.pages._onboarding_steps import _hotkey_display_name
+
             hk_val = _hotkey_display_name(self._config.get("hotkey", "tab") or "tab")
             lines.append(f"● Hotkey: {hk_val}")
             mdl = getattr(self, "_model_combo", None)
-            mdl_val = (mdl.currentData() if mdl else None) or self._config.get("model_size", "base.en")
+            mdl_val = (mdl.currentData() if mdl else None) or self._config.get(
+                "model_size", "base.en"
+            )
             lines.append(f"● Model: {mdl_val}")
             gem = getattr(self, "_gemini_input", None)
-            grq = getattr(self, "_groq_input",   None)
+            grq = getattr(self, "_groq_input", None)
             has_gemini = bool(gem and gem.text().strip()) or bool(os.environ.get("GEMINI_API_KEY"))
-            has_groq   = bool(grq and grq.text().strip()) or bool(os.environ.get("GROQ_API_KEY"))
+            has_groq = bool(grq and grq.text().strip()) or bool(os.environ.get("GROQ_API_KEY"))
             ai = []
-            if has_gemini: ai.append("Gemini")
-            if has_groq:   ai.append("Groq")
-            lines.append("● Formatting: " + (", ".join(ai) if ai else "Not configured (add in Settings)"))
+            if has_gemini:
+                ai.append("Gemini")
+            if has_groq:
+                ai.append("Groq")
+            lines.append(
+                "● Formatting: " + (", ".join(ai) if ai else "Not configured (add in Settings)")
+            )
         except Exception:
             pass
         self._ready_summary.setText("\n".join(lines))
@@ -300,7 +313,7 @@ class OnboardingDialog(QDialog):
         if self._config:
             self._config.set("onboarding_complete", True)
             try:
-                self._config.save()          # single disk write at the very end
+                self._config.save()  # single disk write at the very end
             except Exception:
                 pass
         self.accept()

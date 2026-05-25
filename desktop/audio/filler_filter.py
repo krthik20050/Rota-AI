@@ -1,6 +1,6 @@
 import re
+
 from utils.log import get_logger
-from typing import Dict
 
 logger = get_logger(__name__)
 
@@ -22,12 +22,10 @@ _FILLERS_ORDERED = [
 
 def _build_pattern(filler: str) -> re.Pattern:
     parts = [re.escape(w) for w in filler.split()]
-    return re.compile(r'\b' + r'\s+'.join(parts) + r'\b', re.IGNORECASE)
+    return re.compile(r"\b" + r"\s+".join(parts) + r"\b", re.IGNORECASE)
 
 
-_COMPILED: list[tuple[str, re.Pattern]] = [
-    (fw, _build_pattern(fw)) for fw in _FILLERS_ORDERED
-]
+_COMPILED: list[tuple[str, re.Pattern]] = [(fw, _build_pattern(fw)) for fw in _FILLERS_ORDERED]
 
 
 def remove_fillers(text: str) -> str:
@@ -41,29 +39,29 @@ def remove_fillers(text: str) -> str:
     result = text
     for _, pattern in _COMPILED:
         # Replace filler with a null marker to avoid word-merging
-        result = pattern.sub('\x00', result)
+        result = pattern.sub("\x00", result)
 
     # Absorb comma+space on either side of the marker
-    result = re.sub(r',?\s*\x00\s*,?', ' ', result)
+    result = re.sub(r",?\s*\x00\s*,?", " ", result)
     # Fix double commas: ", ," → ","
-    result = re.sub(r',\s*,', ',', result)
+    result = re.sub(r",\s*,", ",", result)
     # Remove space before sentence-ending punctuation
-    result = re.sub(r'\s+([,!?.;:])', r'\1', result)
+    result = re.sub(r"\s+([,!?.;:])", r"\1", result)
     # Normalize whitespace
-    result = re.sub(r' {2,}', ' ', result)
+    result = re.sub(r" {2,}", " ", result)
     # Strip leading/trailing commas and spaces
-    result = re.sub(r'^[\s,]+|[\s,]+$', '', result)
+    result = re.sub(r"^[\s,]+|[\s,]+$", "", result)
     return result.strip()
 
 
-def count_fillers(text: str) -> Dict[str, int]:
+def count_fillers(text: str) -> dict[str, int]:
     """
     Count occurrences of each filler word/phrase.
     Returns only entries with count > 0.
     """
     if not text:
         return {}
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for filler, pattern in _COMPILED:
         n = len(pattern.findall(text))
         if n:
@@ -82,7 +80,7 @@ if __name__ == "__main__":
         ("Actually literally the best", "the best"),
         ("Um uh you know I mean right", ""),
         ("Hello world", "Hello world"),  # no fillers
-        ("", ""),                         # empty
+        ("", ""),  # empty
     ]
 
     print("=== remove_fillers tests ===")

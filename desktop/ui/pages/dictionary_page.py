@@ -1,11 +1,18 @@
 from __future__ import annotations
+
 import json
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QScrollArea, QVBoxLayout, QWidget, QFrame,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ui.components.flow_layout import FlowLayout
@@ -87,7 +94,9 @@ class DictionaryPage(QWidget):
         try:
             words = data.get("vocabulary", [])
             if words:
-                data["initial_prompt"] = "This is a dictation app. Key terms: " + ", ".join(words) + "."
+                data["initial_prompt"] = (
+                    "This is a dictation app. Key terms: " + ", ".join(words) + "."
+                )
             else:
                 data["initial_prompt"] = ""
             with open(_DICT_PATH, "w", encoding="utf-8") as f:
@@ -123,14 +132,20 @@ class DictionaryPage(QWidget):
             search_term = self._dict_search_input.text().strip().lower()
         filtered_words = [w for w in words if search_term in w.lower()] if search_term else words
         if hasattr(self, "_dict_count_lbl"):
-            self._dict_count_lbl.setText(f"{len(filtered_words)} word{'s' if len(filtered_words) != 1 else ''}")
+            self._dict_count_lbl.setText(
+                f"{len(filtered_words)} word{'s' if len(filtered_words) != 1 else ''}"
+            )
         while self._dict_flow_layout.count():
             item = self._dict_flow_layout.takeAt(0)
             w = item.widget()
             if w:
                 w.deleteLater()
         if not filtered_words:
-            empty = QLabel("No matching custom words found." if search_term else "No custom words yet. Add some above.")
+            empty = QLabel(
+                "No matching custom words found."
+                if search_term
+                else "No custom words yet. Add some above."
+            )
             empty.setObjectName("Subtitle")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._dict_flow_layout.addWidget(empty)

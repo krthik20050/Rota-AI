@@ -1,8 +1,5 @@
 import re
-from collections import Counter
 from dataclasses import dataclass, field
-from typing import List, Dict
-
 
 FILLER_WORDS = (
     "um",
@@ -16,9 +13,19 @@ FILLER_WORDS = (
 )
 
 HEDGING_WORDS = (
-    "just", "kind of", "sort of", "maybe", "perhaps",
-    "probably", "i think", "i guess", "i suppose",
-    "like", "might", "could be", "not sure",
+    "just",
+    "kind of",
+    "sort of",
+    "maybe",
+    "perhaps",
+    "probably",
+    "i think",
+    "i guess",
+    "i suppose",
+    "like",
+    "might",
+    "could be",
+    "not sure",
 )
 
 DEFAULT_PHRASES = (
@@ -47,12 +54,12 @@ class TextMetrics:
     filler_ratio: float
     clarity_score: int
     conciseness_score: int
-    phrases: Dict[str, int] = field(default_factory=dict)
+    phrases: dict[str, int] = field(default_factory=dict)
     pause_efficiency: float = 100.0
     cadence_variety: float = 0.0
     gunning_fog: float = 0.0
     grade_level: str = "Standard Conversational"
-    tone_ratios: Dict[str, float] = field(default_factory=dict)
+    tone_ratios: dict[str, float] = field(default_factory=dict)
     hedging_count: int = 0
     hedging_rate: float = 0.0
     hesitation_rate: float = 0.0
@@ -68,7 +75,7 @@ def count_syllables(word: str) -> int:
     word = (word or "").lower().strip()
     if not word:
         return 0
-    word = re.sub(r'[^a-z]', '', word)
+    word = re.sub(r"[^a-z]", "", word)
     if not word:
         return 0
 
@@ -82,8 +89,8 @@ def count_syllables(word: str) -> int:
             count += 1
         prev_is_vowel = is_vowel
 
-    if word.endswith('e'):
-        if len(word) >= 3 and word[-2] == 'l' and word[-3] not in vowels:
+    if word.endswith("e"):
+        if len(word) >= 3 and word[-2] == "l" and word[-3] not in vowels:
             pass
         else:
             count -= 1
@@ -91,9 +98,9 @@ def count_syllables(word: str) -> int:
     return max(1, count)
 
 
-def _extract_phrases(text: str) -> Dict[str, int]:
+def _extract_phrases(text: str) -> dict[str, int]:
     text_lower = (text or "").lower()
-    phrase_counts: Dict[str, int] = {}
+    phrase_counts: dict[str, int] = {}
     for phrase in DEFAULT_PHRASES:
         count = len(re.findall(rf"\b{re.escape(phrase)}\b", text_lower))
         if count > 0:
@@ -138,14 +145,14 @@ def calculate_text_metrics(text: str) -> TextMetrics:
     phrases = _extract_phrases(text)
 
     # 2. Pause Efficiency (based on punctuation count proxy)
-    punctuation_count = len(re.findall(r'[.,!?;:]', text or ""))
+    punctuation_count = len(re.findall(r"[.,!?;:]", text or ""))
     pause_efficiency = (punctuation_count / max(1, punctuation_count + filler_count)) * 100.0
 
     # 3. Readability & Gunning Fog Index
     # Split text into sentences using standard punctuation splits
-    sentences = [s.strip() for s in re.split(r'[.!?]+', text or "") if s.strip()]
+    sentences = [s.strip() for s in re.split(r"[.!?]+", text or "") if s.strip()]
     total_sentences = max(1, len(sentences))
-    
+
     complex_words_count = sum(1 for w in words if count_syllables(w) >= 3)
     avg_sentence_len = total_words / total_sentences
     pct_complex_words = (complex_words_count / total_words) * 100.0
@@ -168,25 +175,87 @@ def calculate_text_metrics(text: str) -> TextMetrics:
     if len(sentences) > 1:
         lengths = [len(re.findall(r"\b[\w']+\b", s)) for s in sentences]
         mean_len = sum(lengths) / len(sentences)
-        variance = sum((l - mean_len) ** 2 for l in lengths) / len(sentences)
-        cadence_variety = variance ** 0.5
+        variance = sum((x - mean_len) ** 2 for x in lengths) / len(sentences)
+        cadence_variety = variance**0.5
     else:
         cadence_variety = 0.0
 
     # 5. Speaking Tone Classification (keywords mapping)
     tone_keywords = {
-        "confident": ["absolutely", "definitely", "certainly", "will", "must", "guarantee", "resolve", "decide", "execute", "vital", "critical", "proven", "clearly", "ensure"],
-        "thoughtful": ["think", "believe", "opinion", "perhaps", "consider", "suggest", "ponder", "reflect", "maybe", "hypothesize", "wonder", "evaluate", "speculate"],
-        "warm": ["team", "together", "help", "thank", "welcome", "please", "appreciate", "collaborate", "share", "glad", "kind", "great", "support", "us", "we", "our"],
-        "technical": ["basically", "actually", "essentially", "verify", "audit", "metrics", "database", "analytics", "refactor", "system", "structure", "data", "logical", "process", "code"]
+        "confident": [
+            "absolutely",
+            "definitely",
+            "certainly",
+            "will",
+            "must",
+            "guarantee",
+            "resolve",
+            "decide",
+            "execute",
+            "vital",
+            "critical",
+            "proven",
+            "clearly",
+            "ensure",
+        ],
+        "thoughtful": [
+            "think",
+            "believe",
+            "opinion",
+            "perhaps",
+            "consider",
+            "suggest",
+            "ponder",
+            "reflect",
+            "maybe",
+            "hypothesize",
+            "wonder",
+            "evaluate",
+            "speculate",
+        ],
+        "warm": [
+            "team",
+            "together",
+            "help",
+            "thank",
+            "welcome",
+            "please",
+            "appreciate",
+            "collaborate",
+            "share",
+            "glad",
+            "kind",
+            "great",
+            "support",
+            "us",
+            "we",
+            "our",
+        ],
+        "technical": [
+            "basically",
+            "actually",
+            "essentially",
+            "verify",
+            "audit",
+            "metrics",
+            "database",
+            "analytics",
+            "refactor",
+            "system",
+            "structure",
+            "data",
+            "logical",
+            "process",
+            "code",
+        ],
     }
-    
+
     tone_counts = {"confident": 0, "thoughtful": 0, "warm": 0, "technical": 0}
     for word in words:
         for tone, keywords_list in tone_keywords.items():
             if word in keywords_list:
                 tone_counts[tone] += 1
-                
+
     total_tone_matches = sum(tone_counts.values())
     if total_tone_matches > 0:
         tone_ratios = {
@@ -234,4 +303,3 @@ def calculate_text_metrics(text: str) -> TextMetrics:
         hesitation_rate=round(hesitation_rate, 1),
         pacing_label=pacing_label,
     )
-

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -28,8 +27,8 @@ class YearInReview:
     avg_wpm: int
     avg_clarity: int
     streak_record: int
-    top_phrases: List[PhraseInsight]
-    app_breakdown: Dict[str, int]
+    top_phrases: list[PhraseInsight]
+    app_breakdown: dict[str, int]
     percentile: int
     persona: Persona
 
@@ -41,7 +40,7 @@ class Achievement:
     description: str
     icon: str
     unlocked: bool
-    unlocked_at: Optional[str] = None
+    unlocked_at: str | None = None
 
 
 @dataclass
@@ -54,19 +53,64 @@ class DailyChallenge:
 
 
 PERSONAS = [
-    {"level": 1, "name": "Silent Beginner", "title": "Whisperer", "description": "First words transcribed"},
-    {"level": 5, "name": "Chatterbox", "title": "Sprinter", "description": "5000 words transcribed"},
-    {"level": 10, "name": "Orator", "title": "Silver Tongue", "description": "10000 words transcribed"},
-    {"level": 20, "name": "Polyglot", "title": "Word Smith", "description": "25000 words transcribed"},
+    {
+        "level": 1,
+        "name": "Silent Beginner",
+        "title": "Whisperer",
+        "description": "First words transcribed",
+    },
+    {
+        "level": 5,
+        "name": "Chatterbox",
+        "title": "Sprinter",
+        "description": "5000 words transcribed",
+    },
+    {
+        "level": 10,
+        "name": "Orator",
+        "title": "Silver Tongue",
+        "description": "10000 words transcribed",
+    },
+    {
+        "level": 20,
+        "name": "Polyglot",
+        "title": "Word Smith",
+        "description": "25000 words transcribed",
+    },
     {"level": 50, "name": "Sage", "title": "Oracle", "description": "100000 words transcribed"},
 ]
 
 ACHIEVEMENTS = [
-    {"id": "first_session", "name": "First Flight", "description": "Complete your first transcription", "icon": "🎤"},
-    {"id": "week_streak", "name": "Week Warrior", "description": "Transcribe for 7 consecutive days", "icon": "🔥"},
-    {"id": "month_streak", "name": "Monthly Master", "description": "Transcribe for 30 consecutive days", "icon": "🏆"},
-    {"id": "clean_speech", "name": "Pristine", "description": "Complete a session with 0% filler words", "icon": "✨"},
-    {"id": "power_user", "name": "Power User", "description": "100 sessions completed", "icon": "⚡"},
+    {
+        "id": "first_session",
+        "name": "First Flight",
+        "description": "Complete your first transcription",
+        "icon": "🎤",
+    },
+    {
+        "id": "week_streak",
+        "name": "Week Warrior",
+        "description": "Transcribe for 7 consecutive days",
+        "icon": "🔥",
+    },
+    {
+        "id": "month_streak",
+        "name": "Monthly Master",
+        "description": "Transcribe for 30 consecutive days",
+        "icon": "🏆",
+    },
+    {
+        "id": "clean_speech",
+        "name": "Pristine",
+        "description": "Complete a session with 0% filler words",
+        "icon": "✨",
+    },
+    {
+        "id": "power_user",
+        "name": "Power User",
+        "description": "100 sessions completed",
+        "icon": "⚡",
+    },
 ]
 
 CRUTCH_SYNONYMS = {

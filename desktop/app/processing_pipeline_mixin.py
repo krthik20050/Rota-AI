@@ -1,4 +1,5 @@
 """Audio processing pipeline — mixed into RotaApp."""
+
 from __future__ import annotations
 
 import json
@@ -9,9 +10,9 @@ import time
 import structlog
 from PyQt6.QtCore import Qt, QTimer, pyqtSlot
 
-from app.signal_bridges import RecordingState
 from app.logging_config import log_event
 from app.processor_thread import ProcessorThread
+from app.signal_bridges import RecordingState
 from services.session_store import SessionRecord
 from ui.overlay.pill_state import PillState
 from utils.text_metrics import calculate_text_metrics
@@ -37,11 +38,18 @@ class ProcessingPipelineMixin:
                 live_transcription_enabled=live_trans_enabled,
             )
             self._processing_session_id = session.id
-            self._processor_thread.partial.connect(self.on_partial_transcription, Qt.ConnectionType.QueuedConnection)
-            self._processor_thread.completed.connect(self.on_processing_finished, Qt.ConnectionType.QueuedConnection)
-            self._processor_thread.error.connect(self.on_processing_error, Qt.ConnectionType.QueuedConnection)
+            self._processor_thread.partial.connect(
+                self.on_partial_transcription, Qt.ConnectionType.QueuedConnection
+            )
+            self._processor_thread.completed.connect(
+                self.on_processing_finished, Qt.ConnectionType.QueuedConnection
+            )
+            self._processor_thread.error.connect(
+                self.on_processing_error, Qt.ConnectionType.QueuedConnection
+            )
             self._processor_thread.finished.connect(
-                lambda: self._cleanup_processor_thread(session.id), Qt.ConnectionType.QueuedConnection
+                lambda: self._cleanup_processor_thread(session.id),
+                Qt.ConnectionType.QueuedConnection,
             )
             self._processor_thread.start()
 
@@ -142,7 +150,9 @@ class ProcessingPipelineMixin:
         if self._processor_thread is None:
             self._set_error_state("processing thread missing", session.id)
             self.overlay.set_state(PillState.IDLE)
-            self.show_toast("Processing thread unavailable. Restart the app if this persists.", warning=True)
+            self.show_toast(
+                "Processing thread unavailable. Restart the app if this persists.", warning=True
+            )
             self._sessions.pop(session.id, None)
             self._active_session = None
             return
@@ -153,13 +163,28 @@ class ProcessingPipelineMixin:
         self._active_session = None
 
     def _advance_overlay_to_processing(self):
-        if self.state == RecordingState.PROCESSING and self.overlay.get_state() == PillState.TRANSCRIBING:
+        if (
+            self.state == RecordingState.PROCESSING
+            and self.overlay.get_state() == PillState.TRANSCRIBING
+        ):
             self.overlay.set_state(PillState.PROCESSING)
 
     @pyqtSlot(str, str, bool, str, float, float, bool, str)
-    def on_processing_finished(self, raw, cleaned, is_prompt, correlation_id, transcription_seconds, ai_seconds, ai_failed, backend_used=""):
+    def on_processing_finished(
+        self,
+        raw,
+        cleaned,
+        is_prompt,
+        correlation_id,
+        transcription_seconds,
+        ai_seconds,
+        ai_failed,
+        backend_used="",
+    ):
         if correlation_id != self._processing_session_id:
-            log_event("processing_result", "ignored", correlation_id=correlation_id, reason="stale_result")
+            log_event(
+                "processing_result", "ignored", correlation_id=correlation_id, reason="stale_result"
+            )
             return
         log = logger.bind(correlation_id=correlation_id)
         try:
@@ -167,7 +192,12 @@ class ProcessingPipelineMixin:
             if session and session.state == "DROPPED_TOO_SHORT":
                 if self.transcriber is not None:
                     self.transcriber.consume_backend_event()
-                log_event("processing_result", "ignored", correlation_id=correlation_id, reason="dropped_too_short")
+                log_event(
+                    "processing_result",
+                    "ignored",
+                    correlation_id=correlation_id,
+                    reason="dropped_too_short",
+                )
                 self._clear_processor_refs(correlation_id)
                 return
             self._processing_timeout_timer.stop()
@@ -183,10 +213,14 @@ class ProcessingPipelineMixin:
                 log.info("processing_completed_empty")
                 self._sessions.pop(correlation_id, None)
                 self.overlay.show_success("No speech detected")
-                self._set_state(RecordingState.SUCCESS, "empty transcription result", correlation_id)
+                self._set_state(
+                    RecordingState.SUCCESS, "empty transcription result", correlation_id
+                )
                 QTimer.singleShot(
                     450,
-                    lambda: self._return_to_idle_if_state(RecordingState.SUCCESS, "ready", correlation_id),
+                    lambda: self._return_to_idle_if_state(
+                        RecordingState.SUCCESS, "ready", correlation_id
+                    ),
                 )
                 self._latest_timings = {
                     "recording_ms": f"{round(self._last_recording_seconds * 1000, 2)} ms",
@@ -198,14 +232,18 @@ class ProcessingPipelineMixin:
                 self._clear_processor_refs(correlation_id)
                 return
 
-            command_recognized, command_ok, handled_msg = self._handle_voice_edit_command(cleaned, correlation_id)
+            command_recognized, command_ok, handled_msg = self._handle_voice_edit_command(
+                cleaned, correlation_id
+            )
             if command_recognized and command_ok:
                 self._sessions.pop(correlation_id, None)
                 self.overlay.show_success("Edited")
                 self._set_state(RecordingState.SUCCESS, "voice edit command", correlation_id)
                 QTimer.singleShot(
                     450,
-                    lambda: self._return_to_idle_if_state(RecordingState.SUCCESS, "ready", correlation_id),
+                    lambda: self._return_to_idle_if_state(
+                        RecordingState.SUCCESS, "ready", correlation_id
+                    ),
                 )
                 if handled_msg:
                     self.show_toast(handled_msg)
@@ -285,7 +323,9 @@ class ProcessingPipelineMixin:
             self._set_state(RecordingState.SUCCESS, "processing finished", correlation_id)
             QTimer.singleShot(
                 450,
-                lambda: self._return_to_idle_if_state(RecordingState.SUCCESS, "ready", correlation_id),
+                lambda: self._return_to_idle_if_state(
+                    RecordingState.SUCCESS, "ready", correlation_id
+                ),
             )
             self.overlay.set_state(PillState.DONE)
             self._clear_processor_refs(correlation_id)
@@ -307,8 +347,14 @@ class ProcessingPipelineMixin:
                     # Avoid full metrics calculation for cleaned — only need word count
                     cleaned_word_count = len(cleaned.split()) if cleaned else 0
                     if text_metrics.total_words > 0:
-                        reduction = max(0.0, (text_metrics.total_words - cleaned_word_count) / text_metrics.total_words)
-                        text_metrics.conciseness_score = max(30, min(100, int(round(100 - (reduction * 150)))))
+                        reduction = max(
+                            0.0,
+                            (text_metrics.total_words - cleaned_word_count)
+                            / text_metrics.total_words,
+                        )
+                        text_metrics.conciseness_score = max(
+                            30, min(100, int(round(100 - (reduction * 150))))
+                        )
                     else:
                         text_metrics.conciseness_score = 100
 
@@ -343,7 +389,9 @@ class ProcessingPipelineMixin:
                             transcript_text=raw or "",
                             backend_used=backend_used or "",
                             app_context=json.dumps(app_ctx_dict) if app_ctx_dict else "",
-                            phrases_json=json.dumps(text_metrics.phrases) if text_metrics.phrases else "",
+                            phrases_json=json.dumps(text_metrics.phrases)
+                            if text_metrics.phrases
+                            else "",
                         )
                     )
 
@@ -369,17 +417,22 @@ class ProcessingPipelineMixin:
                     logger.warning("analytics_thread_failed", exc_info=True)
 
             threading.Thread(target=_run_analytics, daemon=True).start()
-        except Exception as exc:
-            logger.error("on_processing_finished_failed", correlation_id=correlation_id, exc_info=True)
+        except Exception as _exc:
+            _err_msg = str(_exc)
+            logger.error(
+                "on_processing_finished_failed", correlation_id=correlation_id, exc_info=True
+            )
             for fn in [
                 lambda: self._sessions.pop(correlation_id, None),
                 lambda: self.overlay.show_error("Processing failed"),
-                lambda: self._set_state(RecordingState.IDLE, f"processing finished error: {exc}", correlation_id),
+                lambda: self._set_state(
+                    RecordingState.IDLE, f"processing finished error: {_err_msg}", correlation_id
+                ),
                 lambda: self.overlay.set_state(PillState.IDLE),
                 lambda: self._clear_processor_refs(correlation_id),
                 lambda: self._refresh_debug_window(),
                 lambda: self.show_toast(
-                    f"Processing error: {str(exc)[:60]} — check the error log in the app",
+                    f"Processing error: {_err_msg[:60]} — check the error log in the app",
                     warning=True,
                 ),
             ]:
@@ -388,7 +441,9 @@ class ProcessingPipelineMixin:
                 except Exception:
                     pass
 
-    def _handle_voice_edit_command(self, cleaned_text: str, correlation_id: str) -> tuple[bool, bool, str]:
+    def _handle_voice_edit_command(
+        self, cleaned_text: str, correlation_id: str
+    ) -> tuple[bool, bool, str]:
         text = (cleaned_text or "").strip()
         if not text:
             return False, False, ""
@@ -396,7 +451,12 @@ class ProcessingPipelineMixin:
         lowered = text.lower()
         if lowered in {"scratch that", "scratch that.", "scratch that!"}:
             ok, msg = self.injector.scratch_that(correlation_id=correlation_id)
-            log_event("voice_edit_scratch", status="ok" if ok else "failed", correlation_id=correlation_id, message=msg)
+            log_event(
+                "voice_edit_scratch",
+                status="ok" if ok else "failed",
+                correlation_id=correlation_id,
+                message=msg,
+            )
             self._maybe_notify_backend_fallback()
             return True, ok, msg
 
@@ -404,7 +464,9 @@ class ProcessingPipelineMixin:
         if match:
             old_text = match.group(1).strip().strip("\"'\u201c\u201d")
             new_text = match.group(2).strip().strip("\"'\u201c\u201d")
-            ok, msg = self.injector.replace_last_injected(old_text, new_text, correlation_id=correlation_id)
+            ok, msg = self.injector.replace_last_injected(
+                old_text, new_text, correlation_id=correlation_id
+            )
             log_event(
                 "voice_edit_change",
                 status="ok" if ok else "failed",
@@ -428,15 +490,22 @@ class ProcessingPipelineMixin:
         if reason_lower.startswith("latency="):
             self.show_toast("Groq slow. Switched to local transcription.")
             return
-        if any(token in reason_lower for token in ("429", "rate", "quota", "limit", "too many requests")):
-            self.show_toast("Groq rate limit reached. Switched to local transcription. Try again in a minute.")
+        if any(
+            token in reason_lower
+            for token in ("429", "rate", "quota", "limit", "too many requests")
+        ):
+            self.show_toast(
+                "Groq rate limit reached. Switched to local transcription. Try again in a minute."
+            )
             return
         self.show_toast("Groq unavailable. Switched to local transcription.")
 
     @pyqtSlot(str, str, str)
     def on_processing_error(self, err_msg, correlation_id, traceback_text):
         if correlation_id != self._processing_session_id:
-            log_event("processing_result", "ignored", correlation_id=correlation_id, reason="stale_error")
+            log_event(
+                "processing_result", "ignored", correlation_id=correlation_id, reason="stale_error"
+            )
             return
         self._processing_timeout_timer.stop()
         session = self._sessions.get(correlation_id)
@@ -467,5 +536,7 @@ class ProcessingPipelineMixin:
         self._clear_processor_refs(correlation_id)
         QTimer.singleShot(
             1000,
-            lambda: self._return_to_idle_if_state(RecordingState.ERROR, "ready after error", correlation_id),
+            lambda: self._return_to_idle_if_state(
+                RecordingState.ERROR, "ready after error", correlation_id
+            ),
         )

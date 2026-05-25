@@ -1,16 +1,17 @@
 """Tests for PersonalDictionary, SystemAudioController, transcriber, and hallucination guards."""
-import os
+
 import json
+import os
 import tempfile
-from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
+from unittest.mock import MagicMock, patch
 
 import numpy as np
-
 import pytest
 
 try:
     import pycaw  # noqa: F401
+
     HAS_PYCAW = True
 except ImportError:
     HAS_PYCAW = False
@@ -21,10 +22,10 @@ from ai.ai_processor import AIProcessor, PersonalDictionary
 from audio.audio_control import SystemAudioController
 from audio.transcriber import AudioTranscriber
 
-
 # ==============================================================================
 # Helper: Fake AppContext for testing
 # ==============================================================================
+
 
 @dataclass
 class FakeAppContext:
@@ -37,6 +38,7 @@ class FakeAppContext:
 # ==============================================================================
 # PersonalDictionary Tests
 # ==============================================================================
+
 
 def test_personal_dictionary_creation():
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
@@ -124,9 +126,11 @@ def test_personal_dictionary_manual_add_remove():
 # SystemAudioController Tests
 # ==============================================================================
 
+
 class MockConfig:
     def __init__(self, data):
         self.data = data
+
     def get(self, key, default=None):
         return self.data.get(key, default)
 
@@ -203,7 +207,9 @@ def test_audio_controller_pause_mode(mock_get_sessions, mock_get_active_app, moc
 @patch("win32api.keybd_event")
 @patch("audio.audio_control.get_active_app")
 @patch("pycaw.pycaw.AudioUtilities.GetAllSessions")
-def test_audio_controller_pauses_background_spotify_when_foreground_is_editor(mock_get_sessions, mock_get_active_app, mock_keybd_event):
+def test_audio_controller_pauses_background_spotify_when_foreground_is_editor(
+    mock_get_sessions, mock_get_active_app, mock_keybd_event
+):
     mock_get_active_app.return_value = FakeAppContext(
         app_name="Visual Studio Code",
         process_name="Code.exe",
@@ -234,7 +240,9 @@ def test_audio_controller_pauses_background_spotify_when_foreground_is_editor(mo
 @patch("win32api.keybd_event")
 @patch("audio.audio_control.get_active_app")
 @patch("pycaw.pycaw.AudioUtilities.GetAllSessions")
-def test_audio_controller_pauses_background_browser_audio_when_playing(mock_get_sessions, mock_get_active_app, mock_keybd_event):
+def test_audio_controller_pauses_background_browser_audio_when_playing(
+    mock_get_sessions, mock_get_active_app, mock_keybd_event
+):
     mock_get_active_app.return_value = FakeAppContext(
         app_name="Google Chrome",
         process_name="chrome.exe",
@@ -266,6 +274,7 @@ def test_audio_controller_pauses_background_browser_audio_when_playing(mock_get_
 # AudioTranscriber Tests
 # ==============================================================================
 
+
 @patch("groq.Groq")
 def test_transcriber_technical_prompt_stays_prose(mock_groq_class):
     mock_client = MagicMock()
@@ -276,7 +285,9 @@ def test_transcriber_technical_prompt_stays_prose(mock_groq_class):
 
     transcriber = AudioTranscriber()
     audio = np.zeros(16000, dtype=np.float32)
-    result = transcriber._transcribe_groq(audio, app_context=FakeAppContext(category="editor", tone="technical"))
+    result = transcriber._transcribe_groq(
+        audio, app_context=FakeAppContext(category="editor", tone="technical")
+    )
 
     assert result == "clean output"
     prompt = mock_client.audio.transcriptions.create.call_args.kwargs["prompt"]
@@ -287,6 +298,7 @@ def test_transcriber_technical_prompt_stays_prose(mock_groq_class):
 # ==============================================================================
 # Hallucination Guard Tests
 # ==============================================================================
+
 
 @patch.dict(os.environ, {"GEMINI_API_KEY": "fake-gemini-key"})
 @patch("urllib.request.urlopen")
@@ -310,9 +322,7 @@ def test_ai_processor_falls_back_when_output_is_too_different(mock_urlopen):
 
     processor = AIProcessor(ai_provider="gemini")
     # Input has 11 words; returning "Wednesday" (1 word) triggers Guard 3
-    result = processor.process_text(
-        "I want to move the meeting from Tuesday to Wednesday please"
-    )
+    result = processor.process_text("I want to move the meeting from Tuesday to Wednesday please")
     # Should fall back to rule-based, NOT accept the 1-word AI output
     assert "Wednesday" in result  # rule-based preserves the original text
     assert len(result.split()) > 1  # must be more than just "Wednesday"
@@ -349,6 +359,7 @@ def test_ai_processor_rejects_cleanup_with_too_many_new_words(mock_urlopen):
 # ==============================================================================
 # LLM Output Sanitizer Tests
 # ==============================================================================
+
 
 def test_sanitize_llm_output():
     from ai.ai_processor import _sanitize_llm_output

@@ -1,25 +1,42 @@
 from __future__ import annotations
 
 import os
-
-from PyQt6.QtCore import Qt, QUrl, QTimer
-from PyQt6.QtGui import QDesktopServices
-from PyQt6.QtWidgets import (
-    QComboBox, QFrame, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QVBoxLayout, QWidget,
-)
 import threading
 
+from PyQt6.QtCore import Qt, QTimer, QUrl
+from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
 _HOTKEYS = [
-    ("Tab",             "tab"),
-    ("F9",              "f9"),
-    ("F1",  "f1"), ("F2", "f2"), ("F3", "f3"), ("F4", "f4"),
-    ("F5",  "f5"), ("F6", "f6"), ("F7", "f7"), ("F8", "f8"),
-    ("F10", "f10"), ("F11", "f11"), ("F12", "f12"),
-    ("Ctrl+Shift",   "ctrl+shift"),
-    ("Ctrl+Shift+R", "ctrl+shift+r"), ("Ctrl+Shift+D", "ctrl+shift+d"),
-    ("Ctrl+Shift+V", "ctrl+shift+v"), ("Ctrl+Alt+Space", "ctrl+alt+space"),
-    ("Alt+Space",   "alt+space"),   ("Alt+F9", "alt+f9"),
+    ("Tab", "tab"),
+    ("F9", "f9"),
+    ("F1", "f1"),
+    ("F2", "f2"),
+    ("F3", "f3"),
+    ("F4", "f4"),
+    ("F5", "f5"),
+    ("F6", "f6"),
+    ("F7", "f7"),
+    ("F8", "f8"),
+    ("F10", "f10"),
+    ("F11", "f11"),
+    ("F12", "f12"),
+    ("Ctrl+Shift", "ctrl+shift"),
+    ("Ctrl+Shift+R", "ctrl+shift+r"),
+    ("Ctrl+Shift+D", "ctrl+shift+d"),
+    ("Ctrl+Shift+V", "ctrl+shift+v"),
+    ("Ctrl+Alt+Space", "ctrl+alt+space"),
+    ("Alt+Space", "alt+space"),
+    ("Alt+F9", "alt+f9"),
     ("Pause/Break", "pause"),
 ]
 
@@ -34,8 +51,9 @@ def _detect_best_model() -> str:
         # Check for NVIDIA GPU with CUDA
         try:
             import torch
+
             if torch.cuda.is_available():
-                vram_gb = torch.cuda.get_device_properties(0).total_mem / (1024 ** 3)
+                vram_gb = torch.cuda.get_device_properties(0).total_mem / (1024**3)
                 if vram_gb >= 10:
                     return "large-v3"
                 elif vram_gb >= 6:
@@ -52,14 +70,15 @@ def _detect_best_model() -> str:
         # Check system RAM via /proc/meminfo (Linux) or psutil
         try:
             import psutil
-            ram_gb = psutil.virtual_memory().total / (1024 ** 3)
+
+            ram_gb = psutil.virtual_memory().total / (1024**3)
         except Exception:
             try:
                 # Fallback: read /proc/meminfo directly
                 with open("/proc/meminfo") as f:
                     for line in f:
                         if line.startswith("MemTotal:"):
-                            ram_gb = int(line.split()[1]) / (1024 ** 2)  # kB to GB
+                            ram_gb = int(line.split()[1]) / (1024**2)  # kB to GB
                             break
                     else:
                         ram_gb = 4  # conservative default
@@ -134,7 +153,7 @@ def _is_model_cached(model_size: str) -> bool:
                 ):
                     return True
         # Also search recursively for config.json with matching model name
-        for root, dirs, files in os.walk(cache_dir):
+        for root, _dirs, files in os.walk(cache_dir):
             if "config.json" in files:
                 # Check if this looks like a whisper model by checking path
                 if f"faster-whisper-{model_slug}" in root:
@@ -173,9 +192,9 @@ def build_step_welcome(dialog) -> QWidget:
     lay.addSpacing(20)
 
     features = [
-        ("🎙️", "Voice Dictation",  "Works in any app, any text field"),
-        ("✨", "Smart Formatting",   "Cloud or local models polish your words"),
-        ("⚡", "Snippets",         "Voice-trigger frequently used text"),
+        ("🎙️", "Voice Dictation", "Works in any app, any text field"),
+        ("✨", "Smart Formatting", "Cloud or local models polish your words"),
+        ("⚡", "Snippets", "Voice-trigger frequently used text"),
     ]
     for icon, title_txt, sub in features:
         row = QFrame()
@@ -252,9 +271,7 @@ def build_step_api_keys(dialog) -> QWidget:
     lay.addWidget(title)
     lay.addSpacing(8)
 
-    body = QLabel(
-        "Pick how you want to use Rota AI. You can change this anytime in Settings."
-    )
+    body = QLabel("Pick how you want to use Rota AI. You can change this anytime in Settings.")
     body.setObjectName("StepBody")
     body.setWordWrap(True)
     lay.addWidget(body)
@@ -335,8 +352,9 @@ def build_step_api_keys(dialog) -> QWidget:
     gem_open = QPushButton("Get Key →")
     gem_open.setObjectName("GetKeyBtn")
     gem_open.setCursor(Qt.CursorShape.PointingHandCursor)
-    gem_open.clicked.connect(lambda: QDesktopServices.openUrl(
-        QUrl("https://aistudio.google.com/app/apikey")))
+    gem_open.clicked.connect(
+        lambda: QDesktopServices.openUrl(QUrl("https://aistudio.google.com/app/apikey"))
+    )
     gem_row.addWidget(gem_open)
     api_form.addLayout(gem_row)
 
@@ -357,8 +375,9 @@ def build_step_api_keys(dialog) -> QWidget:
     groq_open = QPushButton("Get Key →")
     groq_open.setObjectName("GetKeyBtn")
     groq_open.setCursor(Qt.CursorShape.PointingHandCursor)
-    groq_open.clicked.connect(lambda: QDesktopServices.openUrl(
-        QUrl("https://console.groq.com/keys")))
+    groq_open.clicked.connect(
+        lambda: QDesktopServices.openUrl(QUrl("https://console.groq.com/keys"))
+    )
     groq_row.addWidget(groq_open)
     api_form.addLayout(groq_row)
 
@@ -411,7 +430,9 @@ def _select_path(dialog, path: str):
     dialog._api_path = path
     if path == "quick":
         dialog._api_keys_container.setVisible(False)
-        dialog._api_status.setText("Quick Start selected. You'll be guided to get free API keys after setup.")
+        dialog._api_status.setText(
+            "Quick Start selected. You'll be guided to get free API keys after setup."
+        )
         dialog._api_status.setObjectName("StatusOk")
     elif path == "custom":
         dialog._api_keys_container.setVisible(True)
@@ -460,11 +481,11 @@ def build_step_model(dialog) -> QWidget:
     dialog._model_combo = QComboBox()
     dialog._model_combo.setObjectName("HotkeyCombo")
     models = [
-        ("tiny (fastest, least accurate)",       "tiny"),
+        ("tiny (fastest, least accurate)", "tiny"),
         ("base.en (English, fast, recommended)", "base.en"),
-        ("small.en (English, balanced)",           "small.en"),
-        ("medium (high accuracy, slower)",         "medium"),
-        ("large-v3 (best accuracy, ~3 GB)",        "large-v3"),
+        ("small.en (English, balanced)", "small.en"),
+        ("medium (high accuracy, slower)", "medium"),
+        ("large-v3 (best accuracy, ~3 GB)", "large-v3"),
     ]
     for label, data in models:
         dialog._model_combo.addItem(label, data)
@@ -504,7 +525,9 @@ def build_step_model(dialog) -> QWidget:
     lay.addLayout(dl_row)
 
     lay.addSpacing(4)
-    note = QLabel("This is a fallback model — it downloads in the background so you don't have to wait. Groq cloud is used for transcription when online.")
+    note = QLabel(
+        "This is a fallback model — it downloads in the background so you don't have to wait. Groq cloud is used for transcription when online."
+    )
     note.setObjectName("FieldHint")
     note.setWordWrap(True)
     lay.addWidget(note)
@@ -587,7 +610,7 @@ def build_step_hotkey(dialog) -> QWidget:
 
 def _hotkey_display_name(hotkey_str: str) -> str:
     """Convert internal hotkey string to user-friendly display name.
-    
+
     Examples:
         'tab' → 'Tab'
         'ctrl+shift+k' → 'Ctrl+Shift+K'
@@ -626,6 +649,7 @@ def _start_hotkey_capture(dialog):
         error_msg = ""
         try:
             from plat import get_hotkey_handler
+
             HotkeyHandlerClass = get_hotkey_handler()
             result = HotkeyHandlerClass.capture_hotkey(timeout=8.0)
         except Exception as exc:
@@ -653,7 +677,6 @@ def _start_hotkey_capture(dialog):
             except RuntimeError:
                 pass  # widget already destroyed (dialog closed mid-capture)
 
-        from PyQt6.QtCore import QTimer
         QTimer.singleShot(0, _apply_result)
 
     t = threading.Thread(target=_capture, daemon=True)
@@ -667,7 +690,6 @@ def _cancel_hotkey_capture(dialog):
     dialog._hotkey_cancel_btn.setVisible(False)
     dialog._hotkey_status.setText("Cancelled. Try again or use Settings to change.")
     dialog._hotkey_status.setObjectName("FieldHint")
-
 
 
 def build_step_ready(dialog) -> QWidget:

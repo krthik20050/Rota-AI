@@ -1,7 +1,8 @@
 """Tests for _RateLimiter in ai.rate_limiter."""
-import time
+
 import threading
-import pytest
+import time
+
 from ai.rate_limiter import _RateLimiter
 
 

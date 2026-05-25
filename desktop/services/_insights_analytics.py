@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any
 
-from utils.text_metrics import calculate_text_metrics
 from services._insights_models import CRUTCH_SYNONYMS
+from utils.text_metrics import calculate_text_metrics
 
 
 class InsightsAnalyticsMixin:
@@ -14,7 +14,7 @@ class InsightsAnalyticsMixin:
     ``self.get_lexical_diversity`` to be available (defined on the mixin itself).
     """
 
-    def get_speech_profile(self) -> Dict:
+    def get_speech_profile(self) -> dict:
         history = self.session_store.get_history(limit=1000)
         if not history:
             return {
@@ -76,12 +76,19 @@ class InsightsAnalyticsMixin:
             "total_fillers": total_fillers,
         }
 
-    def get_crutch_words(self, limit: int = 5) -> List[Dict[str, Any]]:
+    def get_crutch_words(self, limit: int = 5) -> list[dict[str, Any]]:
         """Scans raw dictations for verbal crutches like 'basically', 'actually', 'literally'."""
         history = self.session_store.get_history(limit=100)
         crutch_candidates = [
-            "basically", "actually", "literally", "seriously",
-            "obviously", "essentially", "you know", "i mean", "so",
+            "basically",
+            "actually",
+            "literally",
+            "seriously",
+            "obviously",
+            "essentially",
+            "you know",
+            "i mean",
+            "so",
         ]
         counts = {word: 0 for word in crutch_candidates}
 
@@ -95,12 +102,14 @@ class InsightsAnalyticsMixin:
         results = []
         for word, count in sorted_crutches:
             if count > 0:
-                results.append({
-                    "phrase": word,
-                    "count": count,
-                    "rank": len(results) + 1,
-                    "synonyms": CRUTCH_SYNONYMS.get(word, ["[pause]"])
-                })
+                results.append(
+                    {
+                        "phrase": word,
+                        "count": count,
+                        "rank": len(results) + 1,
+                        "synonyms": CRUTCH_SYNONYMS.get(word, ["[pause]"]),
+                    }
+                )
         return results[:limit]
 
     def get_lexical_diversity(self) -> float:
@@ -120,16 +129,16 @@ class InsightsAnalyticsMixin:
 
         return round(len(set(all_words)) / len(all_words), 2)
 
-    def get_active_hours_breakdown(self) -> Dict[str, Any]:
+    def get_active_hours_breakdown(self) -> dict[str, Any]:
         """Categorizes when dictations take place into active diurnal zones."""
         from datetime import datetime
 
         history = self.session_store.get_history(limit=100)
         breakdown = {
-            "Morning": 0,    # 6:00 - 11:59
+            "Morning": 0,  # 6:00 - 11:59
             "Afternoon": 0,  # 12:00 - 16:59
-            "Evening": 0,    # 17:00 - 21:59
-            "Night": 0,      # 22:00 - 5:59
+            "Evening": 0,  # 17:00 - 21:59
+            "Night": 0,  # 22:00 - 5:59
         }
 
         for h in history:
@@ -172,7 +181,7 @@ class InsightsAnalyticsMixin:
             "total_sessions": total,
         }
 
-    def get_trends_data(self, limit: int = 10) -> Dict[str, List]:
+    def get_trends_data(self, limit: int = 10) -> dict[str, list]:
         """Provides historical data points for custom trend visualization."""
         history = self.session_store.get_history(limit=limit)
         reversed_history = list(reversed(history))
@@ -183,7 +192,7 @@ class InsightsAnalyticsMixin:
         conciseness_values = []
 
         for i, h in enumerate(reversed_history):
-            labels.append(f"S{i+1}")
+            labels.append(f"S{i + 1}")
             wpm_values.append(h.get("wpm", 0))
             clarity_values.append(h.get("clarity_score", 0))
             conciseness_values.append(h.get("conciseness_score", 0))
@@ -195,7 +204,7 @@ class InsightsAnalyticsMixin:
             "conciseness": conciseness_values,
         }
 
-    def get_productivity_stats(self) -> Dict[str, Any]:
+    def get_productivity_stats(self) -> dict[str, Any]:
         """Compares dictation performance against manual typing benchmarks."""
         history = self.session_store.get_history(limit=1000)
         total_words = sum(h.get("words", 0) for h in history)
@@ -221,7 +230,7 @@ class InsightsAnalyticsMixin:
             "typing_baseline": int(typing_baseline),
         }
 
-    def get_advanced_speech_coaching(self) -> Dict:
+    def get_advanced_speech_coaching(self) -> dict:
         history = self.session_store.get_history(limit=15)
         if not history:
             return {
@@ -230,13 +239,18 @@ class InsightsAnalyticsMixin:
                 "cadence_rating": "Balanced Flow",
                 "gunning_fog_grade": "Standard Conversational",
                 "readability_desc": "Highly accessible standard speech structure.",
-                "tone_ratios": {"confident": 40.0, "thoughtful": 30.0, "warm": 20.0, "technical": 10.0},
+                "tone_ratios": {
+                    "confident": 40.0,
+                    "thoughtful": 30.0,
+                    "warm": 20.0,
+                    "technical": 10.0,
+                },
                 "speech_coach": {
                     "focus_title": "SILENT VOCAL PAUSES",
                     "drill_title": "The Golden Silence Drill",
                     "tip": "Swallow or take a breath instead of speaking a filler word.",
-                    "drill": "Tap your thigh and pause for one beat when you feel like saying 'um'."
-                }
+                    "drill": "Tap your thigh and pause for one beat when you feel like saying 'um'.",
+                },
             }
 
         all_text = " ".join((h.get("transcript_text") or "") for h in history)
@@ -272,35 +286,35 @@ class InsightsAnalyticsMixin:
                 "focus_title": "ELIMINATING FILLER WORDS WITH SILENT GAPS",
                 "drill_title": "The Golden Silence Drill",
                 "tip": "Silent pauses sound authoritative and give your audience time to absorb information; filler words ('um', 'like', 'so') dilute your impact.",
-                "drill": "Read a short article aloud. Every time you feel a filler word coming, tap your finger against your desk and force exactly one full second of silent pause."
+                "drill": "Read a short article aloud. Every time you feel a filler word coming, tap your finger against your desk and force exactly one full second of silent pause.",
             }
         elif cadence_variety < 3.0:
             coach_focus = {
                 "focus_title": "ADDING DYNAMIC VOCAL RANGE & VARIETY",
                 "drill_title": "The Sentence-Length Accordion",
                 "tip": "Monotony risks losing audience attention. Alternate between punchy, single-thought short statements and detailed descriptive clauses.",
-                "drill": "Speak for two minutes on a familiar topic. Alternate deliberately: speak one very short sentence (under 5 words), then one long descriptive sentence (over 15 words)."
+                "drill": "Speak for two minutes on a familiar topic. Alternate deliberately: speak one very short sentence (under 5 words), then one long descriptive sentence (over 15 words).",
             }
         elif avg_wpm > 150:
             coach_focus = {
                 "focus_title": "PACING CONTROL & ARTICULATION SPEED",
                 "drill_title": "The Anchored Pace Method",
                 "tip": "Speaking too fast makes you hard to follow. Professional speakers slow down on critical technical details and key takeaways.",
-                "drill": "Practice reading a paragraph at half your normal speed, making sure to fully pronounce the final consonants of every word (e.g. '-ing', '-ed'). Aim for 120-130 WPM."
+                "drill": "Practice reading a paragraph at half your normal speed, making sure to fully pronounce the final consonants of every word (e.g. '-ing', '-ed'). Aim for 120-130 WPM.",
             }
         elif lex < 0.5:
             coach_focus = {
                 "focus_title": "ENRICHING VOCABULARY & PHRASING DIVERSITY",
                 "drill_title": "Synonym Substitution Practice",
                 "tip": "Repeating the same phrases (e.g., 'very good', 'basically') makes your presentation feel flat. Practice word variety.",
-                "drill": "Identify your three most repeated words (e.g. 'actually', 'awesome'). Write down 5 synonyms for each, and practice using them in your next three dictations."
+                "drill": "Identify your three most repeated words (e.g. 'actually', 'awesome'). Write down 5 synonyms for each, and practice using them in your next three dictations.",
             }
         else:
             coach_focus = {
                 "focus_title": "MASTERING ADVANCED EXECUTIVE PRESENCE",
                 "drill_title": "The Resonance Warm-up",
                 "tip": "Your vocal clarity, pacing, and vocabulary variety are in the top 5%! Elevate your authority by using deep vocal resonance and strategic pauses.",
-                "drill": "Before any important presentation, do the 'hum-and-buzz' lip trill for 30 seconds to relax your vocal cords and open up your chest resonance."
+                "drill": "Before any important presentation, do the 'hum-and-buzz' lip trill for 30 seconds to relax your vocal cords and open up your chest resonance.",
             }
 
         return {
@@ -316,7 +330,7 @@ class InsightsAnalyticsMixin:
             "pacing_label": metrics.pacing_label,
         }
 
-    def get_vocal_drills(self) -> List[Dict]:
+    def get_vocal_drills(self) -> list[dict]:
         """Returns 3 interactive vocal drill slides for the carousel."""
         history = self.session_store.get_history(limit=15)
         all_text = " ".join((h.get("transcript_text") or "") for h in history)
@@ -361,7 +375,7 @@ class InsightsAnalyticsMixin:
                 "subtitle": "Expand your word variety",
                 "drill": "Identify your 3 most repeated words. Write 5 synonyms for each and use them in your next dictation.",
                 "metric_name": "Lexical Diversity",
-                "metric_value": f"{lex*100:.0f}%",
+                "metric_value": f"{lex * 100:.0f}%",
                 "target": "Target: 70%+",
             }
 

@@ -2,6 +2,7 @@
 Smoke tests for SessionStore — extracted from services/session_store.py.
 Run: python -m tests.test_session_store  (from desktop/)
 """
+
 from __future__ import annotations
 
 import json
@@ -41,22 +42,24 @@ def run() -> None:
     print("[PASS] save_session (new API)")
 
     # Test 2: add_session (legacy API)
-    store.add_session(SessionRecord(
-        session_id=sid2,
-        started_at=time.time() - 10,
-        ended_at=time.time(),
-        recording_seconds=10.0,
-        words=10,
-        wpm=60,
-        filler_ratio=0.1,
-        clarity_score=85,
-        conciseness_score=80,
-        insight_summary="Good",
-        insight_suggestion="Keep going",
-        transcript_text="Another test session",
-        backend_used="local",
-        filler_count=1,
-    ))
+    store.add_session(
+        SessionRecord(
+            session_id=sid2,
+            started_at=time.time() - 10,
+            ended_at=time.time(),
+            recording_seconds=10.0,
+            words=10,
+            wpm=60,
+            filler_ratio=0.1,
+            clarity_score=85,
+            conciseness_score=80,
+            insight_summary="Good",
+            insight_suggestion="Keep going",
+            transcript_text="Another test session",
+            backend_used="local",
+            filler_count=1,
+        )
+    )
     print("[PASS] add_session (legacy API)")
 
     # Test 3: get_history

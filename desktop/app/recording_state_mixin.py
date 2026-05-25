@@ -1,4 +1,5 @@
 """Recording state machine — mixed into RotaApp."""
+
 from __future__ import annotations
 
 import time
@@ -6,8 +7,8 @@ import time
 import structlog
 from PyQt6.QtCore import QTimer
 
-from app.signal_bridges import RecordingState
 from app.logging_config import log_event
+from app.signal_bridges import RecordingState
 from ui.overlay.pill_state import PillState
 
 logger = structlog.get_logger(__name__)
@@ -20,7 +21,11 @@ class RecordingStateMixin:
         allowed_transitions = {
             RecordingState.IDLE: {RecordingState.LISTENING, RecordingState.ERROR},
             RecordingState.LISTENING: {RecordingState.PROCESSING, RecordingState.ERROR},
-            RecordingState.PROCESSING: {RecordingState.SUCCESS, RecordingState.ERROR, RecordingState.IDLE},
+            RecordingState.PROCESSING: {
+                RecordingState.SUCCESS,
+                RecordingState.ERROR,
+                RecordingState.IDLE,
+            },
             RecordingState.SUCCESS: {RecordingState.IDLE, RecordingState.ERROR},
             RecordingState.ERROR: {RecordingState.IDLE},
         }
@@ -123,5 +128,7 @@ class RecordingStateMixin:
         text = str(exc).lower()
         mic_indicators = ("audio", "input", "micro", "mic", "sounddevice", "portaudio", "device")
         if any(token in text for token in mic_indicators):
-            return "No mic detected — check your microphone is connected and not in use by another app"
+            return (
+                "No mic detected — check your microphone is connected and not in use by another app"
+            )
         return "Could not start recording — check mic permissions in Windows Settings > Privacy > Microphone"

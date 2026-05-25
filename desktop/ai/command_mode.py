@@ -1,6 +1,5 @@
 import os
 import re
-from typing import Optional
 
 from groq import Groq
 
@@ -34,13 +33,13 @@ _TARGET_PROMPTS = {
 }
 
 
-def detect_command(text: str) -> Optional[tuple[str, str]]:
+def detect_command(text: str) -> tuple[str, str] | None:
     """
     Detect voice command in text.
     Returns (command_type, target) or None if no command detected.
     """
     text_lower = text.lower()
-    
+
     for pattern, cmd_type in _COMMAND_PATTERNS:
         match = re.search(pattern, text_lower)
         if match:
@@ -59,14 +58,12 @@ def detect_command(text: str) -> Optional[tuple[str, str]]:
                 return ("transform", "summary")
             elif cmd_type == "shorten":
                 return ("shorten", match.group(1) if match.lastindex else "shorter")
-    
+
     return None
 
 
 def strip_command(text: str) -> str:
     """Remove command phrase from text, leaving only the content to transform."""
-    text_lower = text.lower()
-    
     patterns_to_strip = [
         r"\bmake\s+this\s+(?:an?\s+)?\w+\b",
         r"\bconvert\s+(this\s+)?to\s+(?:bullet\s+points?|list)\b",
@@ -76,11 +73,11 @@ def strip_command(text: str) -> str:
         r"\bsummarize\s+(this|that)\b",
         r"\bmake\s+(this|that)\s+(?:shorter|longer|concise|brief)\b",
     ]
-    
+
     result = text
     for pattern in patterns_to_strip:
         result = re.sub(pattern, "", result, flags=re.IGNORECASE).strip()
-    
+
     # Clean up any leading punctuation
     result = result.lstrip("-*:. ")
     return result
@@ -91,9 +88,9 @@ def transform_text(text: str, command: str, target: str) -> str:
     api_key = os.environ.get("GROQ_API_KEY", "")
     if not api_key:
         return text
-    
+
     prompt = _TARGET_PROMPTS.get(target, f"Transform this text as requested: {target}")
-    
+
     client = Groq(api_key=api_key)
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",

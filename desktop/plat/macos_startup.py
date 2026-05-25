@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -57,8 +58,9 @@ def register_startup(exe_path: str, app_name: str = "Rota AI") -> bool:
         subprocess.run(["launchctl", "unload", dest], capture_output=True, timeout=5)
         # Load the agent using modern bootstrap (launchctl load is deprecated)
         subprocess.run(
-            ["launchctl", "bootstrap", "gui/{}".format(os.getuid()), dest],
-            capture_output=True, timeout=5,
+            ["launchctl", "bootstrap", f"gui/{os.getuid()}", dest],
+            capture_output=True,
+            timeout=5,
         )
 
         logger.info("startup_registered", path=dest)
@@ -78,8 +80,9 @@ def unregister_startup() -> bool:
         if os.path.exists(dest):
             # Unload using modern bootout (launchctl unload is deprecated)
             subprocess.run(
-                ["launchctl", "bootout", "gui/{}".format(os.getuid()), dest],
-                capture_output=True, timeout=5,
+                ["launchctl", "bootout", f"gui/{os.getuid()}", dest],
+                capture_output=True,
+                timeout=5,
             )
             os.remove(dest)
             logger.info("startup_unregistered", path=dest)

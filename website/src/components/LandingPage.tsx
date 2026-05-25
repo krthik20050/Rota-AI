@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { WordsPreloader } from "./WordsPreloader";
 import { motion, useInView, useScroll, useMotionValueEvent } from "framer-motion";
 import {
   Mic, Zap, Send, Sparkles, Globe, Command, MessageSquare,
-  Code2, FileText, CheckCircle2, ArrowRight, Download,
+  Code2, FileText, Download,
   ChevronDown, ExternalLink, GitBranch, X, Monitor, Terminal,
+  Apple,
 } from "lucide-react";
 
 /* ─── Download Modal ───────────────────────────────────────────────────────── */
@@ -49,11 +51,28 @@ function DownloadModal({ open, onClose }: { open: boolean; onClose: () => void }
             <Download size={16} className="text-black/40 group-hover:translate-y-0.5 transition-transform" />
           </a>
 
+          {/* macOS */}
+          <a
+            href="/api/download?platform=macos"
+            download="RotaAI-macOS.zip"
+            className="group flex items-center gap-4 w-full px-5 py-4 mb-3 rounded-sm border transition-all hover:border-white/20"
+            style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }}
+          >
+            <div className="w-10 h-10 flex items-center justify-center rounded-sm bg-white/[.03]">
+              <Apple size={20} className="text-[#e4f222]" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-sm font-semibold text-white tracking-tight">Download for Mac</div>
+              <div className="text-[11px] text-zinc-500 mt-0.5">App zip · macOS 13+ · first-open permission step</div>
+            </div>
+            <Download size={16} className="text-zinc-600 group-hover:translate-y-0.5 transition-transform" />
+          </a>
+
           {/* Linux */}
           <a
             href="/api/download?platform=linux"
             download="RotaAI.AppImage"
-            className="group flex items-center gap-4 w-full px-5 py-4 mb-6 rounded-sm border transition-all hover:border-white/20"
+            className="group flex items-center gap-4 w-full px-5 py-4 mb-4 rounded-sm border transition-all hover:border-white/20"
             style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }}
           >
             <div className="w-10 h-10 flex items-center justify-center rounded-sm bg-white/[.03]">
@@ -65,6 +84,11 @@ function DownloadModal({ open, onClose }: { open: boolean; onClose: () => void }
             </div>
             <Download size={16} className="text-zinc-600 group-hover:translate-y-0.5 transition-transform" />
           </a>
+
+          <div className="mb-6 rounded-sm border border-[#e4f222]/15 bg-[#e4f222]/[0.03] p-3 text-[11px] leading-relaxed text-zinc-500">
+            Mac note: this student build is not Apple Developer ID notarized yet. On first launch,
+            Control-click RotaAI.app, choose Open, then grant Accessibility and Microphone permissions.
+          </div>
 
           <div className="flex items-center gap-3 text-[11px] text-zinc-600">
             <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors flex items-center gap-1">
@@ -251,7 +275,7 @@ const HOW_STEPS = [
     num: "01",
     icon: Command,
     title: "Press F9",
-    desc: "A floating recording pill appears. Start speaking — no setup, no switching apps.",
+    desc: "A floating recording pill appears. Start speaking. No setup, no switching apps.",
   },
   {
     num: "02",
@@ -263,7 +287,7 @@ const HOW_STEPS = [
     num: "03",
     icon: Send,
     title: "Text injected",
-    desc: "Release F9. Polished text appears where your cursor is — Gmail, Slack, VS Code, anywhere.",
+    desc: "Release F9. Polished text appears where your cursor is. Gmail, Slack, VS Code, anywhere.",
   },
 ];
 
@@ -283,13 +307,13 @@ const FEATURES = [
   {
     icon: Globe,
     title: "Works everywhere",
-    desc: "Gmail, Slack, Discord, VS Code, Notion — any text field, any app.",
+    desc: "Gmail, Slack, Discord, VS Code, Notion. Any text field, any app.",
     large: false,
   },
   {
     icon: MessageSquare,
     title: "Voice commands",
-    desc: '"Scratch that", "Change X to Y" — voice-native editing.',
+    desc: '"Scratch that", "Change X to Y". Voice-native editing.',
     large: false,
   },
   {
@@ -311,22 +335,6 @@ const APPS = [
   "Obsidian", "Chrome", "Cursor", "Telegram", "Figma",
 ];
 
-const WITHOUT = [
-  "Typing slowly, interrupting your flow",
-  "Copy/paste between dictation tools",
-  "Raw transcripts full of fillers",
-  "Wrong tone for the app you're in",
-  "Losing your train of thought",
-];
-
-const WITH = [
-  "Speak at 150+ words per minute",
-  "Text appears right where you type",
-  "AI-polished prose, every time",
-  "Context-aware tone per app",
-  "Stay in flow, speak your thoughts",
-];
-
 const COMPARE_ROWS = [
   { feature: "Price", wispr: "$15/mo", superwhisper: "$8.49/mo", rota: "Free", rotaBold: true },
   { feature: "Open source", wispr: "No", superwhisper: "No", rota: "Yes, MIT", rotaBold: true },
@@ -338,7 +346,7 @@ const COMPARE_ROWS = [
   { feature: "Telemetry", wispr: "Cloud based", superwhisper: "Not fully disclosed", rota: "None", rotaBold: true },
   { feature: "File transcription", wispr: "No", superwhisper: "Audio + video", rota: "Not yet", rotaBold: false },
   { feature: "Cross-device sync", wispr: "Yes", superwhisper: "Yes", rota: "Not yet", rotaBold: false },
-  { feature: "Mac / Linux / iOS", wispr: "All", superwhisper: "Mac, Win, iOS", rota: "Windows & Linux", rotaBold: true },
+  { feature: "Mac / Linux / iOS", wispr: "All", superwhisper: "Mac, Win, iOS", rota: "Win, Mac, Linux", rotaBold: true },
 ];
 
 const FAQ_ITEMS = [
@@ -348,7 +356,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "How does the download work?",
-    a: "Click Download and pick your platform. Windows: run the installer. Linux: run the AppImage directly (chmod +x RotaAI.AppImage && ./RotaAI.AppImage). Both handle Python, dependencies, and setup automatically.",
+    a: "Click Download and pick your platform. Windows: run the installer. Mac: unzip RotaAI-macOS.zip, Control-click RotaAI.app, choose Open, and grant permissions on first launch. Linux: run the AppImage directly (chmod +x RotaAI.AppImage && ./RotaAI.AppImage).",
   },
   {
     q: "Can I use it without internet?",
@@ -356,11 +364,11 @@ const FAQ_ITEMS = [
   },
   {
     q: "What about Mac or Linux?",
-    a: "Linux is fully supported — download the AppImage and run it directly. macOS is on the roadmap. The core pipeline (faster-whisper, silero-vad, PyQt6) is cross-platform.",
+    a: "Windows, macOS, and Linux builds are published from GitHub releases. macOS currently uses an unsigned student-friendly build, so the first launch requires the standard Control-click Open workaround until we have Apple Developer ID notarization.",
   },
   {
     q: "What are the system requirements?",
-    a: "Windows 10/11 or Linux (Ubuntu 20.04+, Fedora 36+, Arch). 4GB RAM minimum, 8GB recommended. For local GPU transcription: NVIDIA GPU with 4GB+ VRAM. CPU-only works on any modern quad-core.",
+    a: "Windows 10/11, macOS 13+, or Linux (Ubuntu 20.04+, Fedora 36+, Arch). 4GB RAM minimum, 8GB recommended. For local GPU transcription: NVIDIA GPU with 4GB+ VRAM. CPU-only works on any modern quad-core.",
   },
 ];
 
@@ -383,7 +391,7 @@ function Nav({ onDownloadClick }: { onDownloadClick: () => void }) {
         backdropFilter: scrolled ? "blur(16px)" : "none",
       }}
     >
-      <a href="/" className="flex items-center gap-2.5">
+      <Link href="/" className="flex items-center gap-2.5">
         <div
           className="w-6 h-6 flex items-center justify-center"
           style={{ background: "#e4f222", borderRadius: 2 }}
@@ -393,13 +401,13 @@ function Nav({ onDownloadClick }: { onDownloadClick: () => void }) {
         <span className="text-sm font-semibold tracking-[0.12em] uppercase text-[#fafafa]">
           Rota AI
         </span>
-      </a>
+      </Link>
 
       <div className="hidden sm:flex items-center gap-8 text-xs tracking-[0.18em] uppercase text-[#71717a]">
         <a href="#how-it-works" className="hover:text-[#fafafa] transition-colors">How it works</a>
         <a href="#features" className="hover:text-[#fafafa] transition-colors">Features</a>
         <a href="#comparison" className="hover:text-[#fafafa] transition-colors">Compare</a>
-        <a href="/blog" className="hover:text-[#fafafa] transition-colors">Blog</a>
+        <Link href="/blog" className="hover:text-[#fafafa] transition-colors">Blog</Link>
         <button onClick={onDownloadClick} className="hover:text-[#fafafa] transition-colors" style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "inherit" }}>Download</button>
       </div>
 
@@ -469,7 +477,7 @@ export function LandingPage() {
           }}
         >
           <span className="w-1.5 h-1.5 rounded-full bg-[#e4f222] animate-pulse" />
-          Now available — Windows &amp; Linux
+          Now available: Windows, Mac &amp; Linux
         </motion.div>
 
         <motion.h1
@@ -491,7 +499,7 @@ export function LandingPage() {
           className="relative z-10 mt-7 max-w-md text-sm leading-relaxed text-[#a1a1aa]"
         >
           Voice dictation that actually works. AI-cleaned, context-aware text
-          injected directly into any app — with a single keypress.
+          injected directly into any app with a single keypress.
         </motion.p>
 
         <motion.div
@@ -629,7 +637,7 @@ export function LandingPage() {
             >
               Everything you need.
               <br />
-              <span style={{ color: "#e4f222" }}>Nothing you don't.</span>
+              <span style={{ color: "#e4f222" }}>Nothing you do not.</span>
             </h2>
           </FadeIn>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/[.04]">
@@ -690,7 +698,7 @@ export function LandingPage() {
               className="font-display uppercase leading-[0.92] tracking-[0.02em]"
               style={{ fontSize: "clamp(36px, 5.5vw, 72px)", color: "#fafafa" }}
             >
-              Why Rota?
+              Why Rota AI?
             </h2>
           </FadeIn>
           <div className="overflow-x-auto">
@@ -757,7 +765,7 @@ export function LandingPage() {
           </FadeIn>
           <FadeIn delay={0.1}>
             <p className="text-sm mb-10 max-w-md text-[#a1a1aa]">
-              Windows &amp; Linux · Free &amp; open source · No account needed
+              Windows, Mac &amp; Linux · Free &amp; open source · No account needed
             </p>
             <button
               onClick={() => setDownloadModalOpen(true)}
@@ -775,6 +783,68 @@ export function LandingPage() {
               <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
               Download Rota AI
             </button>
+
+            {/* Share row */}
+            <div className="flex items-center gap-4 mt-8">
+              <span className="text-[10px] uppercase tracking-[0.2em] text-[#52525b] font-bold">Share</span>
+              <div className="flex items-center gap-2">
+                {/* Twitter / X */}
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("I've been using Rota AI. Free, open source voice dictation that actually works. No subscription, no account. Try it:")}&url=${encodeURIComponent("https://website-omega-lemon-57.vercel.app")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-umami-event="share-twitter"
+                  className="flex items-center justify-center w-8 h-8 rounded-sm transition-all hover:bg-white/10"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                  title="Share on X / Twitter"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#71717a] hover:fill-white" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </a>
+                {/* LinkedIn */}
+                <a
+                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent("https://website-omega-lemon-57.vercel.app")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-umami-event="share-linkedin"
+                  className="flex items-center justify-center w-8 h-8 rounded-sm transition-all hover:bg-white/10"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                  title="Share on LinkedIn"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#71717a] hover:fill-white" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  </svg>
+                </a>
+                {/* Reddit */}
+                <a
+                  href={`https://www.reddit.com/submit?url=${encodeURIComponent("https://website-omega-lemon-57.vercel.app")}&title=${encodeURIComponent("Rota AI: free open source Wispr Flow alternative for Windows, Mac, and Linux")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-umami-event="share-reddit"
+                  className="flex items-center justify-center w-8 h-8 rounded-sm transition-all hover:bg-white/10"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                  title="Share on Reddit"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#71717a] hover:fill-white" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/>
+                  </svg>
+                </a>
+                {/* Copy link */}
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText("https://website-omega-lemon-57.vercel.app");
+                  }}
+                  data-umami-event="share-copy-link"
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-sm text-[10px] uppercase tracking-[0.15em] font-bold text-[#71717a] hover:text-white transition-all hover:bg-white/10"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                  title="Copy link"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Copy link
+                </button>
+              </div>
+            </div>
           </FadeIn>
         </div>
       </section>

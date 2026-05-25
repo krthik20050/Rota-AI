@@ -40,6 +40,9 @@ def configure_logging():
 
     if sys.platform == "darwin":
         _appdata_dir = os.path.join(os.path.expanduser("~/Library/Application Support"), "RotaAI")
+    elif sys.platform.startswith("linux"):
+        _xdg_state = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+        _appdata_dir = os.path.join(_xdg_state, "rota-ai")
     else:
         _appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
     _add_file_handler(os.path.join(_appdata_dir, "rota.log"))

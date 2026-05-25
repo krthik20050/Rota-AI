@@ -1,8 +1,9 @@
-import pyperclip
-import time
 import ctypes
 import ctypes.wintypes
 import re
+import time
+
+import pyperclip
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -18,12 +19,23 @@ _last_injected_correlation_id: str | None = None
 _MAX_INJECT_LENGTH = 5000  # characters
 
 # SECURITY: Terminal process names — injecting here can execute arbitrary commands
-_TERMINAL_PROCESS_NAMES = frozenset({
-    "cmd.exe", "powershell.exe", "pwsh.exe", "wt.exe",
-    "windowsterminal.exe", "bash.exe", "sh.exe",
-    "python.exe", "python3.exe", "pythonw.exe",
-    "node.exe", "git-bash.exe", "mintty.exe",
-})
+_TERMINAL_PROCESS_NAMES = frozenset(
+    {
+        "cmd.exe",
+        "powershell.exe",
+        "pwsh.exe",
+        "wt.exe",
+        "windowsterminal.exe",
+        "bash.exe",
+        "sh.exe",
+        "python.exe",
+        "python3.exe",
+        "pythonw.exe",
+        "node.exe",
+        "git-bash.exe",
+        "mintty.exe",
+    }
+)
 
 
 def _get_foreground_process_name() -> str:
@@ -108,12 +120,19 @@ class TextInjector:
         # Log a warning when injecting into terminals (informational only — not blocked).
         proc = _get_foreground_process_name()
         if proc in _TERMINAL_PROCESS_NAMES:
-            logger.warning("injection_target_is_terminal", process=proc, correlation_id=correlation_id)
+            logger.warning(
+                "injection_target_is_terminal", process=proc, correlation_id=correlation_id
+            )
 
         previous_clipboard = None
         hwnd_before = None
         try:
-            global _last_undo_content, _last_injected_text, _last_injected_field_info, _last_injected_hwnd, _last_injected_correlation_id
+            global \
+                _last_undo_content, \
+                _last_injected_text, \
+                _last_injected_field_info, \
+                _last_injected_hwnd, \
+                _last_injected_correlation_id
 
             # Save current clipboard for undo capability.
             try:
@@ -143,7 +162,9 @@ class TextInjector:
 
                     restored = restore_focus_and_click(field_info)
                     if not restored:
-                        logger.warning("focus_restore_skipped_or_failed", correlation_id=correlation_id)
+                        logger.warning(
+                            "focus_restore_skipped_or_failed", correlation_id=correlation_id
+                        )
                 except Exception:
                     logger.exception("focus_restore_failed", correlation_id=correlation_id)
 
@@ -267,7 +288,9 @@ class TextInjector:
             _last_injected_correlation_id = None
         return ok, msg
 
-    def replace_last_injected(self, old: str, new: str, correlation_id: str | None = None) -> tuple[bool, str]:
+    def replace_last_injected(
+        self, old: str, new: str, correlation_id: str | None = None
+    ) -> tuple[bool, str]:
         """
         Apply voice edit command: change X to Y on the last injected text.
         Replaces first case-insensitive match, rewrites text in-place.
@@ -327,7 +350,9 @@ class TextInjector:
             if current_hwnd != last_hwnd:
                 return False, "Target window changed during edit — manual edit required"
 
-            inject_ok, inject_msg = self.inject(rewritten, correlation_id=correlation_id, field_info=last_field)
+            inject_ok, inject_msg = self.inject(
+                rewritten, correlation_id=correlation_id, field_info=last_field
+            )
             if not inject_ok:
                 try:
                     pyperclip.copy(original)

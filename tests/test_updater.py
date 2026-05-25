@@ -1,12 +1,14 @@
 """Tests for services/updater.py — no network calls, no Qt."""
+
 from __future__ import annotations
 
 import json
+import os
+import sys
 import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "desktop"))
 
 from services.updater import _version_tuple, check_for_update
@@ -77,6 +79,7 @@ class TestCheckForUpdate(unittest.TestCase):
 
     def test_network_error_no_crash(self):
         import urllib.error
+
         called = []
 
         with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("timeout")):

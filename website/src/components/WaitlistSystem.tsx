@@ -54,19 +54,19 @@ export function WaitlistSystem() {
 
     setUiState("loading")
     setErrorMsg(null)
-    
+
     try {
       const res = await fetch("/api/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, ref: refCode }),
       })
-      
+
       const json = await res.json()
 
       if (res.ok) {
         setData({ code: json.code })
-        
+
         // Fetch initial position optimistically (doesn't block success UI transition)
         fetch(`/api/status?code=${json.code}`).then(res => res.json()).then(statusJson => {
             if(statusJson.position) {
@@ -103,7 +103,7 @@ export function WaitlistSystem() {
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col justify-center min-h-[400px]">
       <AnimatePresence mode="wait">
-        
+
         {uiState === "hero" && (
           <motion.div
             key="hero"
@@ -207,7 +207,7 @@ export function WaitlistSystem() {
             </div>
 
             {data?.position ? (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="w-full p-4 rounded-md bg-surface-200 border border-border space-y-1"

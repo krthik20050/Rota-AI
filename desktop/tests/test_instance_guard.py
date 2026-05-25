@@ -1,8 +1,11 @@
 """Tests for app.instance_guard — single-instance helpers."""
+
 import socket
 import threading
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 import app.instance_guard as guard
 
 
@@ -75,8 +78,10 @@ class TestTryAcquireInstanceListener:
         try:
             blocker.bind(("127.0.0.1", port))
             blocker.listen(1)
-            with patch.object(guard, "try_acquire_instance_mutex", return_value=True), \
-                 patch.object(guard, "_INSTANCE_WAKE_PORT", port):
+            with (
+                patch.object(guard, "try_acquire_instance_mutex", return_value=True),
+                patch.object(guard, "_INSTANCE_WAKE_PORT", port),
+            ):
                 result = guard.try_acquire_instance_listener()
             assert result is None
         finally:

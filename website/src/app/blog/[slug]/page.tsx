@@ -14,8 +14,8 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const post = getPostBySlug(slug);
-  if (!post) return { title: "Post not found — Rota AI" };
-  return { title: `${post.title} — Rota AI` };
+  if (!post) return { title: "Post not found - Rota AI" };
+  return { title: `${post.title} - Rota AI` };
 }
 
 export default async function BlogPostPage({ params }: Props) {

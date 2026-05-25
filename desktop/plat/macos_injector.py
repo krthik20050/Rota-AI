@@ -26,10 +26,10 @@ Reference: VoiceType macOS backend (Honeybee1023/VoiceType)
 
 from __future__ import annotations
 
-import os
-import structlog
 import subprocess
 import time
+
+import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -47,33 +47,56 @@ _MAX_INJECT_LENGTH = 5000  # characters
 
 # SECURITY: Terminal / shell process names — injecting here can execute commands.
 # Only used for informational warnings; injection is not blocked.
-_TERMINAL_PROCESS_NAMES = frozenset({
-    "terminal", "iterm2", "alacritty", "kitty", "wezterm", "hyper",
-    "warp", "tabby", "ghostty",
-    "bash", "zsh", "fish", "sh", "dash", "tcsh",
-    "python", "python3", "node", "irb", "rails",
-})
+_TERMINAL_PROCESS_NAMES = frozenset(
+    {
+        "terminal",
+        "iterm2",
+        "alacritty",
+        "kitty",
+        "wezterm",
+        "hyper",
+        "warp",
+        "tabby",
+        "ghostty",
+        "bash",
+        "zsh",
+        "fish",
+        "sh",
+        "dash",
+        "tcsh",
+        "python",
+        "python3",
+        "node",
+        "irb",
+        "rails",
+    }
+)
 
 # Apps that don't respond well to AX injection or Cmd+V — use direct typing instead
-_DIRECT_TYPE_APPS = frozenset({
-    "terminal", "iterm2", "iterm",
-    "wechat", "微信",
-    "alacritty",
-})
+_DIRECT_TYPE_APPS = frozenset(
+    {
+        "terminal",
+        "iterm2",
+        "iterm",
+        "wechat",
+        "微信",
+        "alacritty",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # macOS permission checks
 # ---------------------------------------------------------------------------
 
+
 def _check_accessibility_permission() -> bool:
     """Check if the process has Accessibility permission."""
     try:
-        import objc
         from ApplicationServices import (
             AXIsProcessTrustedWithOptions,
-            kAXTrustedCheckOptionPrompt,
         )
+
         # Prompt=False — just check, don't show dialog
         return bool(AXIsProcessTrustedWithOptions(None))
     except Exception:
@@ -83,7 +106,8 @@ def _check_accessibility_permission() -> bool:
 def _check_input_monitoring_permission() -> bool:
     """Check if the process has Input Monitoring permission (Quartz CGEventTap)."""
     try:
-        from Quartz import CGEventTapCreate, kCGSessionEventTap, kCGHeadInsertEventTap
+        from Quartz import CGEventTapCreate, kCGHeadInsertEventTap, kCGSessionEventTap
+
         tap = CGEventTapCreate(
             kCGSessionEventTap,
             kCGHeadInsertEventTap,
@@ -95,6 +119,7 @@ def _check_input_monitoring_permission() -> bool:
         if tap:
             # Release the test tap
             from Quartz import CFRelease
+
             CFRelease(tap)
             return True
         return False
@@ -105,6 +130,7 @@ def _check_input_monitoring_permission() -> bool:
 # ---------------------------------------------------------------------------
 # Clipboard helpers (NSPasteboard snapshot + restore)
 # ---------------------------------------------------------------------------
+
 
 class _ClipboardSnapshot:
     """Save and restore macOS clipboard contents."""
@@ -117,6 +143,7 @@ class _ClipboardSnapshot:
         cls._types_and_data = []
         try:
             from AppKit import NSPasteboard
+
             pb = NSPasteboard.generalPasteboard()
             for t in pb.types():
                 data = pb.dataForType_(t)
@@ -132,6 +159,7 @@ class _ClipboardSnapshot:
             return
         try:
             from AppKit import NSPasteboard
+
             pb = NSPasteboard.generalPasteboard()
             pb.clearContents()
             for t, raw in cls._types_and_data:
@@ -156,9 +184,7 @@ def _clipboard_copy(text: str) -> bool:
 def _clipboard_paste() -> str | None:
     """Read current clipboard contents. Returns None on failure."""
     try:
-        result = subprocess.run(
-            ["pbpaste"], capture_output=True, timeout=5
-        )
+        result = subprocess.run(["pbpaste"], capture_output=True, timeout=5)
         if result.returncode == 0:
             return result.stdout.decode("utf-8", errors="replace")
         return None
@@ -171,8 +197,10 @@ def _clipboard_paste() -> str | None:
 # Target app info (captured at recording start)
 # ---------------------------------------------------------------------------
 
+
 class _TargetInfo:
     """Holds the captured target app/window state for the current recording session."""
+
     app_name: str | None = None
     pid: int | None = None
     ax_element: object | None = None
@@ -187,17 +215,27 @@ def capture_target() -> None:
     try:
         # Get frontmost app name
         result = subprocess.run(
-            ["osascript", "-e",
-             'tell application "System Events" to get name of first process whose frontmost is true'],
-            capture_output=True, text=True, timeout=5,
+            [
+                "osascript",
+                "-e",
+                'tell application "System Events" to get name of first process whose frontmost is true',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         _current_target.app_name = result.stdout.strip() or None
 
         # Get frontmost app PID
         result = subprocess.run(
-            ["osascript", "-e",
-             'tell application "System Events" to get unix id of (first process whose frontmost is true)'],
-            capture_output=True, text=True, timeout=5,
+            [
+                "osascript",
+                "-e",
+                'tell application "System Events" to get unix id of (first process whose frontmost is true)',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         try:
             _current_target.pid = int(result.stdout.strip())
@@ -207,14 +245,13 @@ def capture_target() -> None:
         # Capture focused AX element
         try:
             from ApplicationServices import (
-                AXUIElementCreateSystemWide,
                 AXUIElementCopyAttributeValue,
+                AXUIElementCreateSystemWide,
                 kAXFocusedUIElementAttribute,
             )
+
             system = AXUIElementCreateSystemWide()
-            err, focused = AXUIElementCopyAttributeValue(
-                system, kAXFocusedUIElementAttribute, None
-            )
+            err, focused = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute, None)
             if err == 0 and focused is not None:
                 _current_target.ax_element = focused
                 logger.info("macos_injector: captured focused AX element")
@@ -241,6 +278,7 @@ def clear_target() -> None:
 # Tier 1: AXUIElement injection (fastest, no clipboard side effects)
 # ---------------------------------------------------------------------------
 
+
 def _inject_ax(text: str, element) -> bool:
     """
     Set text directly on an AXUIElement via Accessibility API.
@@ -253,6 +291,7 @@ def _inject_ax(text: str, element) -> bool:
             kAXSelectedTextAttribute,
             kAXValueAttribute,
         )
+
         # Try kAXSelectedTextAttribute (replaces selected text / inserts at cursor)
         err = AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute, text)
         if err == 0:
@@ -276,6 +315,7 @@ def _inject_ax(text: str, element) -> bool:
 # Tier 2: AppleScript Cmd+V (works in virtually all apps)
 # ---------------------------------------------------------------------------
 
+
 def _inject_apple_script(text: str) -> bool:
     """Inject via clipboard + AppleScript Cmd+V. Returns True on success."""
     if not _clipboard_copy(text):
@@ -283,15 +323,23 @@ def _inject_apple_script(text: str) -> bool:
     time.sleep(0.02)
     try:
         result = subprocess.run(
-            ["osascript", "-e",
-             'tell application "System Events" to keystroke "v" using command down'],
-            capture_output=True, text=True, timeout=10,
+            [
+                "osascript",
+                "-e",
+                'tell application "System Events" to keystroke "v" using command down',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             logger.info("macos_injector: AppleScript Cmd+V success")
             return True
-        logger.warning("macos_injector: AppleScript paste failed (rc=%d): %s",
-                        result.returncode, result.stderr[:200])
+        logger.warning(
+            "macos_injector: AppleScript paste failed (rc=%d): %s",
+            result.returncode,
+            result.stderr[:200],
+        )
         return False
     except Exception as exc:
         logger.warning("macos_injector: AppleScript paste exception: %s", exc)
@@ -301,6 +349,7 @@ def _inject_apple_script(text: str) -> bool:
 # ---------------------------------------------------------------------------
 # Tier 3: pynput CGEvent Cmd+V (fallback if osascript fails)
 # ---------------------------------------------------------------------------
+
 
 def _inject_pynput_cmd_v(text: str) -> bool:
     """Inject via clipboard + pynput Cmd+V. Returns True on success."""
@@ -329,6 +378,7 @@ def _inject_pynput_cmd_v(text: str) -> bool:
 # Tier 4: character-by-character typing (last resort)
 # ---------------------------------------------------------------------------
 
+
 def _inject_type_chars(text: str) -> bool:
     """Type text character-by-character via pynput. Slow but universal."""
     try:
@@ -350,6 +400,7 @@ def _inject_type_chars(text: str) -> bool:
 # Focus restoration
 # ---------------------------------------------------------------------------
 
+
 def _restore_focus(app_name: str | None) -> bool:
     """Bring the target app to foreground before injection."""
     if not app_name:
@@ -357,7 +408,9 @@ def _restore_focus(app_name: str | None) -> bool:
     try:
         result = subprocess.run(
             ["osascript", "-e", f'tell application "{app_name}" to activate'],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             time.sleep(0.08)
@@ -371,6 +424,7 @@ def _restore_focus(app_name: str | None) -> bool:
 # ---------------------------------------------------------------------------
 # Public API — TextInjector class (matches Windows/Linux injector interface)
 # ---------------------------------------------------------------------------
+
 
 class TextInjector:
     """
@@ -390,10 +444,13 @@ class TextInjector:
     @staticmethod
     def _check_ax_available() -> bool:
         try:
-            from ApplicationServices import AXUIElementCreateSystemWide
+            import ApplicationServices  # noqa: F401
+
             return True
         except ImportError:
-            logger.warning("pyobjc-framework-ApplicationServices not available; AX injection disabled")
+            logger.warning(
+                "pyobjc-framework-ApplicationServices not available; AX injection disabled"
+            )
             return False
 
     # -- Internal helpers ---------------------------------------------------
@@ -432,8 +489,9 @@ class TextInjector:
         # Log a warning when injecting into terminals.
         proc_name = (_current_target.app_name or "").lower()
         if proc_name in _TERMINAL_PROCESS_NAMES:
-            logger.warning("injection_target_is_terminal", process=proc_name,
-                           correlation_id=correlation_id)
+            logger.warning(
+                "injection_target_is_terminal", process=proc_name, correlation_id=correlation_id
+            )
 
         target_app = _current_target.app_name
         ax_element = _current_target.ax_element

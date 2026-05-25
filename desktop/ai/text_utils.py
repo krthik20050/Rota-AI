@@ -1,5 +1,7 @@
 import re
+
 import structlog
+
 from ai.prompts import _BASE_SYSTEM_PROMPT, _CONTEXT_RULES, _MODE_PROMPTS, _SECURITY_BLOCK
 
 logger = structlog.get_logger(__name__)
@@ -9,19 +11,19 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 _SPOKEN_PUNCTUATION = [
-    (re.compile(r'\b(?:full stop|period)\b', re.I), '.'),
-    (re.compile(r'\bcomma\b', re.I), ','),
-    (re.compile(r'\b(?:question mark)\b', re.I), '?'),
-    (re.compile(r'\b(?:exclamation mark|exclamation point)\b', re.I), '!'),
-    (re.compile(r'\b(?:new paragraph|next paragraph)\b', re.I), '\n\n'),
-    (re.compile(r'\b(?:new line|next line)\b', re.I), '\n'),
-    (re.compile(r'\b(?:open parenthesis|left parenthesis|open paren)\b', re.I), '('),
-    (re.compile(r'\b(?:close parenthesis|right parenthesis|close paren)\b', re.I), ')'),
-    (re.compile(r'\bcolon\b', re.I), ':'),
-    (re.compile(r'\bsemicolon\b', re.I), ';'),
-    (re.compile(r'\b(?:hyphen|dash)\b', re.I), '-'),
-    (re.compile(r'\b(?:open quote|open quotes)\b', re.I), '"'),
-    (re.compile(r'\b(?:close quote|close quotes|end quote)\b', re.I), '"'),
+    (re.compile(r"\b(?:full stop|period)\b", re.I), "."),
+    (re.compile(r"\bcomma\b", re.I), ","),
+    (re.compile(r"\b(?:question mark)\b", re.I), "?"),
+    (re.compile(r"\b(?:exclamation mark|exclamation point)\b", re.I), "!"),
+    (re.compile(r"\b(?:new paragraph|next paragraph)\b", re.I), "\n\n"),
+    (re.compile(r"\b(?:new line|next line)\b", re.I), "\n"),
+    (re.compile(r"\b(?:open parenthesis|left parenthesis|open paren)\b", re.I), "("),
+    (re.compile(r"\b(?:close parenthesis|right parenthesis|close paren)\b", re.I), ")"),
+    (re.compile(r"\bcolon\b", re.I), ":"),
+    (re.compile(r"\bsemicolon\b", re.I), ";"),
+    (re.compile(r"\b(?:hyphen|dash)\b", re.I), "-"),
+    (re.compile(r"\b(?:open quote|open quotes)\b", re.I), '"'),
+    (re.compile(r"\b(?:close quote|close quotes|end quote)\b", re.I), '"'),
 ]
 
 # Filler words for rule-based fallback
@@ -36,17 +38,26 @@ _MULTI_SPACE = re.compile(r" {2,}")
 # ---------------------------------------------------------------------------
 
 # Patterns that indicate the LLM generated code or markdown instead of cleaning text
-_CODE_BLOCK_PATTERN = re.compile(r'```[\s\S]*?```', re.MULTILINE)
-_MARKDOWN_HEADER = re.compile(r'^#{1,6}\s', re.MULTILINE)
-_MARKDOWN_BOLD = re.compile(r'\*\*(.+?)\*\*')
-_MARKDOWN_ITALIC = re.compile(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)')
-_NUMBERED_LIST = re.compile(r'^\d+\.\s+\*?\*?', re.MULTILINE)
-_BULLET_LIST = re.compile(r'^[\-\*]\s+', re.MULTILINE)
+_CODE_BLOCK_PATTERN = re.compile(r"```[\s\S]*?```", re.MULTILINE)
+_MARKDOWN_HEADER = re.compile(r"^#{1,6}\s", re.MULTILINE)
+_MARKDOWN_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_MARKDOWN_ITALIC = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)")
+_NUMBERED_LIST = re.compile(r"^\d+\.\s+\*?\*?", re.MULTILINE)
+_BULLET_LIST = re.compile(r"^[\-\*]\s+", re.MULTILINE)
 _PREAMBLE_PATTERNS = [
-    re.compile(r"^Here(?:'s| is)\s+(?:the\s+)?(?:cleaned\s+|polished\s+|updated\s+|formatted\s+)?(?:and\s+)?(?:formatted\s+|polished\s+)?(?:text|version|output)\s*[:.]?\s*", re.IGNORECASE),
+    re.compile(
+        r"^Here(?:'s| is)\s+(?:the\s+)?(?:cleaned\s+|polished\s+|updated\s+|formatted\s+)?(?:and\s+)?(?:formatted\s+|polished\s+)?(?:text|version|output)\s*[:.]?\s*",
+        re.IGNORECASE,
+    ),
     re.compile(r"^(?:Sure|Of course|Certainly)[!,.]?\s*", re.IGNORECASE),
-    re.compile(r"^I(?:'ve| have)\s+(?:cleaned|processed|updated|polished)\s+(?:the\s+)?(?:text|version|output)?\s*[:.]?\s*", re.IGNORECASE),
-    re.compile(r"^The\s+(?:cleaned|polished|updated|formatted)\s+(?:text|version|output)\s*[:.]\s*", re.IGNORECASE),
+    re.compile(
+        r"^I(?:'ve| have)\s+(?:cleaned|processed|updated|polished)\s+(?:the\s+)?(?:text|version|output)?\s*[:.]?\s*",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^The\s+(?:cleaned|polished|updated|formatted)\s+(?:text|version|output)\s*[:.]\s*",
+        re.IGNORECASE,
+    ),
 ]
 
 
@@ -55,8 +66,8 @@ def _preprocess_spoken_punctuation(text: str) -> str:
     for pattern, replacement in _SPOKEN_PUNCTUATION:
         text = pattern.sub(replacement, text)
     # Clean up spacing around injected punctuation
-    text = re.sub(r'\s+([.,?!;:)\"])', r'\1', text)
-    text = re.sub(r'([\(\""])\s+', r'\1', text)
+    text = re.sub(r"\s+([.,?!;:)\"])", r"\1", text)
+    text = re.sub(r'([\(\""])\s+', r"\1", text)
     return text.strip()
 
 
@@ -85,12 +96,12 @@ def _sanitize_llm_output(result: str, original: str) -> str:
             result = result[3:-3].strip()
 
         # Strip any trailing notes or explanations
-        result = re.sub(r'(?i)\n*Note:\s*.*$', '', result, flags=re.DOTALL).strip()
-        result = re.sub(r'(?i)\n*Explanation:\s*.*$', '', result, flags=re.DOTALL).strip()
+        result = re.sub(r"(?i)\n*Note:\s*.*$", "", result, flags=re.DOTALL).strip()
+        result = re.sub(r"(?i)\n*Explanation:\s*.*$", "", result, flags=re.DOTALL).strip()
 
         # Strip LLM preambles ("Here's the cleaned text:", "Sure!", etc.)
         for pattern in _PREAMBLE_PATTERNS:
-            result = pattern.sub('', result, count=1).strip()
+            result = pattern.sub("", result, count=1).strip()
 
         if result == prev_result:
             break
@@ -99,7 +110,7 @@ def _sanitize_llm_output(result: str, original: str) -> str:
     if _CODE_BLOCK_PATTERN.search(result):
         logger.warning("sanitizer_stripped_code_blocks")
         # If the MAJORITY of the output is inside code blocks, reject entirely
-        without_code = _CODE_BLOCK_PATTERN.sub('', result).strip()
+        without_code = _CODE_BLOCK_PATTERN.sub("", result).strip()
         if len(without_code) < len(original) * 0.3:
             # Almost all output was code — LLM hallucinated, use rule-based
             return _rule_based_clean(original)
@@ -107,10 +118,10 @@ def _sanitize_llm_output(result: str, original: str) -> str:
 
     # Strip markdown headers (## Title, # Header, etc.)
     if _MARKDOWN_HEADER.search(result):
-        result = _MARKDOWN_HEADER.sub('', result)
+        result = _MARKDOWN_HEADER.sub("", result)
 
     # Strip bold markdown (**text** → text)
-    result = _MARKDOWN_BOLD.sub(r'\1', result)
+    result = _MARKDOWN_BOLD.sub(r"\1", result)
 
     # NOTE: Do NOT strip numbered list (1. 2. 3.) or bullet (• ) markers here.
     # The smart-structure rules in _BASE_SYSTEM_PROMPT explicitly produce these
@@ -252,9 +263,9 @@ def _build_dynamic_prompt(
 
     # Inject app context rules
     if app_context is not None:
-        category = getattr(app_context, 'category', 'other') or 'other'
-        app_name = getattr(app_context, 'app_name', '') or ''
-        tone = getattr(app_context, 'tone', 'neutral') or 'neutral'
+        category = getattr(app_context, "category", "other") or "other"
+        app_name = getattr(app_context, "app_name", "") or ""
+        tone = getattr(app_context, "tone", "neutral") or "neutral"
 
         # Override category based on window title for browser/Electron apps
         title_lower = app_name.lower()

@@ -77,7 +77,12 @@ def test_completed_processing_is_not_dropped_if_thread_cleanup_runs_first(monkey
     app._latest_timings = {}
     app._active_session = None
     app.transcriber = SimpleNamespace(consume_backend_event=lambda: ("", ""))
-    app.history = SimpleNamespace(entries=[], add_entry=lambda raw, cleaned, is_prompt: app.history.entries.append((raw, cleaned, is_prompt)))
+    app.history = SimpleNamespace(
+        entries=[],
+        add_entry=lambda raw, cleaned, is_prompt: app.history.entries.append(
+            (raw, cleaned, is_prompt)
+        ),
+    )
     app.session_store = SimpleNamespace(
         records=[],
         add_session=lambda record: app.session_store.records.append(record),

@@ -1,8 +1,8 @@
 import ctypes
 import ctypes.wintypes
-from utils.log import get_logger
 from dataclasses import dataclass
-from typing import Optional
+
+from utils.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -110,7 +110,7 @@ def _get_window_title(hwnd: int) -> str:
     return buf.value
 
 
-def _get_pid(hwnd: int) -> Optional[int]:
+def _get_pid(hwnd: int) -> int | None:
     pid = ctypes.wintypes.DWORD()
     ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
     return pid.value if pid.value else None
@@ -169,6 +169,7 @@ def get_active_app() -> AppContext:
 
 if __name__ == "__main__":
     import time
+
     print("Detecting active window every 2 seconds. Switch windows to test.")
     for _ in range(5):
         ctx = get_active_app()

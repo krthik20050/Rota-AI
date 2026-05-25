@@ -6,7 +6,12 @@ assembles WISPR_QSS, and re-exports all public names.
 
 Imported by ui.main_window.
 """
+
 from __future__ import annotations
+
+# ── Assemble full stylesheet ─────────────────────────────────────────
+from ui.styles._main_window_qss_base import _QSS_BASE
+from ui.styles._main_window_qss_components import _QSS_COMPONENTS
 
 # ── Re-export all design tokens ──────────────────────────────────────
 from ui.styles._main_window_qss_tokens import (  # noqa: F401
@@ -40,9 +45,5 @@ from ui.styles._main_window_qss_tokens import (  # noqa: F401
     SIDEBAR_W,
     STATS_PANEL_W,
 )
-
-# ── Assemble full stylesheet ─────────────────────────────────────────
-from ui.styles._main_window_qss_base import _QSS_BASE
-from ui.styles._main_window_qss_components import _QSS_COMPONENTS
 
 WISPR_QSS: str = _QSS_BASE + _QSS_COMPONENTS

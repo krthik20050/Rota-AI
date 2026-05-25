@@ -3,23 +3,30 @@ import threading
 import time
 
 # SECURITY: Maximum lengths to prevent abuse
-_MAX_TRANSCRIPT_LENGTH = 10000       # chars — reject longer inputs to LLM
-_MAX_PERSONAL_TERMS = 50            # cap personal dictionary terms sent to LLM
-_MAX_SYSTEM_PROMPT_LENGTH = 8000    # chars — prevent prompt overflow
+_MAX_TRANSCRIPT_LENGTH = 10000  # chars — reject longer inputs to LLM
+_MAX_PERSONAL_TERMS = 50  # cap personal dictionary terms sent to LLM
+_MAX_SYSTEM_PROMPT_LENGTH = 8000  # chars — prevent prompt overflow
 
 # SECURITY: Patterns that indicate prompt injection attempts
 _INJECTION_PATTERNS = [
-    re.compile(r'ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|rules?|prompts?)', re.I),
-    re.compile(r'(?:new|updated?|different)\s+(?:instructions?|rules?|prompts?|system)', re.I),
-    re.compile(r'(?:reveal|show|output|print|leak|expose)\s+(?:the\s+)?(?:system|prompt|dictionary|keys?)', re.I),
-    re.compile(r'(?:you\s+are\s+now|act\s+as|pretend\s+to\s+be|roleplay\s+as)', re.I),
-    re.compile(r'(?:jailbreak|DAN|developer\s+mode|sudo|root\s+access)', re.I),
+    re.compile(
+        r"ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|rules?|prompts?)",
+        re.I,
+    ),
+    re.compile(r"(?:new|updated?|different)\s+(?:instructions?|rules?|prompts?|system)", re.I),
+    re.compile(
+        r"(?:reveal|show|output|print|leak|expose)\s+(?:the\s+)?(?:system|prompt|dictionary|keys?)",
+        re.I,
+    ),
+    re.compile(r"(?:you\s+are\s+now|act\s+as|pretend\s+to\s+be|roleplay\s+as)", re.I),
+    re.compile(r"(?:jailbreak|DAN|developer\s+mode|sudo|root\s+access)", re.I),
 ]
 
 
 # ---------------------------------------------------------------------------
 # SECURITY: Rate limiter — prevents API quota exhaustion and abuse
 # ---------------------------------------------------------------------------
+
 
 class _RateLimiter:
     """Token-bucket rate limiter. Thread-safe."""
@@ -46,4 +53,4 @@ class _RateLimiter:
 
 # Limits: Gemini free tier ~60 RPM, Groq free tier ~30 RPM. We cap conservatively.
 _gemini_rate_limiter = _RateLimiter(max_calls=30, period_seconds=60.0)
-_groq_rate_limiter   = _RateLimiter(max_calls=20, period_seconds=60.0)
+_groq_rate_limiter = _RateLimiter(max_calls=20, period_seconds=60.0)

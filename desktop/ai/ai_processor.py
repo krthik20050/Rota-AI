@@ -15,32 +15,33 @@ Key design decisions:
   - Personal dictionary auto-grows from every processed text
 """
 
-import re
 import json
 import os
+import re
 import time as _time
-import urllib.request
 import urllib.error
+import urllib.request
+
 import structlog
 from groq import Groq
 
+from ai.personal_dictionary import PersonalDictionary
+from ai.prompts import _AUTO_STRUCTURE_PROMPT, _COMMAND_PATTERNS, should_run_structure_pass
 from ai.rate_limiter import (
-    _gemini_rate_limiter,
-    _groq_rate_limiter,
-    _MAX_TRANSCRIPT_LENGTH,
+    _INJECTION_PATTERNS,
     _MAX_PERSONAL_TERMS,
     _MAX_SYSTEM_PROMPT_LENGTH,
-    _INJECTION_PATTERNS,
+    _MAX_TRANSCRIPT_LENGTH,
+    _gemini_rate_limiter,
+    _groq_rate_limiter,
 )
-from ai.personal_dictionary import PersonalDictionary
 from ai.text_utils import (
-    _preprocess_spoken_punctuation,
-    _sanitize_llm_output,
-    _is_too_different,
-    _rule_based_clean,
     _build_dynamic_prompt,
+    _is_too_different,
+    _preprocess_spoken_punctuation,
+    _rule_based_clean,
+    _sanitize_llm_output,
 )
-from ai.prompts import _COMMAND_PATTERNS, _AUTO_STRUCTURE_PROMPT, should_run_structure_pass
 
 logger = structlog.get_logger(__name__)
 
@@ -50,6 +51,7 @@ WRITING_MODES = {"raw", "clean", "professional", "casual", "bullets", "email", "
 # ---------------------------------------------------------------------------
 # Main AI Processor
 # ---------------------------------------------------------------------------
+
 
 class AIProcessor:
     """
@@ -144,8 +146,8 @@ class AIProcessor:
         for pattern, mode in _COMMAND_PATTERNS:
             m = pattern.search(sample)
             if m:
-                remaining = text[:m.start()] + text[m.end():]
-                remaining = re.sub(r'^[\s,.\-–—]+', '', remaining).strip()
+                remaining = text[: m.start()] + text[m.end() :]
+                remaining = re.sub(r"^[\s,.\-–—]+", "", remaining).strip()
                 if remaining:
                     logger.debug("command_detected", mode=mode, content_preview=remaining[:40])
                     return mode, remaining
@@ -181,7 +183,9 @@ class AIProcessor:
         # SECURITY: Check for prompt injection patterns
         for pattern in _INJECTION_PATTERNS:
             if pattern.search(text):
-                logger.warning("prompt_injection_detected", cid=correlation_id, pattern=pattern.pattern[:40])
+                logger.warning(
+                    "prompt_injection_detected", cid=correlation_id, pattern=pattern.pattern[:40]
+                )
                 return _rule_based_clean(text)
 
         # SECURITY: Strip triple-quote sequences that could break prompt structure
@@ -272,22 +276,31 @@ class AIProcessor:
     # Gemini REST integration (PRIMARY — generous rate limits)
     # ------------------------------------------------------------------
 
-    def _gemini_call(self, model_name: str, text: str, system_prompt: str, correlation_id) -> str | None:
+    def _gemini_call(
+        self, model_name: str, text: str, system_prompt: str, correlation_id
+    ) -> str | None:
         """Call one specific Gemini model. Marks 60s cooldown on 429."""
         if not self._gemini_api_key:
             return None
         allowed, retry_after = _gemini_rate_limiter.acquire()
         if not allowed:
-            logger.warning("gemini_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id)
+            logger.warning(
+                "gemini_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
+            )
             return None
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
-        payload = json.dumps({
-            "systemInstruction": {"parts": [{"text": system_prompt}]},
-            "contents": [{"parts": [{"text": text}]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048},
-        }).encode("utf-8")
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+        )
+        payload = json.dumps(
+            {
+                "systemInstruction": {"parts": [{"text": system_prompt}]},
+                "contents": [{"parts": [{"text": text}]}],
+                "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048},
+            }
+        ).encode("utf-8")
         req = urllib.request.Request(
-            url, data=payload,
+            url,
+            data=payload,
             headers={"Content-Type": "application/json", "x-goog-api-key": self._gemini_api_key},
             method="POST",
         )
@@ -307,7 +320,9 @@ class AIProcessor:
                 self._mark_cooldown(model_name)
                 logger.warning("gemini_429_cooldown", model=model_name, cid=correlation_id)
             else:
-                logger.error("gemini_http_error", code=exc.code, model=model_name, cid=correlation_id)
+                logger.error(
+                    "gemini_http_error", code=exc.code, model=model_name, cid=correlation_id
+                )
         except Exception as exc:
             logger.error("gemini_failed", model=model_name, error=str(exc), cid=correlation_id)
         return None
@@ -319,25 +334,25 @@ class AIProcessor:
         # SECURITY: Rate limit — prevent quota exhaustion
         allowed, retry_after = _gemini_rate_limiter.acquire()
         if not allowed:
-            logger.warning("gemini_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id)
+            logger.warning(
+                "gemini_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
+            )
             return None
         # SECURITY: Key sent as header, not URL query param (avoids logging in proxies/servers)
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-        payload = json.dumps({
-            "systemInstruction": {
-                "parts": [{"text": system_prompt}]
-            },
-            "contents": [
-                {"parts": [{"text": text}]}
-            ],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 2048
+        payload = json.dumps(
+            {
+                "systemInstruction": {"parts": [{"text": system_prompt}]},
+                "contents": [{"parts": [{"text": text}]}],
+                "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048},
             }
-        }).encode("utf-8")
+        ).encode("utf-8")
 
         # Try primary model, then fallback to gemini-2.5-flash if quota exhausted
-        for model_url in [url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"]:
+        for model_url in [
+            url,
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        ]:
             req = urllib.request.Request(
                 model_url,
                 data=payload,
@@ -345,7 +360,7 @@ class AIProcessor:
                     "Content-Type": "application/json",
                     "x-goog-api-key": self._gemini_api_key,
                 },
-                method="POST"
+                method="POST",
             )
             try:
                 with urllib.request.urlopen(req, timeout=12) as resp:
@@ -357,17 +372,21 @@ class AIProcessor:
                             cleaned = parts[0].get("text", "").strip()
                             if cleaned:
                                 model_name = model_url.split("/models/")[1].split(":")[0]
-                                logger.debug("gemini_cleanup_ok", model=model_name, cid=correlation_id)
+                                logger.debug(
+                                    "gemini_cleanup_ok", model=model_name, cid=correlation_id
+                                )
                                 return cleaned
             except urllib.error.HTTPError as exc:
                 if exc.code == 429 and model_url == url:
                     # Primary model quota hit — try fallback model
                     logger.warning("gemini_quota_exceeded_trying_fallback", cid=correlation_id)
                     continue
-                logger.error("gemini_http_error", code=exc.code, reason=exc.reason, cid=correlation_id)
+                logger.error(
+                    "gemini_http_error", code=exc.code, reason=exc.reason, cid=correlation_id
+                )
                 try:
                     err_body = exc.read().decode("utf-8")[:500]
-                    err_body = re.sub(r'[A-Za-z0-9_\-]{30,}', '[REDACTED]', err_body)
+                    err_body = re.sub(r"[A-Za-z0-9_\-]{30,}", "[REDACTED]", err_body)
                     logger.error("gemini_error_body", body=err_body, cid=correlation_id)
                 except Exception:
                     pass
@@ -398,7 +417,9 @@ class AIProcessor:
         self._cooldowns[model_id] = _time.monotonic() + seconds
         logger.info("model_cooldown_set", model=model_id, cooldown_seconds=int(seconds))
 
-    def _cloud_cascade(self, wrapped_text: str, system_prompt: str, mode: str, correlation_id) -> str | None:
+    def _cloud_cascade(
+        self, wrapped_text: str, system_prompt: str, mode: str, correlation_id
+    ) -> str | None:
         """
         Try all available cloud models in round-robin order.
         Skips models in 429 cooldown. Advances the rotation index after each success
@@ -409,13 +430,21 @@ class AIProcessor:
         """
         # Four Gemini models × free-tier quota = ~6 000 req/day combined capacity.
         # Order: balanced first, fastest second, proven third, most-capable last.
-        gemini_slots = [
-            ("gemini", "gemini-2.0-flash"),
-            ("gemini", "gemini-1.5-flash"),
-            ("gemini", "gemini-2.0-flash-lite"),
-            ("gemini", "gemini-2.5-flash"),
-        ] if self._gemini_api_key else []
-        groq_slots = [("groq", "llama-3.3-70b-versatile"), ("groq", "llama-3.1-8b-instant")] if self._groq_api_key else []
+        gemini_slots = (
+            [
+                ("gemini", "gemini-2.0-flash"),
+                ("gemini", "gemini-1.5-flash"),
+                ("gemini", "gemini-2.0-flash-lite"),
+                ("gemini", "gemini-2.5-flash"),
+            ]
+            if self._gemini_api_key
+            else []
+        )
+        groq_slots = (
+            [("groq", "llama-3.3-70b-versatile"), ("groq", "llama-3.1-8b-instant")]
+            if self._groq_api_key
+            else []
+        )
 
         # Honor preferred provider: put it first so it anchors the rotation
         if self.ai_provider == "groq":
@@ -448,13 +477,17 @@ class AIProcessor:
         logger.warning("cloud_cascade_all_unavailable", cid=correlation_id)
         return None
 
-    def _groq_call(self, model_name: str, text: str, system_prompt: str, correlation_id) -> str | None:
+    def _groq_call(
+        self, model_name: str, text: str, system_prompt: str, correlation_id
+    ) -> str | None:
         """Call one specific Groq model. Marks 60s cooldown on rate-limit errors."""
         if not self._groq_api_key:
             return None
         allowed, retry_after = _groq_rate_limiter.acquire()
         if not allowed:
-            logger.warning("groq_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id)
+            logger.warning(
+                "groq_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
+            )
             return None
         try:
             client = self._get_groq_client()
@@ -479,8 +512,12 @@ class AIProcessor:
                 self._mark_cooldown(model_name)
                 logger.warning("groq_429_cooldown", model=model_name, cid=correlation_id)
             else:
-                logger.error("groq_failed", model=model_name,
-                             error=f"{type(exc).__name__}: {str(exc)[:120]}", cid=correlation_id)
+                logger.error(
+                    "groq_failed",
+                    model=model_name,
+                    error=f"{type(exc).__name__}: {str(exc)[:120]}",
+                    cid=correlation_id,
+                )
             return None
 
     def _groq_process(self, text: str, system_prompt: str, correlation_id) -> str | None:
@@ -490,7 +527,9 @@ class AIProcessor:
         # SECURITY: Rate limit — prevent quota exhaustion
         allowed, retry_after = _groq_rate_limiter.acquire()
         if not allowed:
-            logger.warning("groq_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id)
+            logger.warning(
+                "groq_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
+            )
             return None
         try:
             client = self._get_groq_client()
@@ -512,8 +551,11 @@ class AIProcessor:
         except Exception as e:
             # Fallback to faster instant model if primary fails
             # Truncate: Groq SDK exception strings can include full response bodies with quota info
-            logger.warning("groq_primary_failed_trying_fallback",
-                           error=f"{type(e).__name__}: {str(e)[:120]}", cid=correlation_id)
+            logger.warning(
+                "groq_primary_failed_trying_fallback",
+                error=f"{type(e).__name__}: {str(e)[:120]}",
+                cid=correlation_id,
+            )
             try:
                 client = self._get_groq_client()
                 response = client.chat.completions.create(
@@ -531,15 +573,20 @@ class AIProcessor:
                     logger.debug("groq_fallback_ok", cid=correlation_id)
                     return cleaned
             except Exception as ex:
-                logger.error("groq_cleanup_failed",
-                             error=f"{type(ex).__name__}: {str(ex)[:120]}", cid=correlation_id)
+                logger.error(
+                    "groq_cleanup_failed",
+                    error=f"{type(ex).__name__}: {str(ex)[:120]}",
+                    cid=correlation_id,
+                )
             return None
 
     # ------------------------------------------------------------------
     # Ollama integration (local LLM)
     # ------------------------------------------------------------------
 
-    def _ollama_process(self, text: str, system_prompt: str, mode: str, correlation_id) -> str | None:
+    def _ollama_process(
+        self, text: str, system_prompt: str, mode: str, correlation_id
+    ) -> str | None:
         payload = json.dumps(
             {
                 "model": self.ollama_model,

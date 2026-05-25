@@ -3,26 +3,33 @@ Settings window for Rota AI.
 Wispr "Voice in Motion" design: warm dark bg, calm green save button,
 soft corners, generous spacing, clear typography hierarchy.
 """
+
 import os
-from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QFormLayout, QFrame,
-    QScrollArea, QWidget, QSpinBox
-)
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
-from utils.window_effects import apply_blur
-from ui.styles.settings_qss import SETTINGS_QSS, FOOTER_QSS
 from ui.pages._settings_sections import (
-    build_recording_section,
     build_api_keys_section,
+    build_appearance_section,
     build_formatting_section,
+    build_recording_section,
     build_shortcuts_section,
     build_text_formatting_section,
-    build_appearance_section,
 )
-from ui.widgets.combo_boxes import SmartComboBox, NonScrollComboBox
+from ui.styles.settings_qss import FOOTER_QSS, SETTINGS_QSS
+from ui.widgets.combo_boxes import NonScrollComboBox, SmartComboBox
+from utils.window_effects import apply_blur
 
 # Re-export so existing `from ui.settings_window import SmartComboBox` callers keep working
 __all__ = ["SmartComboBox", "NonScrollComboBox", "SettingsWindow"]
@@ -223,11 +230,13 @@ class SettingsWindow(QDialog):
 
     def _save_and_close(self):
         gemini_key = self.gemini_key_input.text().strip()
-        groq_key   = self.groq_key_input.text().strip()
+        groq_key = self.groq_key_input.text().strip()
         self.config_manager.set("gemini_api_key", gemini_key)
-        self.config_manager.set("groq_api_key",   groq_key)
-        if gemini_key: os.environ["GEMINI_API_KEY"] = gemini_key
-        if groq_key:   os.environ["GROQ_API_KEY"]   = groq_key
+        self.config_manager.set("groq_api_key", groq_key)
+        if gemini_key:
+            os.environ["GEMINI_API_KEY"] = gemini_key
+        if groq_key:
+            os.environ["GROQ_API_KEY"] = groq_key
 
         self.config_manager.set("hotkey", self.hotkey_combo.currentData() or "f9")
         self.config_manager.set("hotkey_mode", self.hotkey_mode_combo.currentData())
@@ -240,7 +249,9 @@ class SettingsWindow(QDialog):
         self.config_manager.set("ollama_url", self.ollama_url_input.text().strip())
         self.config_manager.set("ollama_model", self.ollama_model_input.text().strip())
         try:
-            self.config_manager.set("auto_stop_silence_s", float(self.auto_stop_input.text().strip()))
+            self.config_manager.set(
+                "auto_stop_silence_s", float(self.auto_stop_input.text().strip())
+            )
         except ValueError:
             self.config_manager.set("auto_stop_silence_s", 2.5)
 
@@ -248,7 +259,9 @@ class SettingsWindow(QDialog):
         self.config_manager.set("cpu_threads", self.cpu_threads_combo.currentData())
         self.config_manager.set("live_transcription_enabled", self.live_feedback_check.isChecked())
 
-        self.config_manager.set("ui_font_family", self.font_family_combo.currentData() or "Segoe UI")
+        self.config_manager.set(
+            "ui_font_family", self.font_family_combo.currentData() or "Segoe UI"
+        )
         self.config_manager.set("ui_font_size", self.font_size_spin.value())
         self.config_manager.set("ui_font_scope", self.font_scope_combo.currentData() or "app")
         self.config_manager.set("date_display", self.date_display_combo.currentData() or "relative")

@@ -1,12 +1,12 @@
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
+
 
 class DebugWindow(QWidget):
     """Minimal dark-themed debug UI."""

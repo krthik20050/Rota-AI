@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getAllPosts } from "@/lib/blog";
 
 export const metadata = {
-  title: "Blog — Rota AI",
+  title: "Blog - Rota AI",
   description: "Voice dictation, open source AI, and building Rota AI.",
 };
 
