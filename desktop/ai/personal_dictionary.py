@@ -1,6 +1,7 @@
 import json
 import os
 import re
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -9,6 +10,7 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Personal dictionary auto-learner
 # ---------------------------------------------------------------------------
+
 
 class PersonalDictionary:
     """
@@ -24,7 +26,14 @@ class PersonalDictionary:
 
     def __init__(self, dict_path: str | None = None):
         if dict_path is None:
-            appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+            import sys
+
+            if sys.platform == "darwin":
+                appdata_dir = os.path.join(
+                    os.path.expanduser("~/Library/Application Support"), "RotaAI"
+                )
+            else:
+                appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
             os.makedirs(appdata_dir, exist_ok=True)
             dict_path = os.path.join(appdata_dir, "personal_dictionary.json")
         self._path = dict_path
@@ -63,30 +72,193 @@ class PersonalDictionary:
 
         # Common words to ignore (not worth learning)
         _COMMON = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "shall", "can", "need", "must", "i", "you",
-            "he", "she", "it", "we", "they", "me", "him", "her", "us", "them",
-            "my", "your", "his", "its", "our", "their", "this", "that", "these",
-            "those", "what", "which", "who", "whom", "where", "when", "why", "how",
-            "all", "each", "every", "both", "few", "more", "most", "other", "some",
-            "such", "no", "not", "only", "same", "so", "than", "too", "very",
-            "just", "but", "and", "or", "if", "then", "also", "as", "for", "from",
-            "in", "into", "of", "on", "to", "with", "about", "after", "before",
-            "between", "by", "during", "through", "at", "up", "out", "off", "over",
-            "under", "again", "here", "there", "now", "today", "tomorrow", "yesterday",
-            "want", "like", "think", "know", "see", "get", "make", "go", "come",
-            "take", "give", "say", "tell", "ask", "use", "find", "put", "try",
-            "keep", "let", "start", "turn", "show", "hear", "play", "run", "move",
-            "look", "thing", "things", "way", "time", "work", "day", "good", "new",
-            "first", "last", "long", "great", "little", "own", "old", "right",
-            "big", "high", "different", "small", "large", "next", "early", "young",
-            "important", "public", "bad", "sure", "yeah", "yes", "okay", "actually",
-            "really", "well", "still", "even", "much", "back", "kind", "going",
-            "something", "nothing", "everything", "anything", "done", "already",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "shall",
+            "can",
+            "need",
+            "must",
+            "i",
+            "you",
+            "he",
+            "she",
+            "it",
+            "we",
+            "they",
+            "me",
+            "him",
+            "her",
+            "us",
+            "them",
+            "my",
+            "your",
+            "his",
+            "its",
+            "our",
+            "their",
+            "this",
+            "that",
+            "these",
+            "those",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "where",
+            "when",
+            "why",
+            "how",
+            "all",
+            "each",
+            "every",
+            "both",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "not",
+            "only",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "but",
+            "and",
+            "or",
+            "if",
+            "then",
+            "also",
+            "as",
+            "for",
+            "from",
+            "in",
+            "into",
+            "of",
+            "on",
+            "to",
+            "with",
+            "about",
+            "after",
+            "before",
+            "between",
+            "by",
+            "during",
+            "through",
+            "at",
+            "up",
+            "out",
+            "off",
+            "over",
+            "under",
+            "again",
+            "here",
+            "there",
+            "now",
+            "today",
+            "tomorrow",
+            "yesterday",
+            "want",
+            "like",
+            "think",
+            "know",
+            "see",
+            "get",
+            "make",
+            "go",
+            "come",
+            "take",
+            "give",
+            "say",
+            "tell",
+            "ask",
+            "use",
+            "find",
+            "put",
+            "try",
+            "keep",
+            "let",
+            "start",
+            "turn",
+            "show",
+            "hear",
+            "play",
+            "run",
+            "move",
+            "look",
+            "thing",
+            "things",
+            "way",
+            "time",
+            "work",
+            "day",
+            "good",
+            "new",
+            "first",
+            "last",
+            "long",
+            "great",
+            "little",
+            "own",
+            "old",
+            "right",
+            "big",
+            "high",
+            "different",
+            "small",
+            "large",
+            "next",
+            "early",
+            "young",
+            "important",
+            "public",
+            "bad",
+            "sure",
+            "yeah",
+            "yes",
+            "okay",
+            "actually",
+            "really",
+            "well",
+            "still",
+            "even",
+            "much",
+            "back",
+            "kind",
+            "going",
+            "something",
+            "nothing",
+            "everything",
+            "anything",
+            "done",
+            "already",
         }
 
-        words = re.findall(r'\b[A-Za-z][A-Za-z0-9_.-]{2,}\b', text)
+        words = re.findall(r"\b[A-Za-z][A-Za-z0-9_.-]{2,}\b", text)
         new_terms = set()
 
         for word in words:
@@ -105,11 +277,11 @@ class PersonalDictionary:
                 is_notable = True
 
             # Technical: camelCase or PascalCase
-            if re.match(r'^[a-z]+[A-Z]', word) or re.match(r'^[A-Z][a-z]+[A-Z]', word):
+            if re.match(r"^[a-z]+[A-Z]", word) or re.match(r"^[A-Z][a-z]+[A-Z]", word):
                 is_notable = True
 
             # Technical: contains underscore or dot
-            if '_' in word or '.' in word:
+            if "_" in word or "." in word:
                 is_notable = True
 
             if is_notable:
@@ -126,12 +298,14 @@ class PersonalDictionary:
             # Cap at 500 entries: prune least-used single-occurrence terms first
             if len(self._terms) > 500:
                 singles = [t for t, c in self._terms.items() if c == 1]
-                for t in singles[:max(0, len(self._terms) - 500)]:
+                for t in singles[: max(0, len(self._terms) - 500)]:
                     del self._terms[t]
                 changed = True
             if changed:
                 self._save()
-                logger.debug("personal_dict_updated", new_terms=len(new_terms), total=len(self._terms))
+                logger.debug(
+                    "personal_dict_updated", new_terms=len(new_terms), total=len(self._terms)
+                )
 
     def add_term(self, term: str):
         """Manually add a term to the dictionary."""

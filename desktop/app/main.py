@@ -3,7 +3,6 @@ import os
 import sys
 import threading
 import traceback
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -21,7 +20,7 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
-os.environ.setdefault("CT2_VERBOSE", "0")   # suppress ctranslate2 noise
+os.environ.setdefault("CT2_VERBOSE", "0")  # suppress ctranslate2 noise
 
 # Pre-import torch on the main thread.
 # On Windows, torch.distributed.distributed_c10d crashes with an access violation
@@ -47,6 +46,7 @@ def _show_crash_dialog(title: str, exc_type, exc_value, tb_str: str) -> None:
     """Show a visible error dialog so users can report the exact error."""
     try:
         from PyQt6.QtWidgets import QApplication, QMessageBox
+
         app = QApplication.instance()
         if app is None:
             return
@@ -85,10 +85,16 @@ def _thread_excepthook(args):
     tb_str = "".join(traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback))
     try:
         thread_name = args.thread.name if args.thread else "unknown"
-        logger.error("unhandled_thread_exception thread=%r type=%s\n%s",
-                     thread_name, args.exc_type.__name__, tb_str)
+        logger.error(
+            "unhandled_thread_exception thread=%r type=%s\n%s",
+            thread_name,
+            args.exc_type.__name__,
+            tb_str,
+        )
     except Exception:
-        print(f"THREAD CRASH: {args.exc_type.__name__}: {args.exc_value}\n{tb_str}", file=sys.stderr)
+        print(
+            f"THREAD CRASH: {args.exc_type.__name__}: {args.exc_value}\n{tb_str}", file=sys.stderr
+        )
     _show_crash_dialog(
         f"Rota — Thread Crash ({args.thread.name if args.thread else 'unknown'})",
         args.exc_type,
@@ -108,11 +114,20 @@ def run() -> None:
         # Grant the running instance permission to steal focus.
         # Windows blocks SetForegroundWindow unless the foreground process allows it.
         # On Linux this is handled by the compositor.
+        # On macOS this is handled by the activation policy.
         if sys.platform == "win32":
             try:
                 import ctypes
+
                 ASFW_ANY = 0xFFFFFFFF
                 ctypes.windll.user32.AllowSetForegroundWindow(ASFW_ANY)
+            except Exception:
+                pass
+        elif sys.platform == "darwin":
+            try:
+                from AppKit import NSApp, NSApplicationActivationPolicyRegular
+
+                NSApp.setActivationPolicy_(NSApplicationActivationPolicyRegular)
             except Exception:
                 pass
         ok = wake_existing_instance()

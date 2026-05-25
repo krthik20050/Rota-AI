@@ -19,8 +19,10 @@ If the full text equals a key phrase (or is a close fuzzy match), it expands.
 import json
 import os
 import re
-from utils.log import get_logger
+import sys
 from datetime import datetime
+
+from utils.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -29,7 +31,7 @@ _MAX_TRIGGER_LEN = 60
 _MAX_EXPANSION_LEN = 4000
 
 # Variable patterns: {{variable_name}}
-_VARIABLE_PATTERN = re.compile(r'\{\{(\w+)\}\}')
+_VARIABLE_PATTERN = re.compile(r"\{\{(\w+)\}\}")
 
 # Built-in variables that auto-resolve at expansion time
 _BUILTIN_VARIABLES = {
@@ -48,13 +50,17 @@ def _get_clipboard_text() -> str:
     """Read current clipboard text content. Never raises."""
     try:
         import pyperclip
+
         return pyperclip.paste() or ""
     except Exception:
         # Fallback: try xclip/xsel on Linux
         try:
             import subprocess
-            for cmd in (["xclip", "-selection", "clipboard", "-o"],
-                        ["xsel", "--clipboard", "--output"]):
+
+            for cmd in (
+                ["xclip", "-selection", "clipboard", "-o"],
+                ["xsel", "--clipboard", "--output"],
+            ):
                 try:
                     result = subprocess.run(cmd, capture_output=True, timeout=2)
                     if result.returncode == 0:
@@ -69,7 +75,7 @@ def _get_clipboard_text() -> str:
 def _resolve_variables(text: str) -> str:
     """
     Replace {{variable}} placeholders with their actual values.
-    
+
     Built-in variables:
       {{date}}      → 2026-05-20
       {{time}}      → 17:43
@@ -82,24 +88,25 @@ def _resolve_variables(text: str) -> str:
       {{clipboard}} → current clipboard content
       {{cursor}}    → removed (cursor position marker for future use)
     """
+
     def _replace(match):
         var_name = match.group(1).lower()
-        
+
         # Check built-in variables
         if var_name in _BUILTIN_VARIABLES:
             return _BUILTIN_VARIABLES[var_name]()
-        
+
         # Special: clipboard
         if var_name == "clipboard":
             return _get_clipboard_text()
-        
+
         # Special: cursor marker (remove — cursor stays at this position)
         if var_name == "cursor":
             return ""  # Placeholder for future cursor positioning
-        
+
         # Unknown variable — preserve as-is
         return match.group(0)
-    
+
     return _VARIABLE_PATTERN.sub(_replace, text)
 
 
@@ -109,7 +116,7 @@ def _levenshtein_distance(s1: str, s2: str) -> int:
         return _levenshtein_distance(s2, s1)
     if len(s2) == 0:
         return len(s1)
-    
+
     previous_row = range(len(s2) + 1)
     for i, c1 in enumerate(s1):
         current_row = [i + 1]
@@ -119,28 +126,28 @@ def _levenshtein_distance(s1: str, s2: str) -> int:
             substitutions = previous_row[j] + (c1 != c2)
             current_row.append(min(insertions, deletions, substitutions))
         previous_row = current_row
-        
+
     return previous_row[-1]
 
 
 def _fuzzy_match(spoken: str, trigger: str, threshold: float = 0.85) -> bool:
     """
     Check if the spoken text is a close-enough fuzzy match to the trigger phrase.
-    
+
     Uses character-level Levenshtein distance for highly precise matching of
     slight spelling or speech recognition differences.
     """
     if not spoken or not trigger:
         return False
-    
+
     # Exact match first (fast path)
     if spoken == trigger:
         return True
-    
+
     dist = _levenshtein_distance(spoken, trigger)
     max_len = max(len(spoken), len(trigger))
     similarity = 1.0 - (dist / max_len)
-    
+
     return similarity >= threshold
 
 
@@ -152,7 +159,12 @@ class SnippetsManager:
 
     def __init__(self, snippets_path=None):
         if snippets_path is None:
-            appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+            if sys.platform == "darwin":
+                appdata_dir = os.path.join(
+                    os.path.expanduser("~/Library/Application Support"), "RotaAI"
+                )
+            else:
+                appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
             os.makedirs(appdata_dir, exist_ok=True)
             snippets_path = os.path.join(appdata_dir, "snippets.json")
         self._path = snippets_path
@@ -174,6 +186,7 @@ class SnippetsManager:
 
         # Populate premium default snippets if empty and not in test environment
         import sys
+
         if not self._snippets and "pytest" not in sys.modules and "unittest" not in sys.modules:
             self._snippets = {
                 "email signature": "Best regards,\n\nJohn Doe\nSenior Developer\n{{date}}",
@@ -197,17 +210,17 @@ class SnippetsManager:
     def expand(self, text: str) -> str | None:
         """
         Return expanded text if `text` matches a snippet trigger, else None.
-        
+
         Matching strategy:
         1. Exact case-insensitive match (fast)
         2. Fuzzy match with 85% word-level similarity (handles speech errors)
         3. Inline expansion of spoken trigger phrases inside a larger sentence (Wispr Flow parity)
-        
+
         Variables in the expansion are resolved at expansion time.
         """
         if not text:
             return None
-        
+
         normalized = text.strip().lower()
 
         # Strategy 1: Exact match (fast path)
@@ -228,8 +241,7 @@ class SnippetsManager:
 
         # Strategy 3: Inline expansion within a larger sentence (Wispr Flow parity)
         sorted_triggers = sorted(
-            (k for k in self._snippets if k not in self._disabled),
-            key=len, reverse=True
+            (k for k in self._snippets if k not in self._disabled), key=len, reverse=True
         )
         expanded_text = text
         expanded_any = False
@@ -239,38 +251,38 @@ class SnippetsManager:
                 continue
 
             escaped_key = re.escape(key)
-            pattern = re.compile(rf'\b{escaped_key}\b', re.IGNORECASE)
+            pattern = re.compile(rf"\b{escaped_key}\b", re.IGNORECASE)
 
             if pattern.search(expanded_text):
                 resolved_value = _resolve_variables(self._snippets[key])
                 expanded_text = pattern.sub(resolved_value, expanded_text)
                 expanded_any = True
                 logger.info("snippet_expanded_inline trigger=%s", key)
-        
+
         if expanded_any:
             return expanded_text
-        
+
         return None
 
     def set(self, key: str, value: str) -> tuple[bool, str]:
         """
         Add or update a snippet.
-        
+
         Returns (success, message) tuple.
         Validates trigger phrase and expansion length limits.
         """
         key = key.strip()
         value = value.strip() if value else ""
-        
+
         if not key:
             return False, "Trigger phrase cannot be empty"
-        
+
         if len(key) > _MAX_TRIGGER_LEN:
             return False, f"Trigger phrase too long (max {_MAX_TRIGGER_LEN} chars)"
-        
+
         if len(value) > _MAX_EXPANSION_LEN:
             return False, f"Expansion text too long (max {_MAX_EXPANSION_LEN} chars)"
-        
+
         self._snippets[key] = value
         self._save()
         logger.info("snippet_saved trigger=%s len=%d", key, len(value))
@@ -332,7 +344,7 @@ class SnippetsManager:
             data = json.loads(json_str)
             if not isinstance(data, dict):
                 return 0, 0
-            
+
             imported = 0
             skipped = 0
             for key, value in data.items():
@@ -344,7 +356,7 @@ class SnippetsManager:
                         skipped += 1
                 else:
                     skipped += 1
-            
+
             return imported, skipped
         except json.JSONDecodeError:
             return 0, 0

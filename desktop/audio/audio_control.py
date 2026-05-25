@@ -1,16 +1,27 @@
 import os
 import sys
+
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 _IS_WINDOWS = sys.platform == "win32"
+_IS_MACOS = sys.platform == "darwin"
 
 if _IS_WINDOWS:
     from injection.app_detector import get_active_app
+elif _IS_MACOS:
+    try:
+        from plat.macos_window import get_active_app
+    except ImportError:
+
+        def get_active_app():
+            return None
 else:
+
     def get_active_app():
         return None
+
 
 MEDIA_PROCESS_NAMES = {
     "spotify.exe",
@@ -68,9 +79,11 @@ class SystemAudioController:
 
     def _get_master_volume_interface(self):
         try:
-            from ctypes import cast, POINTER
+            from ctypes import POINTER, cast
+
             from comtypes import CLSCTX_ALL
             from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+
             devices = AudioUtilities.GetSpeakers()
             if not devices:
                 return None
@@ -93,6 +106,7 @@ class SystemAudioController:
         """
         try:
             from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
+
             sessions = AudioUtilities.GetAllSessions()
         except Exception as e:
             logger.error("failed_to_inspect_audio_sessions", error=str(e))
@@ -123,10 +137,13 @@ class SystemAudioController:
             # Check if actually producing audio (any measurable output = playing)
             try:
                 from pycaw.pycaw import IAudioMeterInformation
+
                 meter = session._ctl.QueryInterface(IAudioMeterInformation)
                 peak = meter.GetPeakValue()
                 if peak > 0.0001:
-                    logger.info("playing_media_detected", process=process_name, peak=round(float(peak), 5))
+                    logger.info(
+                        "playing_media_detected", process=process_name, peak=round(float(peak), 5)
+                    )
                     return True
             except Exception:
                 # If we can't read the meter, assume it's playing to be safe
@@ -143,6 +160,7 @@ class SystemAudioController:
         """
         try:
             from pycaw.pycaw import AudioUtilities
+
             sessions = AudioUtilities.GetAllSessions()
         except Exception as e:
             logger.error("failed_to_inspect_audio_sessions", error=str(e))
@@ -181,12 +199,15 @@ class SystemAudioController:
         """
         import shutil
         import subprocess
+
         if not shutil.which("playerctl"):
             return False
         try:
             result = subprocess.run(
                 ["playerctl", cmd],
-                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=3,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             return result.returncode == 0
         except Exception as e:
@@ -197,12 +218,14 @@ class SystemAudioController:
         """Return True if any MPRIS2 player reports 'Playing' status."""
         import shutil
         import subprocess
+
         if not shutil.which("playerctl"):
             return False
         try:
             result = subprocess.run(
                 ["playerctl", "status"],
-                timeout=3, capture_output=True,
+                timeout=3,
+                capture_output=True,
             )
             return result.stdout.decode(errors="replace").strip() == "Playing"
         except Exception:
@@ -218,12 +241,14 @@ class SystemAudioController:
         import re
         import shutil
         import subprocess
+
         if not shutil.which("pactl"):
             return set()
         try:
             result = subprocess.run(
                 ["pactl", "list", "sink-inputs"],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             if result.returncode != 0:
                 return set()
@@ -242,8 +267,7 @@ class SystemAudioController:
                 if m2 and current_pid is not None:
                     binary = m2.group(1).lower()
                     # Match against the .exe list (works because _is_media_process strips .exe)
-                    if (self._is_media_process(binary + ".exe") or
-                            self._is_media_process(binary)):
+                    if self._is_media_process(binary + ".exe") or self._is_media_process(binary):
                         pids.add(current_pid)
                     current_pid = None
             return pids
@@ -255,13 +279,16 @@ class SystemAudioController:
         """Mute/unmute the default sink via pactl (Linux). Returns True on success."""
         import shutil
         import subprocess
+
         if not shutil.which("pactl"):
             return False
         try:
             val = "1" if mute else "0"
             result = subprocess.run(
                 ["pactl", "set-sink-mute", "@DEFAULT_SINK@", val],
-                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=3,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             return result.returncode == 0
         except Exception as e:
@@ -305,10 +332,26 @@ class SystemAudioController:
                     #   resume sends the key again → ends up paused. Net: safe.
                     if _IS_WINDOWS and self._has_playing_media_session():
                         logger.info("media_session_detected_pausing")
-                        import win32api, win32con
+                        import win32api
+                        import win32con
+
                         win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
-                        win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        win32api.keybd_event(
+                            win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0
+                        )
                         self._media_paused = True
+                    elif _IS_MACOS:
+                        # macOS: send media play/pause key via pynput
+                        try:
+                            from pynput.keyboard import Controller, Key
+
+                            kb = Controller()
+                            kb.press(Key.media_play_pause)
+                            kb.release(Key.media_play_pause)
+                            self._media_paused = True
+                            logger.info("media_paused_via_pynput_media_key")
+                        except Exception as exc:
+                            logger.warning("macos_media_pause_failed", error=str(exc))
                     elif not _IS_WINDOWS:
                         # Linux: try playerctl (MPRIS2) first — pauses only active player.
                         # If no MPRIS player is found, check pactl sink-inputs for non-MPRIS
@@ -326,15 +369,20 @@ class SystemAudioController:
                             # Check for non-MPRIS media playing (browser tabs, etc.)
                             media_pids = self._pactl_active_media_pids()
                             if media_pids:
-                                logger.info("non_mpris_media_detected_muting", pids=list(media_pids))
+                                logger.info(
+                                    "non_mpris_media_detected_muting", pids=list(media_pids)
+                                )
                                 if self._pactl_mute(True):
                                     self._muted_by_us = True
                                     logger.info("media_muted_via_pactl_non_mpris")
                             else:
-                                logger.info("bg_audio_control_skipped_linux",
-                                            reason="no_media_playing")
+                                logger.info(
+                                    "bg_audio_control_skipped_linux", reason="no_media_playing"
+                                )
                     else:
-                        logger.info("bg_audio_control_skipped", mode=mode, reason="no_playing_media_session")
+                        logger.info(
+                            "bg_audio_control_skipped", mode=mode, reason="no_playing_media_session"
+                        )
                 except Exception as e:
                     logger.error("failed_to_pause_media", error=str(e))
 
@@ -362,7 +410,20 @@ class SystemAudioController:
                 self._playerctl_paused = False
 
             if self._muted_by_us:
-                if not _IS_WINDOWS:
+                if _IS_MACOS:
+                    # macOS: unmute via osascript
+                    try:
+                        import subprocess
+
+                        subprocess.run(
+                            ["osascript", "-e", "set volume output muted FALSE"],
+                            timeout=3,
+                            capture_output=True,
+                        )
+                        logger.debug("master_volume_unmuted_osascript")
+                    except Exception as exc:
+                        logger.warning("macos_unmute_failed", error=str(exc))
+                elif not _IS_WINDOWS:
                     self._pactl_mute(False)
                     logger.debug("master_volume_unmuted_pactl")
                 else:
@@ -379,9 +440,23 @@ class SystemAudioController:
                 try:
                     logger.info("resuming_media")
                     if _IS_WINDOWS:
-                        import win32api, win32con
+                        import win32api
+                        import win32con
+
                         win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
-                        win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        win32api.keybd_event(
+                            win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0
+                        )
+                    elif _IS_MACOS:
+                        try:
+                            from pynput.keyboard import Controller, Key
+
+                            kb = Controller()
+                            kb.press(Key.media_play_pause)
+                            kb.release(Key.media_play_pause)
+                            logger.info("media_resumed_via_pynput_media_key")
+                        except Exception as exc:
+                            logger.warning("macos_media_resume_failed", error=str(exc))
                 except Exception as e:
                     logger.error("failed_to_resume_media", error=str(e))
                 self._media_paused = False

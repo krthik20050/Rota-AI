@@ -6,11 +6,11 @@ from dataclasses import dataclass
 
 from ai.ai_processor import AIProcessor
 from audio.recorder import AudioRecorder
-from plat import get_injector as _get_injector
 from data.config import ConfigManager
 from data.history import HistoryManager
-from services.insights_service import InsightsService
+from plat import get_injector as _get_injector
 from services.enhanced_insights import EnhancedInsightsService
+from services.insights_service import InsightsService
 from services.session_store import SessionStore
 
 
@@ -41,6 +41,9 @@ def _get_appdata_dir() -> str:
     """Return the OS-appropriate app data directory."""
     if sys.platform == "win32":
         return os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+    elif sys.platform == "darwin":
+        # macOS: ~/Library/Application Support/RotaAI
+        return os.path.join(os.path.expanduser("~/Library/Application Support"), "RotaAI")
     # Linux: follow XDG Base Directory Specification
     xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
     return os.path.join(xdg_data, "rota-ai")
