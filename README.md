@@ -2,7 +2,7 @@
 
 # Rota AI
 
-### Free, open source voice dictation for Windows. Speak in any app. No subscriptions. No cloud lock. No typing.
+### Free, open source voice dictation for Windows and Linux. Speak in any app. No subscriptions. No cloud lock. No typing.
 
 [![GitHub Release](https://img.shields.io/github/v/release/krthik20050/Rota-AI?style=for-the-badge&color=black)](https://github.com/krthik20050/Rota-AI/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/krthik20050/Rota-AI?style=for-the-badge&color=yellow)](https://github.com/krthik20050/Rota-AI/stargazers)
@@ -64,7 +64,7 @@ If you are a student like I am, I hope this inspires you to build things too. Yo
 
 ## What Rota AI Does
 
-Rota AI sits on your Windows desktop. You hold a hotkey (F9 by default). You speak. Rota records your voice, transcribes it, cleans it up with AI, and types the result into whatever app your cursor is in.
+Rota AI sits on your desktop (Windows and Linux). You hold a hotkey (F9 by default). You speak. Rota records your voice, transcribes it, cleans it up with AI, and types the result into whatever app your cursor is in.
 
 That is it. No switching apps. No copy pasting. No subscription. No account. No internet required if you go local.
 
@@ -74,20 +74,36 @@ It works in VS Code, Slack, Notion, Gmail, Word, Discord, your browser, your ter
 
 ## Quick Start
 
+### Windows
+
 ```bash
 git clone https://github.com/krthik20050/Rota-AI.git
 cd Rota-AI
 run.bat
 ```
 
-`run.bat` handles everything:
-- Finds Python 3.10 or newer on your system
-- Creates a virtual environment
-- Installs all dependencies
-- Pulls the latest code from GitHub on every launch
-- Launches Rota AI
+`run.bat` handles everything: finds Python, creates a virtual environment, installs dependencies, pulls latest code, and launches Rota AI.
 
-The first time you run it, Rota walks you through onboarding. You pick your transcription backend. Cloud API key or local AI. You are ready to go in under two minutes.
+### Linux
+
+```bash
+git clone https://github.com/krthik20050/Rota-AI.git
+cd Rota-AI
+bash linux/setup-linux.sh   # one time: installs system deps + adds you to input group
+# log out and back in (or run: newgrp input)
+bash linux/run.sh
+```
+
+`setup-linux.sh` installs system packages (PortAudio, xdotool, evdev, etc.) and adds your user to the `input` group so evdev can read keyboard events. The group change requires a re-login — or run `newgrp input` in your terminal for an immediate fix without logging out.
+
+**Or download the AppImage** (no Python or git needed):
+
+```bash
+chmod +x RotaAI.AppImage
+./RotaAI.AppImage
+```
+
+The first time you run it, Rota walks you through onboarding. You pick your transcription backend. Cloud API key or local AI. You are ready in under two minutes.
 
 ---
 
@@ -218,7 +234,7 @@ Built with PyQt6, every pixel is custom styled:
 - **Pure black dark theme** inspired by Apple design language
 - **Floating pill overlay** with audio reactive 7-bar waveform
 - **System tray** access with one click show/hide
-- **Acrylic blur** effects using native Windows compositor (Windows 11)
+- **Acrylic blur** effects using native Windows compositor (Windows 11 only)
 - Dockable, frameless, always-on-top overlay
 - Dedicated **onboarding flow** for first time setup
 
@@ -226,7 +242,7 @@ Built with PyQt6, every pixel is custom styled:
 
 Everything about Rota AI is built around keeping your data yours:
 
-- **API keys encrypted** with Windows DPAPI (tied to your user account)
+- **API keys encrypted** — Windows DPAPI on Windows, system keyring on Linux
 - **Transcription history** in local SQLite, no cloud sync
 - **Zero telemetry**, no analytics, no phone calls home
 - **No servers**, no account, no signup required
@@ -241,13 +257,19 @@ Everything about Rota AI is built around keeping your data yours:
 
 Getting text into applications is harder than it sounds. Rota uses multiple injection methods:
 
+**Windows:**
 - **Primary**: Windows SendInput API for keystroke simulation
 - **Large text**: Clipboard paste via pyperclip + Ctrl+V
 - **Fallback**: pyautogui for stubborn applications
 - **Field reader**: Windows UI Automation (IUIAutomationTextPattern) reads existing text before injection
 - **Verification**: confirms injection was successful
 
-Works in every app that accepts keyboard input: VS Code, Cursor, Slack, Discord, Notion, Obsidian, Gmail, Outlook, Word, Excel, browsers, terminals, Steam chat, everything.
+**Linux:**
+- **Primary**: Clipboard paste via xclip/wl-clipboard + Ctrl+V (xdotool or wtype)
+- **Focus restore**: xdotool windowactivate before paste
+- **Field reader**: AT-SPI (python-xlib) for reading existing text
+
+Works in every app that accepts keyboard input: VS Code, Cursor, Slack, Discord, Notion, Obsidian, Gmail, Outlook, Word, Excel, browsers, terminals, everything.
 
 ### ⌨️ Global Hotkeys
 
@@ -599,8 +621,11 @@ The Rota AI application itself is about 25 MB. Dependencies (PyQt6, torch, etc.)
 
 ### What are the minimum system requirements?
 
-- Windows 10 or 11
-- Python 3.10+
+**Windows:** Windows 10 or 11, Python 3.10+
+
+**Linux:** Ubuntu 20.04+, Fedora 36+, Arch (or any distro with evdev + X11/Wayland). Python 3.10+. User must be in the `input` group for hotkey detection.
+
+**Both platforms:**
 - 4 GB RAM minimum (8 GB recommended)
 - Microphone (built in or external)
 - For local transcription: 8 GB RAM for base/small, 16 GB for medium/large
@@ -631,6 +656,15 @@ Open an issue on GitHub. I read every single issue and try to respond quickly. I
 
 > [!WARNING]
 > **Platform support**: Rota AI supports Windows 10/11 and Linux (AppImage). macOS support is planned.
+
+> [!NOTE]
+> **Linux — media pause not supported**: On Windows, Rota pauses system audio (Spotify, YouTube, etc.) while recording. On Linux this feature is a no-op. PipeWire/PulseAudio integration is planned.
+
+> [!CAUTION]
+> **Linux — keyboard freeze on hard crash**: Rota uses evdev to read keyboard events, which requires holding a file descriptor to `/dev/input/event*`. If the app crashes hard (SIGSEGV or force kill), the keyboard may become unresponsive until the process is fully terminated. This is an inherent limitation of evdev, not fixable in Python. Killing the Rota process (`killall python`) restores normal keyboard operation immediately.
+
+> [!NOTE]
+> **Linux — input group required**: The hotkey system requires your user to be in the `input` group. Run `bash linux/setup-linux.sh` once. The change takes effect at next login, or immediately via `newgrp input`.
 
 > [!NOTE]
 > **First run model download**: The first time you use a local model, it downloads from Hugging Face. base is 140 MB, small is 480 MB, large v3 is 3.1 GB. This is a one time download. Files are cached and reused.
