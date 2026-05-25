@@ -2,12 +2,14 @@
 
 # Rota AI
 
-### Free, open source voice dictation for Windows and Linux. Speak in any app. No subscriptions. No cloud lock. No typing.
+### Free, open source voice dictation for Windows, macOS, and Linux. Speak in any app. No subscriptions. No cloud lock. No typing.
 
 [![GitHub Release](https://img.shields.io/github/v/release/krthik20050/Rota-AI?style=for-the-badge&color=black)](https://github.com/krthik20050/Rota-AI/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/krthik20050/Rota-AI?style=for-the-badge&color=yellow)](https://github.com/krthik20050/Rota-AI/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/krthik20050/Rota-AI?style=for-the-badge&color=blue)](https://github.com/krthik20050/Rota-AI/network/members)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/krthik20050?style=for-the-badge&color=ea4aaa&logo=github-sponsors)](https://github.com/sponsors/krthik20050)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/karthik)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white&style=flat-square)](https://python.org)
 [![PyQt6](https://img.shields.io/badge/PyQt6-GUI-41CD52?logo=qt&logoColor=white&style=flat-square)](https://www.riverbankcomputing.com/software/pyqt/)
 [![Whisper](https://img.shields.io/badge/Faster--Whisper-STT-FF6F00?logo=openai&logoColor=white&style=flat-square)](https://github.com/SYSTRAN/faster-whisper)
@@ -57,14 +59,28 @@ If you are a student like I am, I hope this inspires you to build things too. Yo
 9. [FAQ](#faq)
 10. [Known Issues](#known-issues)
 11. [Contributing](#contributing)
-12. [Star History](#star-history)
-13. [License](#license)
+12. [Documentation](#documentation)
+13. [Star History](#star-history)
+14. [License](#license)
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Project structure, platform abstraction, threading model |
+| [docs/BUILD.md](docs/BUILD.md) | How to build from source on Windows and Linux |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and fixes for both platforms |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, dev setup, PR workflow |
+| [SECURITY.md](SECURITY.md) | Security policy, data privacy, encryption details |
+| [FIXES.md](FIXES.md) | Detailed bug fix log |
 
 ---
 
 ## What Rota AI Does
 
-Rota AI sits on your desktop (Windows and Linux). You hold a hotkey (F9 by default). You speak. Rota records your voice, transcribes it, cleans it up with AI, and types the result into whatever app your cursor is in.
+Rota AI sits on your desktop (Windows, macOS, and Linux). You hold a hotkey (F9 by default). You speak. Rota records your voice, transcribes it, cleans it up with AI, and types the result into whatever app your cursor is in.
 
 That is it. No switching apps. No copy pasting. No subscription. No account. No internet required if you go local.
 
@@ -83,6 +99,29 @@ run.bat
 ```
 
 `run.bat` handles everything: finds Python, creates a virtual environment, installs dependencies, pulls latest code, and launches Rota AI.
+
+### macOS
+
+```bash
+git clone https://github.com/krthik20050/Rota-AI.git
+cd Rota-AI
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+On first run, Rota will prompt you to grant system permissions. Three are required:
+
+1. **Microphone** — for audio recording
+2. **Accessibility** — for hotkey capture and text injection
+3. **Input Monitoring** — for reliable global hotkeys (Quartz CGEventTap)
+
+To grant permissions: System Settings → Privacy & Security → [permission name] → add Terminal (or your Python interpreter) → toggle on. You may need to restart the app after granting.
+
+> **Note:** macOS depends on `pyobjc` for system integration. Installing with `pip install -r requirements.txt` handles this automatically. If you see import errors for `AppKit`, `ApplicationServices`, or `Quartz`, run `pip install -r requirements.txt` again.
+
+> **Note:** The app must be launched from Terminal (not Finder) for permission prompts to work correctly. You can also run it from VS Code's integrated terminal.
 
 ### Linux
 
@@ -485,7 +524,7 @@ Rota-AI/
 | **Free tier** | 2,000 words/week | Unlimited basic models | 2,000 requests/day | Unlimited |
 | **Open source** | No | No | Yes (MIT) | Yes (MIT) |
 | **Offline mode** | No | Yes | No | Yes (Ollama) |
-| **Platforms** | Mac, Windows, iOS, Android | Mac, Windows, iOS | Windows, Linux (AppImage) | Windows, Linux (AppImage) |
+- **Platforms** | Mac, Windows, iOS, Android | Mac, Windows, iOS | Windows, macOS, Linux | Windows, macOS, Linux |
 | **Account required** | Yes | Yes | No | No |
 | **AI cleanup / auto editing** | Yes | Yes (multiple modes) | Yes | Yes |
 | **Context awareness** | Yes | Yes (reads screen) | Yes (detects active app) | Yes (detects active app) |
@@ -515,13 +554,12 @@ On my RTX 3050 6GB, Rota AI with Groq cloud transcription feels faster than Wisp
 
 I am honest about what Rota AI is missing compared to Wispr Flow and SuperWhisper:
 
-- No macOS version yet. Linux is supported via AppImage.
 - No mobile app. iPhone and Android are not supported.
 - No cross device sync. Dictionary and snippets stay local.
 - No file transcription. You cannot feed it an audio or video file and get a transcript.
 - No screen reading. SuperWhisper can read what is on your screen for context. Rota AI only detects which app you are in.
-- The AI cleanup pass is good but Wispr Flow has had years of prompt engineering and it shows. Wispr Flow's output feels slightly more polished for long form dictation.
-- Rota AI is one developer (me) working on it in my free time. Wispr Flow has a full team and $81 million in funding.
+- The AI cleanup pass is good but Wispr Flow has had years of prompt engineering and it shows.
+- macOS support is new and still being tested. Report issues on GitHub.
 
 I am working on closing these gaps. But I would rather be honest about where things are than make claims I cannot back up.
 
@@ -603,7 +641,13 @@ Whisper supports 99+ languages for transcription. The AI cleanup pass currently 
 
 ### Does it work on Mac or Linux?
 
-Windows 10/11 and Linux (AppImage) are supported. macOS is planned. Linux support includes evdev-based global hotkeys (X11 + Wayland), clipboard + Ctrl+V text injection, and XDG-compliant data directories.
+Windows 10/11, macOS 12+, and Linux are all supported.
+
+**Windows:** Run `run.bat` or `python main.py`. No additional setup needed.
+
+**macOS:** Run `python main.py` after installing dependencies. Three permissions are required (Microphone, Accessibility, Input Monitoring). See [Quick Start → macOS](#macos) for details.
+
+**Linux:** Run `bash linux/run.sh` or use the AppImage. User must be in the `input` group for hotkey detection.
 
 ---
 
