@@ -35,6 +35,7 @@ function DownloadModal({ open, onClose }: { open: boolean; onClose: () => void }
           {/* Windows */}
           <a
             href="/api/download?platform=windows"
+            download="RotaAI-Setup.exe"
             className="group flex items-center gap-4 w-full px-5 py-4 mb-3 rounded-sm transition-all hover:opacity-90"
             style={{ background: "#e4f222" }}
           >
@@ -51,6 +52,7 @@ function DownloadModal({ open, onClose }: { open: boolean; onClose: () => void }
           {/* Linux */}
           <a
             href="/api/download?platform=linux"
+            download="RotaAI.AppImage"
             className="group flex items-center gap-4 w-full px-5 py-4 mb-6 rounded-sm border transition-all hover:border-white/20"
             style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }}
           >

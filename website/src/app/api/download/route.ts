@@ -12,6 +12,26 @@ export async function GET(req: Request) {
   const platform = (url.searchParams.get("platform") || "windows").toLowerCase();
   const asset = ASSETS[platform] || ASSETS.windows;
 
-  // Redirect to GitHub releases download
-  return Response.redirect(`${GITHUB_BASE}/${asset.file}`, 302);
+  const downloadUrl = `${GITHUB_BASE}/${asset.file}`;
+
+  // Fetch the file from GitHub (follows redirects)
+  const upstream = await fetch(downloadUrl, { redirect: "follow" });
+
+  if (!upstream.ok || !upstream.body) {
+    return new Response("Download unavailable", { status: 502 });
+  }
+
+  const contentType = upstream.headers.get("content-type") ?? "application/octet-stream";
+
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Content-Disposition": `attachment; filename="${asset.file}"`,
+      // Forward content-length if present so browser shows progress
+      ...(upstream.headers.get("content-length")
+        ? { "Content-Length": upstream.headers.get("content-length")! }
+        : {}),
+    },
+  });
 }
