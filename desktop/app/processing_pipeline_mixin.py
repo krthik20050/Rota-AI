@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 
 import structlog
@@ -232,57 +233,7 @@ class ProcessingPipelineMixin:
                 self._clear_processor_refs(correlation_id)
                 return
 
-            self.history.add_entry(raw, cleaned, is_prompt)
-            self._update_metrics()
-            text_metrics = calculate_text_metrics(raw)
-            cleaned_metrics = calculate_text_metrics(cleaned)
-
-            if text_metrics.total_words > 0:
-                reduction = max(0.0, (text_metrics.total_words - cleaned_metrics.total_words) / text_metrics.total_words)
-                text_metrics.conciseness_score = max(30, min(100, int(round(100 - (reduction * 150)))))
-            else:
-                text_metrics.conciseness_score = 100
-
-            insight = self.insights_service.build_insight(raw)
-            started_at = session.start_time if session else time.time()
-            ended_at = time.time()
-            elapsed_minutes = max(1e-6, (ended_at - started_at) / 60.0)
-            words_per_minute = int(round(text_metrics.total_words / elapsed_minutes))
-
-            app_ctx = getattr(session, "app_context", None) if session else None
-            app_ctx_dict = {}
-            if app_ctx:
-                if hasattr(app_ctx, "__dict__"):
-                    app_ctx_dict = app_ctx.__dict__
-                elif isinstance(app_ctx, dict):
-                    app_ctx_dict = app_ctx
-
-            self.session_store.add_session(
-                SessionRecord(
-                    session_id=correlation_id,
-                    started_at=started_at,
-                    ended_at=ended_at,
-                    recording_seconds=self._last_recording_seconds,
-                    words=text_metrics.total_words,
-                    wpm=words_per_minute,
-                    filler_ratio=text_metrics.filler_ratio,
-                    clarity_score=text_metrics.clarity_score,
-                    conciseness_score=text_metrics.conciseness_score,
-                    insight_summary=insight.summary,
-                    insight_suggestion=insight.suggestion,
-                    transcript_text=raw or "",
-                    backend_used=backend_used or "",
-                    app_context=json.dumps(app_ctx_dict) if app_ctx_dict else "",
-                    phrases_json=json.dumps(text_metrics.phrases) if text_metrics.phrases else "",
-                )
-            )
-            self.main_window.update_insight(
-                insight.summary,
-                insight.suggestion,
-                insight.clarity_score,
-                insight.conciseness_score,
-            )
-
+            # --- INJECT FIRST — minimise perceived latency ---
             expanded = self.snippets.expand(cleaned)
             inject_text = expanded if expanded is not None else cleaned
 
@@ -326,6 +277,8 @@ class ProcessingPipelineMixin:
                 "injection_ms": f"{round(injection_seconds * 1000, 2)} ms",
                 "injection_success": str(success),
             }
+
+            # Signal success to UI immediately after injection
             self._sessions.pop(correlation_id, None)
             self._maybe_notify_backend_fallback()
             self.overlay.show_success("Sent")
@@ -335,11 +288,87 @@ class ProcessingPipelineMixin:
                 lambda: self._return_to_idle_if_state(RecordingState.SUCCESS, "ready", correlation_id),
             )
             self.overlay.set_state(PillState.DONE)
-            self.main_window.refresh_history(highlight_latest=True)
-            if hasattr(self.main_window, "_dict_refresh"):
-                self.main_window._dict_refresh()
-            self._refresh_debug_window()
             self._clear_processor_refs(correlation_id)
+
+            # --- Defer analytics to background thread (compute-heavy work off main thread) ---
+            _recording_seconds = self._last_recording_seconds
+            _main_window = self.main_window
+            _history = self.history
+            _session_store = self.session_store
+            _insights_service = self.insights_service
+            _update_metrics = self._update_metrics
+            _refresh_debug = self._refresh_debug_window
+
+            def _run_analytics():
+                try:
+                    _history.add_entry(raw, cleaned, is_prompt)
+                    text_metrics = calculate_text_metrics(raw)
+
+                    # Avoid full metrics calculation for cleaned — only need word count
+                    cleaned_word_count = len(cleaned.split()) if cleaned else 0
+                    if text_metrics.total_words > 0:
+                        reduction = max(0.0, (text_metrics.total_words - cleaned_word_count) / text_metrics.total_words)
+                        text_metrics.conciseness_score = max(30, min(100, int(round(100 - (reduction * 150)))))
+                    else:
+                        text_metrics.conciseness_score = 100
+
+                    # Pass precomputed metrics to avoid a third calculate_text_metrics call
+                    insight = _insights_service.build_insight(raw, metrics=text_metrics)
+                    started_at = session.start_time if session else time.time()
+                    ended_at = time.time()
+                    elapsed_minutes = max(1e-6, (ended_at - started_at) / 60.0)
+                    words_per_minute = int(round(text_metrics.total_words / elapsed_minutes))
+
+                    _app_ctx = getattr(session, "app_context", None) if session else None
+                    app_ctx_dict = {}
+                    if _app_ctx:
+                        if hasattr(_app_ctx, "__dict__"):
+                            app_ctx_dict = _app_ctx.__dict__
+                        elif isinstance(_app_ctx, dict):
+                            app_ctx_dict = _app_ctx
+
+                    _session_store.add_session(
+                        SessionRecord(
+                            session_id=correlation_id,
+                            started_at=started_at,
+                            ended_at=ended_at,
+                            recording_seconds=_recording_seconds,
+                            words=text_metrics.total_words,
+                            wpm=words_per_minute,
+                            filler_ratio=text_metrics.filler_ratio,
+                            clarity_score=text_metrics.clarity_score,
+                            conciseness_score=text_metrics.conciseness_score,
+                            insight_summary=insight.summary,
+                            insight_suggestion=insight.suggestion,
+                            transcript_text=raw or "",
+                            backend_used=backend_used or "",
+                            app_context=json.dumps(app_ctx_dict) if app_ctx_dict else "",
+                            phrases_json=json.dumps(text_metrics.phrases) if text_metrics.phrases else "",
+                        )
+                    )
+
+                    # Schedule UI updates back on the main thread
+                    def _ui_updates():
+                        try:
+                            _update_metrics()
+                            _main_window.update_insight(
+                                insight.summary,
+                                insight.suggestion,
+                                insight.clarity_score,
+                                insight.conciseness_score,
+                            )
+                            _main_window.refresh_history(highlight_latest=True)
+                            if hasattr(_main_window, "_dict_refresh"):
+                                _main_window._dict_refresh()
+                            _refresh_debug()
+                        except Exception:
+                            pass
+
+                    QTimer.singleShot(0, _ui_updates)
+                except Exception:
+                    logger.warning("analytics_thread_failed", exc_info=True)
+
+            threading.Thread(target=_run_analytics, daemon=True).start()
         except Exception as exc:
             logger.error("on_processing_finished_failed", correlation_id=correlation_id, exc_info=True)
             for fn in [

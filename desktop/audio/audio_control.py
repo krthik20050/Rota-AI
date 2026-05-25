@@ -64,6 +64,7 @@ class SystemAudioController:
         self.config_manager = config_manager
         self._muted_by_us = False
         self._media_paused = False
+        self._playerctl_paused = False  # Linux: paused via playerctl
 
     def _get_master_volume_interface(self):
         try:
@@ -172,6 +173,84 @@ class SystemAudioController:
 
         return False
 
+    def _playerctl_cmd(self, cmd: str) -> bool:
+        """Run a playerctl command (pause/play/play-pause). Returns True on success.
+
+        playerctl uses MPRIS2 D-Bus protocol, supported by:
+        Spotify, VLC, mpv, Firefox (with extension), Chromium, Rhythmbox, etc.
+        """
+        import shutil
+        import subprocess
+        if not shutil.which("playerctl"):
+            return False
+        try:
+            result = subprocess.run(
+                ["playerctl", cmd],
+                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            return result.returncode == 0
+        except Exception as e:
+            logger.warning("playerctl_cmd_failed", cmd=cmd, error=str(e))
+            return False
+
+    def _playerctl_is_playing(self) -> bool:
+        """Return True if any MPRIS2 player reports 'Playing' status."""
+        import shutil
+        import subprocess
+        if not shutil.which("playerctl"):
+            return False
+        try:
+            result = subprocess.run(
+                ["playerctl", "status"],
+                timeout=3, capture_output=True,
+            )
+            return result.stdout.decode(errors="replace").strip() == "Playing"
+        except Exception:
+            return False
+
+    def _pactl_active_media_pids(self) -> set:
+        """
+        Parse 'pactl list sink-inputs' to find PIDs of known media processes
+        actively routing audio to the default sink. Catches browsers and apps
+        that bypass MPRIS (e.g. Chrome playing YouTube, Spotify web player).
+        Returns an empty set when pactl is unavailable or nothing is playing.
+        """
+        import re
+        import shutil
+        import subprocess
+        if not shutil.which("pactl"):
+            return set()
+        try:
+            result = subprocess.run(
+                ["pactl", "list", "sink-inputs"],
+                capture_output=True, timeout=5,
+            )
+            if result.returncode != 0:
+                return set()
+            output = result.stdout.decode(errors="replace")
+            pids: set = set()
+            current_pid = None
+            for line in output.splitlines():
+                line = line.strip()
+                # Grab PID line: application.process.id = "1234"
+                m = re.match(r'application\.process\.id\s*=\s*"(\d+)"', line)
+                if m:
+                    current_pid = int(m.group(1))
+                    continue
+                # Grab binary name and check if it's a known media process
+                m2 = re.match(r'application\.process\.binary\s*=\s*"([^"]+)"', line)
+                if m2 and current_pid is not None:
+                    binary = m2.group(1).lower()
+                    # Match against the .exe list (works because _is_media_process strips .exe)
+                    if (self._is_media_process(binary + ".exe") or
+                            self._is_media_process(binary)):
+                        pids.add(current_pid)
+                    current_pid = None
+            return pids
+        except Exception as e:
+            logger.warning("pactl_list_sink_inputs_failed", error=str(e))
+            return set()
+
     def _pactl_mute(self, mute: bool) -> bool:
         """Mute/unmute the default sink via pactl (Linux). Returns True on success."""
         import shutil
@@ -231,10 +310,29 @@ class SystemAudioController:
                         win32api.keybd_event(win32con.VK_MEDIA_PLAY_PAUSE, 0, win32con.KEYEVENTF_KEYUP, 0)
                         self._media_paused = True
                     elif not _IS_WINDOWS:
-                        # Linux: mute via pactl as the most reliable cross-desktop approach
-                        if self._pactl_mute(True):
-                            self._muted_by_us = True
-                            logger.info("media_muted_via_pactl")
+                        # Linux: try playerctl (MPRIS2) first — pauses only active player.
+                        # If no MPRIS player is found, check pactl sink-inputs for non-MPRIS
+                        # media (browsers playing YouTube, web Spotify, etc.).
+                        if self._playerctl_is_playing():
+                            if self._playerctl_cmd("pause"):
+                                self._playerctl_paused = True
+                                logger.info("media_paused_via_playerctl")
+                            else:
+                                # playerctl found but failed; mute via pactl
+                                if self._pactl_mute(True):
+                                    self._muted_by_us = True
+                                    logger.info("media_muted_via_pactl_fallback")
+                        else:
+                            # Check for non-MPRIS media playing (browser tabs, etc.)
+                            media_pids = self._pactl_active_media_pids()
+                            if media_pids:
+                                logger.info("non_mpris_media_detected_muting", pids=list(media_pids))
+                                if self._pactl_mute(True):
+                                    self._muted_by_us = True
+                                    logger.info("media_muted_via_pactl_non_mpris")
+                            else:
+                                logger.info("bg_audio_control_skipped_linux",
+                                            reason="no_media_playing")
                     else:
                         logger.info("bg_audio_control_skipped", mode=mode, reason="no_playing_media_session")
                 except Exception as e:
@@ -254,6 +352,14 @@ class SystemAudioController:
                 return
 
             logger.info("bg_audio_control_stop", mode=mode)
+
+            if self._playerctl_paused:
+                try:
+                    self._playerctl_cmd("play")
+                    logger.info("media_resumed_via_playerctl")
+                except Exception as e:
+                    logger.error("failed_to_resume_playerctl", error=str(e))
+                self._playerctl_paused = False
 
             if self._muted_by_us:
                 if not _IS_WINDOWS:

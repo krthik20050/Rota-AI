@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from utils.text_metrics import calculate_text_metrics
 
@@ -18,8 +19,10 @@ class SessionInsight:
 class InsightsService:
     """Derives short, actionable speaking insights from cleaned text."""
 
-    def build_insight(self, text: str) -> SessionInsight:
-        metrics = calculate_text_metrics(text)
+    def build_insight(self, text: str, metrics: Any = None) -> SessionInsight:
+        """Build insight from text. Pass pre-computed metrics to avoid recalculation."""
+        if metrics is None:
+            metrics = calculate_text_metrics(text)
         filler_pct = int(round(metrics.filler_ratio * 100))
 
         if filler_pct >= 18:

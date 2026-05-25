@@ -147,7 +147,7 @@ class TextInjector:
                 except Exception:
                     logger.exception("focus_restore_failed", correlation_id=correlation_id)
 
-            time.sleep(0.02)
+            time.sleep(0.01)
 
             for attempt in range(2):
                 try:
@@ -162,7 +162,7 @@ class TextInjector:
                     time.sleep(0.01)
                     ctypes.windll.user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
                     ctypes.windll.user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
-                    time.sleep(0.08)
+                    time.sleep(0.05)
                     logger.info(
                         "text_injected",
                         correlation_id=correlation_id,

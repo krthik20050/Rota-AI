@@ -101,23 +101,37 @@ def get_focused_field_info() -> dict[str, Any]:
       1. Use AT-SPI to get the focused application and element
       2. Fall back to _NET_ACTIVE_WINDOW via python-xlib on X11
       3. Fall back to empty info if both fail
+
+    Note on cursor_x / cursor_y:
+      On X11: filled by python-xlib query_pointer().
+      On Wayland: always 0,0 — Wayland has no global cursor position API
+      without compositor-specific protocols. The injector does not use these
+      coordinates for targeting, so 0,0 is a safe sentinel value.
     """
     result: dict[str, Any] = {
         "window_id": None,
         "pid": None,
         "window_title": "",
         "process_name": "",
-        "cursor_x": 0,
+        "cursor_x": 0,   # 0,0 on Wayland — intentional, see docstring
         "cursor_y": 0,
         "is_text_field": True,  # optimistic default
         "focused_class": "",
         "captured_at": time.time(),
     }
 
+    _on_wayland = bool(
+        os.environ.get("WAYLAND_DISPLAY") or
+        os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+    )
+
     # Strategy 1: AT-SPI
     if _ATSPI_AVAILABLE:
         try:
             _fill_via_atspi(result)
+            # AT-SPI doesn't expose cursor position; fill it from xlib on X11
+            if not _on_wayland and os.environ.get("DISPLAY") and result["cursor_x"] == 0:
+                _fill_cursor_via_xlib(result)
             return result
         except Exception as e:
             logger.debug("atspi_focus_detection_failed", error=str(e))
@@ -129,6 +143,9 @@ def get_focused_field_info() -> dict[str, Any]:
             return result
         except Exception as e:
             logger.debug("xlib_focus_detection_failed", error=str(e))
+
+    if _on_wayland:
+        logger.debug("wayland_cursor_pos_unavailable")
 
     return result
 
@@ -231,30 +248,165 @@ def scan_for_text_inputs(window_id: int = 0) -> list[dict[str, Any]]:
 
 def focus_text_input(input_info: dict[str, Any]) -> bool:
     """
-    Attempt to focus a found text input control.
-    Returns True if focus was set.
+    Attempt to focus a found text input control via AT-SPI.
+
+    Strategy:
+      1. Call pyatspi grab_focus() on the stored node reference.
+      2. Try the accessible Action interface for a "focus" action.
+      3. Fall back to xdotool click at the element's centre point.
+    Returns True if any method succeeded (best-effort).
     """
-    # On Linux, we use AT-SPI to set focus on the accessible element
-    # The window_id in input_info is the accessible component reference
-    logger.info("focus_text_input_stub", info=input_info)
-    return True  # best-effort; actual focus handled by compositor
+    node = input_info.get("_atspi_node") if input_info else None
+
+    if node is not None and _ATSPI_AVAILABLE:
+        # Strategy 1: grab_focus via the Component interface
+        try:
+            component = node.queryComponent()
+            if component and component.grabFocus():
+                logger.debug("focus_text_input_grab_focus_ok")
+                return True
+        except Exception:
+            pass
+
+        # Strategy 2: Action interface — look for "focus" or "activate" action
+        try:
+            action = node.queryAction()
+            n_actions = action.get_n_actions() if action else 0
+            for i in range(n_actions):
+                name = (action.get_name(i) or "").lower()
+                if name in ("focus", "activate", "click"):
+                    action.do_action(i)
+                    logger.debug("focus_text_input_action_ok", action=name)
+                    return True
+        except Exception:
+            pass
+
+    # Strategy 3: xdotool click at element centre (X11 only)
+    rect = input_info.get("rect") if input_info else None
+    if rect and os.environ.get("DISPLAY"):
+        try:
+            import shutil
+            import subprocess
+            if shutil.which("xdotool"):
+                x1, y1, x2, y2 = rect
+                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                subprocess.run(
+                    ["xdotool", "mousemove", str(cx), str(cy), "click", "1"],
+                    timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+                logger.debug("focus_text_input_xdotool_click", cx=cx, cy=cy)
+                return True
+        except Exception as e:
+            logger.debug("focus_text_input_xdotool_failed", error=str(e))
+
+    # Strategy 4: ydotool click at element centre (Wayland via /dev/uinput)
+    # Requires: ydotool installed + /dev/uinput accessible (udev rule in setup-linux.sh)
+    if rect:
+        try:
+            import shutil
+            import subprocess
+            if shutil.which("ydotool"):
+                x1, y1, x2, y2 = rect
+                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                # Move mouse to element centre
+                subprocess.run(
+                    ["ydotool", "mousemove", "--absolute", "--", str(cx), str(cy)],
+                    timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+                time.sleep(0.02)
+                # Click left button (0xC0 = press + release in one command)
+                result = subprocess.run(
+                    ["ydotool", "click", "0xC0"],
+                    timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+                if result.returncode == 0:
+                    logger.debug("focus_text_input_ydotool_click", cx=cx, cy=cy)
+                    return True
+        except Exception as e:
+            logger.debug("focus_text_input_ydotool_failed", error=str(e))
+
+    logger.debug("focus_text_input_no_method_succeeded")
+    return False
 
 
 def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
     """
     Raise the captured window before paste.
-    On Linux we use wmctrl/xdotool to activate the window.
+
+    Strategy order:
+      1. xdotool windowactivate  (X11)
+      2. swaymsg [pid=N] focus   (Wayland / Sway / wlroots compositors)
+      3. hyprctl dispatch focuswindow pid:N  (Hyprland)
+      4. AT-SPI grab_focus on focused element  (Wayland fallback, best-effort)
+    Never raises — returns True even if no strategy worked, so injection is
+    not blocked by a focus failure.
     """
     try:
         import shutil
         import subprocess
+
         window_id = field_info.get("window_id") if field_info else None
+        pid = field_info.get("pid") if field_info else None
+
+        _on_wayland = bool(
+            os.environ.get("WAYLAND_DISPLAY") or
+            os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+        )
+
+        # Strategy 1: xdotool (X11 or XWayland)
         if window_id and shutil.which("xdotool"):
-            subprocess.run(
+            result = subprocess.run(
                 ["xdotool", "windowactivate", str(window_id)],
                 timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
-            time.sleep(0.05)
+            if result.returncode == 0:
+                time.sleep(0.05)
+                return True
+
+        # Strategy 2: Sway / wlroots (WAYLAND_DISPLAY + SWAYSOCK)
+        if pid and _on_wayland and os.environ.get("SWAYSOCK") and shutil.which("swaymsg"):
+            result = subprocess.run(
+                ["swaymsg", f'[pid="{pid}"] focus'],
+                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            if result.returncode == 0:
+                time.sleep(0.05)
+                return True
+            logger.debug("swaymsg_focus_failed", rc=result.returncode)
+
+        # Strategy 3: Hyprland
+        if pid and _on_wayland and os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"):
+            result = subprocess.run(
+                ["hyprctl", "dispatch", "focuswindow", f"pid:{pid}"],
+                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            if result.returncode == 0:
+                time.sleep(0.05)
+                return True
+            logger.debug("hyprctl_focus_failed", rc=result.returncode)
+
+        # Strategy 4: AT-SPI grab_focus on the focused element in the target app.
+        # Works on Wayland when the compositor exposes no window management API.
+        if pid and _ATSPI_AVAILABLE:
+            try:
+                desktop = pyatspi.Registry.getDesktop(0)
+                for app in desktop:
+                    try:
+                        if app.get_process_id() != pid:
+                            continue
+                        focused = _find_focused_element(app)
+                        if focused:
+                            comp = focused.queryComponent()
+                            if comp and comp.grabFocus():
+                                time.sleep(0.05)
+                                logger.debug("restore_focus_atspi_grab_ok", pid=pid)
+                                return True
+                    except Exception:
+                        continue
+            except Exception as e:
+                logger.debug("atspi_restore_focus_failed", error=str(e))
+
+        # No strategy succeeded; return True so injection still proceeds.
         return True
     except Exception as e:
         logger.warning("focus_restore_error", error=str(e))
@@ -402,7 +554,8 @@ def _scan_children(node, text_roles: set, results: list, depth: int, max_depth: 
                     x, y, w, h = extents
                     if w >= 20 and h >= 10:
                         results.append({
-                            "window_id": id(node),  # use Python object id as reference
+                            "window_id": id(node),
+                            "_atspi_node": node,  # live reference for focus_text_input
                             "class_name": role,
                             "rect": (x, y, x + w, y + h),
                             "area": w * h,
@@ -427,6 +580,19 @@ def _scan_children(node, text_roles: set, results: list, depth: int, max_depth: 
 # ---------------------------------------------------------------------------
 # Internal: python-xlib fallback (X11 only)
 # ---------------------------------------------------------------------------
+
+def _fill_cursor_via_xlib(result: dict[str, Any]) -> None:
+    """Fill cursor_x / cursor_y using python-xlib query_pointer (X11 only)."""
+    try:
+        from Xlib import display
+        d = display.Display()
+        pointer = d.screen().root.query_pointer()
+        result["cursor_x"] = pointer.root_x
+        result["cursor_y"] = pointer.root_y
+        d.close()
+    except Exception:
+        pass  # non-fatal; 0,0 is acceptable sentinel
+
 
 def _fill_via_xlib(result: dict[str, Any]) -> None:
     """Fill result dict using python-xlib on X11."""

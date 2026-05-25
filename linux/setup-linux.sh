@@ -80,6 +80,7 @@ if [ "$DISTRO" = "debian" ]; then
         libsecret-1-dev \
         wl-clipboard \
         xdotool \
+        ydotool \
         xclip \
         dbus-x11 \
         libayatana-appindicator3-1 \
@@ -100,6 +101,7 @@ elif [ "$DISTRO" = "fedora" ]; then
         libsecret-devel \
         wl-clipboard \
         xdotool \
+        ydotool \
         xclip \
         dbus-x11 \
         ffmpeg \
@@ -117,6 +119,7 @@ elif [ "$DISTRO" = "arch" ]; then
         libsecret \
         wl-clipboard \
         xdotool \
+        ydotool \
         xclip \
         dbus \
         ffmpeg \
@@ -246,7 +249,7 @@ except ImportError:
 
 # Tools
 import shutil
-for tool in ['wl-copy', 'xdotool', 'xclip', 'ffmpeg']:
+for tool in ['wl-copy', 'xdotool', 'ydotool', 'xclip', 'ffmpeg', 'playerctl', 'pactl']:
     if shutil.which(tool):
         print(f'  {tool}: OK')
     else:

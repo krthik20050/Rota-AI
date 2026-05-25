@@ -66,8 +66,9 @@ class ThreadLifecycleMixin:
     def _retire_qthread(self, thread, bucket):
         if thread is None:
             return
-        if thread not in bucket:
-            bucket.append(thread)
+        if thread in bucket:
+            return  # already registered for cleanup — don't double-connect
+        bucket.append(thread)
 
         def release_thread():
             if thread.isRunning():

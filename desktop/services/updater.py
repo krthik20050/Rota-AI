@@ -16,8 +16,8 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-_GITHUB_API = "https://api.github.com/repos/krthik20050/rota-ai/releases/latest"
-_RELEASES_URL = "https://github.com/krthik20050/rota-ai/releases/latest"
+_GITHUB_API = "https://api.github.com/repos/krthik20050/Rota-AI/releases/latest"
+_RELEASES_URL = "https://github.com/krthik20050/Rota-AI/releases/latest"
 _TIMEOUT = 10  # seconds
 
 
