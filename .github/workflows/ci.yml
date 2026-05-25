@@ -142,6 +142,7 @@ jobs:
           pip install psutil
           pip install python-xlib
           pip install groq
+          pip install numpy
           pip install pytest
 
       - name: Check Python imports (Linux)
@@ -209,6 +210,7 @@ jobs:
           pip install pywin32
           pip install psutil
           pip install groq
+          pip install numpy
           pip install pytest
 
       - name: Check Python imports (Windows)
