@@ -190,9 +190,66 @@ jobs:
           path: dist/RotaAI.AppImage
           retention-days: 30
 
+  # ── macOS Build (.app zip) ────────────────────────────────────────────────
+  build-macos:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set VERSION
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Building version: $VERSION"
+
+      - name: Patch version.py
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          path = Path("desktop/app/version.py")
+          version = os.environ["VERSION"]
+          path.write_text(f'__version__ = "{version}"\n', encoding="utf-8")
+          print(path.read_text(encoding="utf-8"))
+          PY
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Build macOS app zip
+        env:
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          chmod +x macos/build-macos.sh
+          ./macos/build-macos.sh
+
+      - name: Verify macOS artifact
+        run: |
+          test -d dist/RotaAI.app
+          test -f dist/RotaAI-macOS.zip
+          codesign --verify --deep --strict dist/RotaAI.app
+          spctl --assess --type execute --verbose=4 dist/RotaAI.app || true
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: dist/RotaAI-macOS.zip
+          retention-days: 30
+
   # ── Create Release ────────────────────────────────────────────────────────
   release:
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -207,6 +264,11 @@ jobs:
         with:
           name: linux-appimage
 
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-app
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -216,5 +278,6 @@ jobs:
           files: |
             RotaAI-Setup.exe
             RotaAI.AppImage
+            RotaAI-macOS.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

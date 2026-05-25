@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-_BASE     = "#141918"
-_CARD     = "#191E1C"
-_BORDER   = "rgba(255,255,255,6)"
-_ACCENT   = "#86EFAC"
-_TEXT_P   = "#F0F0F2"
-_TEXT_S   = "#A0A0A5"
+_BASE = "#141918"
+_CARD = "#191E1C"
+_BORDER = "rgba(255,255,255,6)"
+_ACCENT = "#86EFAC"
+_TEXT_P = "#F0F0F2"
+_TEXT_S = "#A0A0A5"
 _TEXT_MUT = "#5A5A60"
 _TEXT_DIM = "#3A3A40"
-_ERROR    = "#F87171"
-_SERIF    = "'Georgia','Times New Roman',serif"
-_BODY     = "'Segoe UI','Inter',sans-serif"
-_MONO     = "'Courier New','Consolas',monospace"
+_ERROR = "#F87171"
+_SERIF = "'Georgia','Times New Roman',serif"
+_BODY = "'Segoe UI','Inter',sans-serif"
+_MONO = "'Courier New','Consolas',monospace"
 
 ONBOARDING_QSS = f"""
 QDialog {{ background: transparent; }}

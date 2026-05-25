@@ -1,7 +1,10 @@
 """Tests for PersonalDictionary in ai.personal_dictionary."""
-import os
+
 import json
+import os
+
 import pytest
+
 from ai.personal_dictionary import PersonalDictionary
 
 

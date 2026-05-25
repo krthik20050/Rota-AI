@@ -2,13 +2,21 @@
 Component QSS — cards, history items, dictionary, snippets,
 segmented control, archetype card, buttons, stat cards.
 """
+
 from __future__ import annotations
 
 from ui.styles._main_window_qss_tokens import (
-    CLR_ACCENT, CLR_BORDER, CLR_BORDER_HOVER,
-    CLR_CARD, CLR_ERROR,
-    CLR_TEXT_MUTED, CLR_TEXT_PRIMARY, CLR_TEXT_SECONDARY,
-    FONT_FAMILY, FONT_MONO, FONT_STAT,
+    CLR_ACCENT,
+    CLR_BORDER,
+    CLR_BORDER_HOVER,
+    CLR_CARD,
+    CLR_ERROR,
+    CLR_TEXT_MUTED,
+    CLR_TEXT_PRIMARY,
+    CLR_TEXT_SECONDARY,
+    FONT_FAMILY,
+    FONT_MONO,
+    FONT_STAT,
     RADIUS_CARD,
 )
 

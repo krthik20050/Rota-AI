@@ -15,8 +15,6 @@ def try_acquire_instance_mutex() -> bool:
     global _instance_mutex_handle
     if os.name != "nt":
         return True
-    if _instance_mutex_handle is not None:
-        return True
 
     kernel32 = ctypes.windll.kernel32
     handle = kernel32.CreateMutexW(None, False, _INSTANCE_MUTEX_NAME)

@@ -1,9 +1,18 @@
 from __future__ import annotations
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QProgressBar, QScrollArea,
-    QStackedWidget, QVBoxLayout, QWidget, QPushButton,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
+
 from ui.components.circular_progress import CircularProgress
 
 CLR_ACCENT = "#86EFAC"
@@ -85,7 +94,9 @@ def _build_archetype_card(page, lay):
     title_block.addWidget(page.archetype_title_lbl)
     header_row.addWidget(page.archetype_icon_lbl, 0, Qt.AlignmentFlag.AlignVCenter)
     header_row.addLayout(title_block, 1)
-    page.archetype_desc_lbl = QLabel("Record dictation sessions to unlock your vocal archetype and style classification.")
+    page.archetype_desc_lbl = QLabel(
+        "Record dictation sessions to unlock your vocal archetype and style classification."
+    )
     page.archetype_desc_lbl.setObjectName("InsightText")
     page.archetype_desc_lbl.setWordWrap(True)
     page.pacing_feedback_lbl = QLabel("")
@@ -107,12 +118,14 @@ def _build_rings_card(page, lay):
     rings_lay = QVBoxLayout(rings_card)
     rings_lay.setContentsMargins(20, 18, 20, 18)
     rings_lay.setSpacing(12)
-    rings_lay.addLayout(page._section_title_row(
-        "Delivery & Purity Metrics",
-        "Clarity Score: ratio of clean words to total words spoken.\n"
-        "Conciseness: how efficiently you express ideas (low repetition = high).\n"
-        "Speech Purity: percentage of speech free from filler words (um, uh, like)."
-    ))
+    rings_lay.addLayout(
+        page._section_title_row(
+            "Delivery & Purity Metrics",
+            "Clarity Score: ratio of clean words to total words spoken.\n"
+            "Conciseness: how efficiently you express ideas (low repetition = high).\n"
+            "Speech Purity: percentage of speech free from filler words (um, uh, like).",
+        )
+    )
     rings_sub = QLabel("Real-time analysis of clarity, structure, and speaking rhythm")
     rings_sub.setObjectName("Subtitle")
     rings_lay.addWidget(rings_sub)
@@ -157,7 +170,9 @@ def _build_col1(page, coaching_row):
     pe_title_lbl.setStyleSheet("font-weight: 600; color: #E8E8EA; background: transparent;")
     page.pause_efficiency_val = QLabel("100.0%")
     page.pause_efficiency_val.setObjectName("SuggestionText")
-    page.pause_efficiency_val.setStyleSheet("background: transparent; font-weight: bold; color: #86EFAC;")
+    page.pause_efficiency_val.setStyleSheet(
+        "background: transparent; font-weight: bold; color: #86EFAC;"
+    )
     pe_lbl_row.addWidget(pe_title_lbl)
     pe_lbl_row.addStretch()
     pe_lbl_row.addWidget(page.pause_efficiency_val)
@@ -175,16 +190,22 @@ def _build_col1(page, coaching_row):
     col1_lay.addWidget(pe_widget)
 
     page.cadence_card = QFrame()
-    page.cadence_card.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px;")
+    page.cadence_card.setStyleSheet(
+        "background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px;"
+    )
     cadence_lay = QVBoxLayout(page.cadence_card)
     cadence_lay.setSpacing(4)
     cadence_lbl = QLabel("Speaking Cadence")
     cadence_lbl.setStyleSheet("font-size: 10px; color: #8E8E93; background: transparent;")
     cadence_val_lay = QHBoxLayout()
     page.cadence_rating_val = QLabel("Balanced Flow")
-    page.cadence_rating_val.setStyleSheet("font-size: 14px; font-weight: bold; color: #93C5FD; background: transparent;")
+    page.cadence_rating_val.setStyleSheet(
+        "font-size: 14px; font-weight: bold; color: #93C5FD; background: transparent;"
+    )
     page.cadence_variety_val = QLabel("Variety: 0.0")
-    page.cadence_variety_val.setStyleSheet("font-size: 11px; color: #8E8E93; background: transparent;")
+    page.cadence_variety_val.setStyleSheet(
+        "font-size: 11px; color: #8E8E93; background: transparent;"
+    )
     cadence_val_lay.addWidget(page.cadence_rating_val)
     cadence_val_lay.addStretch()
     cadence_val_lay.addWidget(page.cadence_variety_val)
@@ -200,10 +221,14 @@ def _build_col1(page, coaching_row):
     readability_lbl_row = QHBoxLayout()
     readability_title_lbl = QLabel("Readability Level")
     readability_title_lbl.setObjectName("InsightText")
-    readability_title_lbl.setStyleSheet("font-weight: 600; color: #E8E8EA; background: transparent;")
+    readability_title_lbl.setStyleSheet(
+        "font-weight: 600; color: #E8E8EA; background: transparent;"
+    )
     page.readability_grade_val = QLabel("Standard Conversational")
     page.readability_grade_val.setObjectName("SuggestionText")
-    page.readability_grade_val.setStyleSheet("background: transparent; font-weight: bold; color: #C084FC;")
+    page.readability_grade_val.setStyleSheet(
+        "background: transparent; font-weight: bold; color: #C084FC;"
+    )
     readability_lbl_row.addWidget(readability_title_lbl)
     readability_lbl_row.addStretch()
     readability_lbl_row.addWidget(page.readability_grade_val)
@@ -224,14 +249,16 @@ def _build_col2(page, coaching_row):
     col2_lay = QVBoxLayout(col2_card)
     col2_lay.setContentsMargins(20, 18, 20, 18)
     col2_lay.setSpacing(12)
-    col2_lay.addLayout(page._section_title_row(
-        "Speaking Tone",
-        "Tone dimensions are calculated from keyword patterns in your dictations:\n"
-        "\u2022 Confident: assertive verbs, definitive statements\n"
-        "\u2022 Thoughtful: hedging words, reflective phrases\n"
-        "\u2022 Warm: inclusive language, collaborative phrases\n"
-        "\u2022 Technical: jargon density, domain-specific terminology"
-    ))
+    col2_lay.addLayout(
+        page._section_title_row(
+            "Speaking Tone",
+            "Tone dimensions are calculated from keyword patterns in your dictations:\n"
+            "\u2022 Confident: assertive verbs, definitive statements\n"
+            "\u2022 Thoughtful: hedging words, reflective phrases\n"
+            "\u2022 Warm: inclusive language, collaborative phrases\n"
+            "\u2022 Technical: jargon density, domain-specific terminology",
+        )
+    )
     col2_lay.addWidget(_lbl("Linguistic dimension percentages", "Subtitle"))
 
     def make_tone_row(name, color_hex):
@@ -242,9 +269,13 @@ def _build_col2(page, coaching_row):
         row_l.setSpacing(4)
         lbl_row = QHBoxLayout()
         lbl_name = QLabel(name)
-        lbl_name.setStyleSheet("font-size: 11px; font-weight: bold; color: #E8E8EA; background: transparent;")
+        lbl_name.setStyleSheet(
+            "font-size: 11px; font-weight: bold; color: #E8E8EA; background: transparent;"
+        )
         lbl_val = QLabel("0.0%")
-        lbl_val.setStyleSheet("font-size: 11px; font-weight: bold; color: #8E8E93; background: transparent;")
+        lbl_val.setStyleSheet(
+            "font-size: 11px; font-weight: bold; color: #8E8E93; background: transparent;"
+        )
         lbl_row.addWidget(lbl_name)
         lbl_row.addStretch()
         lbl_row.addWidget(lbl_val)
@@ -261,10 +292,18 @@ def _build_col2(page, coaching_row):
         row_l.addWidget(p_bar)
         return w, p_bar, lbl_val
 
-    w_conf, page.tone_confident_progress, page.tone_confident_val = make_tone_row("Confident & Decisive", "#86EFAC")
-    w_thou, page.tone_thoughtful_progress, page.tone_thoughtful_val = make_tone_row("Thoughtful & Deliberative", "#93C5FD")
-    w_warm, page.tone_warm_progress, page.tone_warm_val = make_tone_row("Warm & Collaborative", "#FCA5A5")
-    w_tech, page.tone_technical_progress, page.tone_technical_val = make_tone_row("Technical & Analytical", "#C084FC")
+    w_conf, page.tone_confident_progress, page.tone_confident_val = make_tone_row(
+        "Confident & Decisive", "#86EFAC"
+    )
+    w_thou, page.tone_thoughtful_progress, page.tone_thoughtful_val = make_tone_row(
+        "Thoughtful & Deliberative", "#93C5FD"
+    )
+    w_warm, page.tone_warm_progress, page.tone_warm_val = make_tone_row(
+        "Warm & Collaborative", "#FCA5A5"
+    )
+    w_tech, page.tone_technical_progress, page.tone_technical_val = make_tone_row(
+        "Technical & Analytical", "#C084FC"
+    )
     col2_lay.addWidget(w_conf)
     col2_lay.addWidget(w_thou)
     col2_lay.addWidget(w_warm)
@@ -304,7 +343,9 @@ def _build_col3_carousel(page, coaching_row):
     page.carousel_prev_btn.setCursor(Qt.CursorShape.PointingHandCursor)
     page.carousel_prev_btn.setStyleSheet(_nav_btn_style)
     page.carousel_page_lbl = QLabel("1 / 3")
-    page.carousel_page_lbl.setStyleSheet("font-size: 10px; font-weight: 600; color: #8E8E93; background: transparent;")
+    page.carousel_page_lbl.setStyleSheet(
+        "font-size: 10px; font-weight: 600; color: #8E8E93; background: transparent;"
+    )
     page.carousel_page_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
     page.carousel_page_lbl.setFixedWidth(32)
     page.carousel_next_btn = QPushButton("›")
@@ -324,9 +365,13 @@ def _build_col3_carousel(page, coaching_row):
         slide = page._build_drill_slide(
             icon="🎯" if i == 0 else ("🫁" if i == 1 else "🎤"),
             title="Loading..." if i == 0 else ("Vocal Warmup" if i == 1 else "Rhetorical Delivery"),
-            subtitle="Analyzing your speech..." if i == 0 else ("Resonance exercises" if i == 1 else "Advanced techniques"),
+            subtitle="Analyzing your speech..."
+            if i == 0
+            else ("Resonance exercises" if i == 1 else "Advanced techniques"),
             drill="Record dictation sessions to unlock personalized drills.",
-            metric_name="-", metric_value="-", target="-",
+            metric_name="-",
+            metric_value="-",
+            target="-",
         )
         page._drill_slides.append(slide)
         page.drill_carousel.addWidget(slide["frame"])
@@ -349,7 +394,9 @@ def _build_indicators_row(page, lay):
     hes_lay.addWidget(_lbl("Filler words vs natural pauses", "Subtitle"))
     hes_metric = QHBoxLayout()
     page.hesitation_val = QLabel("0.0%")
-    page.hesitation_val.setStyleSheet("font-size: 28px; font-weight: 800; color: #86EFAC; background: transparent;")
+    page.hesitation_val.setStyleSheet(
+        "font-size: 28px; font-weight: 800; color: #86EFAC; background: transparent;"
+    )
     hes_desc_block = QVBoxLayout()
     hes_desc_block.setSpacing(2)
     page.hesitation_desc = QLabel("Low hesitation (confident flow)")
@@ -385,19 +432,28 @@ def _build_indicators_row(page, lay):
     page._pacing_zones = {}
     for zone_name, zone_color in [("Slow", "#93C5FD"), ("Optimal", "#86EFAC"), ("Fast", "#FCA5A5")]:
         zone_frame = QFrame()
-        zone_frame.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px;")
+        zone_frame.setStyleSheet(
+            "background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px;"
+        )
         zone_ly = QVBoxLayout(zone_frame)
         zone_ly.setContentsMargins(10, 10, 10, 10)
         zone_ly.setSpacing(4)
         zone_lbl = QLabel(zone_name)
         zone_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        zone_lbl.setStyleSheet("font-size: 11px; font-weight: 700; color: #5A5A60; background: transparent;")
+        zone_lbl.setStyleSheet(
+            "font-size: 11px; font-weight: 700; color: #5A5A60; background: transparent;"
+        )
         zone_dot = QLabel("●")
         zone_dot.setAlignment(Qt.AlignmentFlag.AlignCenter)
         zone_dot.setStyleSheet("font-size: 18px; color: #3A3A40; background: transparent;")
         zone_ly.addWidget(zone_dot)
         zone_ly.addWidget(zone_lbl)
-        page._pacing_zones[zone_name] = {"frame": zone_frame, "label": zone_lbl, "dot": zone_dot, "color": zone_color}
+        page._pacing_zones[zone_name] = {
+            "frame": zone_frame,
+            "label": zone_lbl,
+            "dot": zone_dot,
+            "color": zone_color,
+        }
         pace_indicator.addWidget(zone_frame, 1)
     pace_lay.addLayout(pace_indicator)
     page.pacing_desc = QLabel("Record more sessions to classify your pace.")
@@ -416,14 +472,18 @@ def _build_indicators_row(page, lay):
     hedge_lay.addWidget(_lbl("Weak language detection", "Subtitle"))
     hedge_metric = QHBoxLayout()
     page.hedging_val = QLabel("0.0%")
-    page.hedging_val.setStyleSheet("font-size: 28px; font-weight: 800; color: #C084FC; background: transparent;")
+    page.hedging_val.setStyleSheet(
+        "font-size: 28px; font-weight: 800; color: #C084FC; background: transparent;"
+    )
     hedge_detail = QVBoxLayout()
     hedge_detail.setSpacing(2)
     page.hedging_desc = QLabel("No weak language detected yet.")
     page.hedging_desc.setStyleSheet("font-size: 11px; color: #A0A0A5; background: transparent;")
     page.hedging_desc.setWordWrap(True)
     page.hedging_count_lbl = QLabel("0 hedge words found")
-    page.hedging_count_lbl.setStyleSheet("font-size: 10px; color: #8E8E93; background: transparent;")
+    page.hedging_count_lbl.setStyleSheet(
+        "font-size: 10px; color: #8E8E93; background: transparent;"
+    )
     hedge_detail.addWidget(page.hedging_desc)
     hedge_detail.addWidget(page.hedging_count_lbl)
     hedge_detail.addStretch()
@@ -462,7 +522,9 @@ def _build_crutch_panel(page, lay):
     cw_icon.setStyleSheet("font-size: 12px; background: transparent;")
     cw_title_lbl = QLabel("Verbal Purity High")
     cw_title_lbl.setObjectName("cw_title")
-    cw_title_lbl.setStyleSheet("font-size: 10px; font-weight: bold; color: #86EFAC; background: transparent;")
+    cw_title_lbl.setStyleSheet(
+        "font-size: 10px; font-weight: bold; color: #86EFAC; background: transparent;"
+    )
     cw_badge_lay.addWidget(cw_icon)
     cw_badge_lay.addWidget(cw_title_lbl)
     cp_header.addWidget(page.crutch_warning_card, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -482,6 +544,6 @@ def _build_crutch_panel(page, lay):
 
 
 def _lbl(text, obj_name):
-    l = QLabel(text)
-    l.setObjectName(obj_name)
-    return l
+    lbl = QLabel(text)
+    lbl.setObjectName(obj_name)
+    return lbl

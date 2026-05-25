@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes
+
 from utils.log import get_logger
-from typing import Optional
 
 logger = get_logger(__name__)
 
@@ -27,10 +27,10 @@ user32 = ctypes.windll.user32
 def get_field_text() -> str:
     """
     Read existing text from the currently focused input field.
-    
+
     Returns the text currently in the field (what the user has already typed),
     or empty string if unable to read.
-    
+
     This context is sent to the LLM so it can maintain writing continuity
     and match the user's existing style/tone.
     """
@@ -74,7 +74,10 @@ def _try_uia_text() -> str:
             value_pattern = focused.GetCurrentPattern(10002)
             if value_pattern is not None:
                 import comtypes.gen.UIAutomationClient
-                val = value_pattern.QueryInterface(comtypes.gen.UIAutomationClient.IUIAutomationValuePattern)
+
+                val = value_pattern.QueryInterface(
+                    comtypes.gen.UIAutomationClient.IUIAutomationValuePattern
+                )
                 text = val.CurrentValue or ""
                 if text.strip():
                     logger.debug("uia_value_read", length=len(text))
@@ -88,7 +91,10 @@ def _try_uia_text() -> str:
             text_pattern = focused.GetCurrentPattern(10014)
             if text_pattern is not None:
                 import comtypes.gen.UIAutomationClient
-                txt = text_pattern.QueryInterface(comtypes.gen.UIAutomationClient.IUIAutomationTextPattern)
+
+                txt = text_pattern.QueryInterface(
+                    comtypes.gen.UIAutomationClient.IUIAutomationTextPattern
+                )
                 doc_range = txt.DocumentRange
                 text = doc_range.GetText(-1) or ""
                 if text.strip():

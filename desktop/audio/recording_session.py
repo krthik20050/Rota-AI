@@ -1,8 +1,9 @@
 import queue
-import time
 import threading
+import time
+from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import Any, Generator, Optional
+from typing import Any
 
 
 @dataclass
@@ -12,12 +13,12 @@ class RecordingSession:
     id: str
     audio_queue: "queue.Queue" = field(default_factory=queue.Queue)
     start_time: float = field(default_factory=time.time)
-    stop_time: Optional[float] = None
+    stop_time: float | None = None
     state: str = "RECORDING"
-    field_info: Optional[dict[str, Any]] = None
+    field_info: dict[str, Any] | None = None
     raw_text: str = ""
     cleaned_text: str = ""
-    app_context: Optional[Any] = None  # AppContext captured at recording start
+    app_context: Any | None = None  # AppContext captured at recording start
     stop_event: threading.Event = field(default_factory=threading.Event)
 
     def mark_stopped(self) -> None:

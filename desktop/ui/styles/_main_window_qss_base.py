@@ -2,14 +2,28 @@
 Base / layout / sidebar QSS — container, title bar, sidebar, stats panel,
 page titles, empty states, scrollbar, tooltip, focus states.
 """
+
 from __future__ import annotations
 
 from ui.styles._main_window_qss_tokens import (
-    CLR_ACCENT, CLR_BASE, CLR_BORDER, CLR_BORDER_HOVER,
-    CLR_CARD, CLR_SIDEBAR,
-    CLR_TEXT_DIM, CLR_TEXT_MUTED, CLR_TEXT_PRIMARY, CLR_TEXT_SECONDARY,
-    FONT_BRAND_SIZE, FONT_FAMILY, FONT_MONO, FONT_PAGE_TITLE,
-    FONT_SERIF, RADIUS_BTN, RADIUS_CARD, RADIUS_CONTAINER,
+    CLR_ACCENT,
+    CLR_BASE,
+    CLR_BORDER,
+    CLR_BORDER_HOVER,
+    CLR_CARD,
+    CLR_SIDEBAR,
+    CLR_TEXT_DIM,
+    CLR_TEXT_MUTED,
+    CLR_TEXT_PRIMARY,
+    CLR_TEXT_SECONDARY,
+    FONT_BRAND_SIZE,
+    FONT_FAMILY,
+    FONT_MONO,
+    FONT_PAGE_TITLE,
+    FONT_SERIF,
+    RADIUS_BTN,
+    RADIUS_CARD,
+    RADIUS_CONTAINER,
 )
 
 _QSS_BASE: str = f"""

@@ -9,6 +9,7 @@ import ctypes
 import ctypes.wintypes
 import time
 from typing import Any
+
 from utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -19,6 +20,7 @@ kernel32 = ctypes.windll.kernel32
 
 class GUITHREADINFO(ctypes.Structure):
     """Maps to GUITHREADINFO from winuser.h for reliable cross-thread focus query."""
+
     _fields_ = [
         ("cbSize", ctypes.wintypes.DWORD),
         ("flags", ctypes.wintypes.DWORD),
@@ -35,10 +37,24 @@ class GUITHREADINFO(ctypes.Structure):
 # Process names — these always have an editable text context (browser, Electron)
 _BROWSER_AND_ELECTRON = frozenset(
     {
-        "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe",
-        "obsidian.exe", "notion.exe", "slack.exe", "discord.exe",
-        "code.exe", "cursor.exe", "teams.exe", "telegram.exe", "whatsapp.exe",
-        "figma.exe", "zoom.exe", "mattermost.exe", "linear.exe",
+        "chrome.exe",
+        "msedge.exe",
+        "firefox.exe",
+        "brave.exe",
+        "opera.exe",
+        "obsidian.exe",
+        "notion.exe",
+        "slack.exe",
+        "discord.exe",
+        "code.exe",
+        "cursor.exe",
+        "teams.exe",
+        "telegram.exe",
+        "whatsapp.exe",
+        "figma.exe",
+        "zoom.exe",
+        "mattermost.exe",
+        "linear.exe",
     }
 )
 
@@ -47,14 +63,38 @@ _BROWSER_AND_ELECTRON = frozenset(
 # Everything else (including unknown classes) is treated as a potential text field.
 _NON_TEXT_CLASSES = frozenset(
     {
-        "button", "#32768", "#32769", "combobox", "listbox", "scrollbar",
-        "static", "tooltips_class32", "toolbar", "toolbarwindow32",
-        "statusbar", "msctls_statusbar32", "systreeview32", "syslistview32",
-        "treeview", "listview", "tabcontrol", "systabcontrol32",
-        "progressbar", "msctls_progress32", "trackbar", "msctls_trackbar32",
-        "spin", "msctls_updown32", "animate_class", "sysanimate32",
-        "datetimepick_class", "monthcal_class", "sysmonthcal32",
-        "sysdatetimepick32", "ipaddress", "sysipaddress32",
+        "button",
+        "#32768",
+        "#32769",
+        "combobox",
+        "listbox",
+        "scrollbar",
+        "static",
+        "tooltips_class32",
+        "toolbar",
+        "toolbarwindow32",
+        "statusbar",
+        "msctls_statusbar32",
+        "systreeview32",
+        "syslistview32",
+        "treeview",
+        "listview",
+        "tabcontrol",
+        "systabcontrol32",
+        "progressbar",
+        "msctls_progress32",
+        "trackbar",
+        "msctls_trackbar32",
+        "spin",
+        "msctls_updown32",
+        "animate_class",
+        "sysanimate32",
+        "datetimepick_class",
+        "monthcal_class",
+        "sysmonthcal32",
+        "sysdatetimepick32",
+        "ipaddress",
+        "sysipaddress32",
     }
 )
 
@@ -79,7 +119,7 @@ def get_focused_field_info() -> dict[str, Any]:
         "exe_name": "",
         "cursor_x": 0,
         "cursor_y": 0,
-        "is_text_field": True,   # optimistic default — warn only on confirmed non-text
+        "is_text_field": True,  # optimistic default — warn only on confirmed non-text
         "focused_class": "",
         "captured_at": time.time(),
     }
@@ -133,7 +173,9 @@ def get_focused_field_info() -> dict[str, Any]:
             result["focused_class"] = class_name
 
             # Only mark as NOT a text field if we positively identify a non-text class
-            if class_name and any(nc == class_name or class_name.startswith(nc) for nc in _NON_TEXT_CLASSES):
+            if class_name and any(
+                nc == class_name or class_name.startswith(nc) for nc in _NON_TEXT_CLASSES
+            ):
                 result["is_text_field"] = False
         # If focused_hwnd is 0 (e.g. UWP, sandboxed renderer), keep is_text_field=True
         # — the user likely clicked into something before pressing the hotkey.
@@ -170,11 +212,21 @@ def warn_no_text_field_banner(exe_name: str) -> None:
 
 
 # Win32 class names that ARE text inputs (for scanning)
-_TEXT_INPUT_CLASSES = frozenset({
-    "edit", "richedit20w", "richedit50w", "richeditd2dpt", "richedit20a",
-    "textbox", "scintilla", "tmemo", "wxstc", "chromium_renderwidgethost",
-    "mozillawindowclass",
-})
+_TEXT_INPUT_CLASSES = frozenset(
+    {
+        "edit",
+        "richedit20w",
+        "richedit50w",
+        "richeditd2dpt",
+        "richedit20a",
+        "textbox",
+        "scintilla",
+        "tmemo",
+        "wxstc",
+        "chromium_renderwidgethost",
+        "mozillawindowclass",
+    }
+)
 
 # WINFUNCTYPE callback type for EnumChildWindows
 _WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
@@ -221,12 +273,14 @@ def scan_for_text_inputs(hwnd: int = 0) -> list[dict[str, Any]]:
             if w < 20 or h < 10:
                 return True
 
-            found.append({
-                "hwnd": child_hwnd,
-                "class_name": class_name,
-                "rect": (rect.left, rect.top, rect.right, rect.bottom),
-                "area": w * h,
-            })
+            found.append(
+                {
+                    "hwnd": child_hwnd,
+                    "class_name": class_name,
+                    "rect": (rect.left, rect.top, rect.right, rect.bottom),
+                    "area": w * h,
+                }
+            )
         except Exception:
             pass
         return True

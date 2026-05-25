@@ -1,14 +1,14 @@
 """Tests for pure helper functions in ai.text_utils."""
-import pytest
+
 from ai.text_utils import (
+    _is_too_different,
     _preprocess_spoken_punctuation,
     _rule_based_clean,
-    _is_too_different,
     _sanitize_llm_output,
 )
 
-
 # ── _preprocess_spoken_punctuation ──────────────────────────────────────────
+
 
 class TestSpokenPunctuation:
     def test_full_stop(self):
@@ -43,6 +43,7 @@ class TestSpokenPunctuation:
 
 # ── _rule_based_clean ───────────────────────────────────────────────────────
 
+
 class TestRuleBasedClean:
     def test_removes_filler_words(self):
         result = _rule_based_clean("um hello uh world")
@@ -75,6 +76,7 @@ class TestRuleBasedClean:
 
 # ── _is_too_different ───────────────────────────────────────────────────────
 
+
 class TestIsTooFifferent:
     def test_identical_texts_not_too_different(self):
         assert _is_too_different("hello world", "hello world") is False
@@ -101,6 +103,7 @@ class TestIsTooFifferent:
 
 
 # ── _sanitize_llm_output ────────────────────────────────────────────────────
+
 
 class TestSanitizeLlmOutput:
     def test_strips_code_blocks(self):

@@ -1,16 +1,17 @@
 from __future__ import annotations
+
 """
 Updater functions for InsightsPage.
 Separated to keep insights_page.py under 500 lines.
 """
 
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt
 from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QProgressBar, QVBoxLayout, QWidget
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _clear_layout(layout):
     if layout is None:
@@ -35,6 +36,7 @@ def _clear_grid(grid):
 # ---------------------------------------------------------------------------
 # Main dashboard update
 # ---------------------------------------------------------------------------
+
 
 def update_from_dashboard(page, words_or_dashboard, wpm=None):
     """Update all InsightsPage widgets from a dashboard dict or raw values."""
@@ -74,19 +76,29 @@ def update_from_dashboard(page, words_or_dashboard, wpm=None):
         if hasattr(page, "session_card"):
             page.session_card.value_label.setText(f"{lifetime_words:,}")
         if hasattr(page, "streak_card"):
-            page.streak_card.value_label.setText(f"{streak_val} {'day' if streak_val == 1 else 'days'}")
+            page.streak_card.value_label.setText(
+                f"{streak_val} {'day' if streak_val == 1 else 'days'}"
+            )
 
     if hasattr(page, "_insights_speedometer") and not page._insights_anim_timer.isActive():
         page._insights_speedometer.set_value(today_words)
 
-    if (hasattr(page, "daily_challenge_desc")
-            and hasattr(page, "daily_challenge_progress")
-            and hasattr(page, "daily_challenge_ring")):
+    if (
+        hasattr(page, "daily_challenge_desc")
+        and hasattr(page, "daily_challenge_progress")
+        and hasattr(page, "daily_challenge_ring")
+    ):
         if isinstance(enhanced, dict) and enhanced.get("daily_challenge"):
             dc = enhanced["daily_challenge"]
-            desc = getattr(dc, "description", None) or (dc.get("description") if isinstance(dc, dict) else "Transcribe 500 words today")
-            target = getattr(dc, "target", None) or (dc.get("target") if isinstance(dc, dict) else 500)
-            progress = getattr(dc, "progress", None) or (dc.get("progress") if isinstance(dc, dict) else 0)
+            desc = getattr(dc, "description", None) or (
+                dc.get("description") if isinstance(dc, dict) else "Transcribe 500 words today"
+            )
+            target = getattr(dc, "target", None) or (
+                dc.get("target") if isinstance(dc, dict) else 500
+            )
+            progress = getattr(dc, "progress", None) or (
+                dc.get("progress") if isinstance(dc, dict) else 0
+            )
             page.daily_challenge_desc.setText(desc)
             page.daily_challenge_progress.setText(f"{progress:,} / {target:,} words")
             pct = min(100.0, (progress / max(1, target)) * 100.0)
@@ -116,6 +128,7 @@ def update_from_dashboard(page, words_or_dashboard, wpm=None):
 # ---------------------------------------------------------------------------
 # Section updaters
 # ---------------------------------------------------------------------------
+
 
 def _update_app_breakdown(page, app_usage):
     if not hasattr(page, "app_breakdown_layout"):
@@ -175,8 +188,16 @@ def _update_archetype(page, enhanced):
     level = persona.get("level", 1) if isinstance(persona, dict) else 1
     xp = persona.get("xp", 0) if isinstance(persona, dict) else 0
     xp_in_level = xp % 100
-    name = profile.get("archetype_name", "The Observer") if isinstance(profile, dict) else "The Observer"
-    title = profile.get("archetype_title", "Silent Voice") if isinstance(profile, dict) else "Silent Voice"
+    name = (
+        profile.get("archetype_name", "The Observer")
+        if isinstance(profile, dict)
+        else "The Observer"
+    )
+    title = (
+        profile.get("archetype_title", "Silent Voice")
+        if isinstance(profile, dict)
+        else "Silent Voice"
+    )
     desc = profile.get("archetype_description", "") if isinstance(profile, dict) else ""
     pacing = profile.get("pacing_feedback", "") if isinstance(profile, dict) else ""
     icon = profile.get("archetype_icon", "🧭") if isinstance(profile, dict) else "🧭"
@@ -191,9 +212,11 @@ def _update_archetype(page, enhanced):
 
 
 def _update_rings(page, enhanced):
-    if not (hasattr(page, "clarity_ring")
-            and hasattr(page, "conciseness_ring")
-            and hasattr(page, "filler_ring")):
+    if not (
+        hasattr(page, "clarity_ring")
+        and hasattr(page, "conciseness_ring")
+        and hasattr(page, "filler_ring")
+    ):
         return
     latest = enhanced.get("latest_session", {}) if isinstance(enhanced, dict) else {}
     clarity = latest.get("clarity_score", 0.0)
@@ -206,9 +229,11 @@ def _update_rings(page, enhanced):
 
 
 def _update_vocab(page, enhanced):
-    if not (hasattr(page, "vocab_val_lbl")
-            and hasattr(page, "vocab_progress")
-            and hasattr(page, "vocab_desc")):
+    if not (
+        hasattr(page, "vocab_val_lbl")
+        and hasattr(page, "vocab_progress")
+        and hasattr(page, "vocab_desc")
+    ):
         return
     lex = enhanced.get("lexical_diversity", 1.0) if isinstance(enhanced, dict) else 1.0
     pct = lex * 100.0
@@ -224,9 +249,11 @@ def _update_vocab(page, enhanced):
 
 
 def _update_conciseness(page, enhanced):
-    if not (hasattr(page, "concise_val_lbl")
-            and hasattr(page, "concise_progress")
-            and hasattr(page, "concise_desc")):
+    if not (
+        hasattr(page, "concise_val_lbl")
+        and hasattr(page, "concise_progress")
+        and hasattr(page, "concise_desc")
+    ):
         return
     latest = enhanced.get("latest_session", {}) if isinstance(enhanced, dict) else {}
     concise = latest.get("conciseness_score", 0.0)
@@ -260,25 +287,33 @@ def _update_crutch_warning(page, enhanced):
         top_crutch = active_crutches[0]
         phrase = top_crutch.get("phrase", "")
         count = top_crutch.get("count", 0)
-        page.cw_desc_lbl.setText(f"Your top crutch word is '{phrase}' used {count} times. Try pausing instead.")
+        page.cw_desc_lbl.setText(
+            f"Your top crutch word is '{phrase}' used {count} times. Try pausing instead."
+        )
         page.crutch_warning_card.setStyleSheet(
             "background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 6px;"
         )
         title_lbl = page.crutch_warning_card.findChild(QLabel, "cw_title")
         if title_lbl:
-            title_lbl.setStyleSheet("font-size: 10px; font-weight: bold; color: #F87171; background: transparent; border: none;")
+            title_lbl.setStyleSheet(
+                "font-size: 10px; font-weight: bold; color: #F87171; background: transparent; border: none;"
+            )
             title_lbl.setText("Crutch Word Warning")
         icon_lbl = page.crutch_warning_card.findChild(QLabel, "cw_icon")
         if icon_lbl:
             icon_lbl.setText("⚠️")
     else:
-        page.cw_desc_lbl.setText("Excellent! No major filler or crutch words detected in your recent speaking.")
+        page.cw_desc_lbl.setText(
+            "Excellent! No major filler or crutch words detected in your recent speaking."
+        )
         page.crutch_warning_card.setStyleSheet(
             "background: rgba(134, 239, 172, 0.1); border: 1px solid rgba(134, 239, 172, 0.3); border-radius: 6px;"
         )
         title_lbl = page.crutch_warning_card.findChild(QLabel, "cw_title")
         if title_lbl:
-            title_lbl.setStyleSheet("font-size: 10px; font-weight: bold; color: #86EFAC; background: transparent; border: none;")
+            title_lbl.setStyleSheet(
+                "font-size: 10px; font-weight: bold; color: #86EFAC; background: transparent; border: none;"
+            )
             title_lbl.setText("Verbal Purity High")
         icon_lbl = page.crutch_warning_card.findChild(QLabel, "cw_icon")
         if icon_lbl:
@@ -314,9 +349,15 @@ def _update_fillers_flow(page, top_phrases):
     _clear_layout(page.fillers_flow)
     if top_phrases:
         for phrase_insight in top_phrases:
-            phrase = getattr(phrase_insight, "phrase", None) or (phrase_insight.get("phrase") if isinstance(phrase_insight, dict) else "")
-            count = getattr(phrase_insight, "count", None) or (phrase_insight.get("count") if isinstance(phrase_insight, dict) else 0)
-            rank = getattr(phrase_insight, "rank", None) or (phrase_insight.get("rank") if isinstance(phrase_insight, dict) else 1)
+            phrase = getattr(phrase_insight, "phrase", None) or (
+                phrase_insight.get("phrase") if isinstance(phrase_insight, dict) else ""
+            )
+            count = getattr(phrase_insight, "count", None) or (
+                phrase_insight.get("count") if isinstance(phrase_insight, dict) else 0
+            )
+            rank = getattr(phrase_insight, "rank", None) or (
+                phrase_insight.get("rank") if isinstance(phrase_insight, dict) else 1
+            )
             row_widget = QWidget()
             row_lay = QHBoxLayout(row_widget)
             row_lay.setContentsMargins(4, 4, 4, 4)
@@ -351,9 +392,13 @@ def _update_achievements(page, achievements):
     row = col = 0
     for ach in achievements:
         name = getattr(ach, "name", None) or (ach.get("name") if isinstance(ach, dict) else "")
-        desc = getattr(ach, "description", None) or (ach.get("description") if isinstance(ach, dict) else "")
+        desc = getattr(ach, "description", None) or (
+            ach.get("description") if isinstance(ach, dict) else ""
+        )
         icon = getattr(ach, "icon", None) or (ach.get("icon") if isinstance(ach, dict) else "🏆")
-        unlocked = getattr(ach, "unlocked", None) or (ach.get("unlocked") if isinstance(ach, dict) else False)
+        unlocked = getattr(ach, "unlocked", None) or (
+            ach.get("unlocked") if isinstance(ach, dict) else False
+        )
         ach_item = QFrame()
         ach_item.setObjectName("AchievementCard")
         ach_item.setProperty("unlocked", "true" if unlocked else "false")
@@ -361,7 +406,9 @@ def _update_achievements(page, achievements):
         item_lay.setContentsMargins(8, 8, 8, 8)
         item_lay.setSpacing(10)
         lbl_icon = QLabel(icon)
-        lbl_icon.setStyleSheet(f"font-size: 20px; background: transparent;{'opacity: 0.3;' if not unlocked else ''}")
+        lbl_icon.setStyleSheet(
+            f"font-size: 20px; background: transparent;{'opacity: 0.3;' if not unlocked else ''}"
+        )
         det = QVBoxLayout()
         det.setSpacing(2)
         lbl_name = QLabel(name)
@@ -401,7 +448,9 @@ def _update_drill_slides(page, enhanced):
             slide["title_lbl"].setText(d.get("title", "-"))
             slide["subtitle_lbl"].setText(d.get("subtitle", ""))
             slide["drill_lbl"].setText(d.get("drill", ""))
-            slide["metric_lbl"].setText(f"{d.get('metric_name', '-')}: {d.get('metric_value', '-')}")
+            slide["metric_lbl"].setText(
+                f"{d.get('metric_name', '-')}: {d.get('metric_value', '-')}"
+            )
             slide["target_lbl"].setText(d.get("target", ""))
     if hasattr(page, "carousel_page_lbl"):
         page.carousel_page_lbl.setText(f"1 / {page.drill_carousel.count()}")
@@ -410,6 +459,7 @@ def _update_drill_slides(page, enhanced):
 # ---------------------------------------------------------------------------
 # Advanced coaching
 # ---------------------------------------------------------------------------
+
 
 def update_advanced_coaching(page, adv: dict):
     """Update advanced speech coaching widgets from the coaching dict."""

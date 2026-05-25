@@ -1,8 +1,8 @@
-from utils.log import get_logger
 import threading
-from typing import Optional
 
 import numpy as np
+
+from utils.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -19,6 +19,7 @@ def _load_model():
         if _model is not None:
             return _model
         from silero_vad import load_silero_vad
+
         _model = load_silero_vad(onnx=True)
         logger.debug("silero_vad_model_loaded")
     return _model
@@ -47,7 +48,7 @@ def strip_silence(
     """
     try:
         import torch
-        from silero_vad import get_speech_timestamps, collect_chunks
+        from silero_vad import collect_chunks, get_speech_timestamps
 
         if audio is None or audio.size == 0:
             return np.array([], dtype=np.float32)
@@ -93,9 +94,9 @@ if __name__ == "__main__":
     def _make_voiced(duration_s: float) -> np.ndarray:
         """Harmonic stack resembling voiced speech (F0=120Hz, formants)."""
         t = np.linspace(0, duration_s, int(SR * duration_s), dtype=np.float32)
-        wave = sum(
-            (0.15 / i) * np.sin(2 * np.pi * 120 * i * t) for i in range(1, 12)
-        ).astype(np.float32)
+        wave = sum((0.15 / i) * np.sin(2 * np.pi * 120 * i * t) for i in range(1, 12)).astype(
+            np.float32
+        )
         rng = np.random.default_rng(0)
         wave += rng.normal(0, 0.005, len(wave)).astype(np.float32)
         return wave
@@ -121,17 +122,19 @@ if __name__ == "__main__":
 
     # Test 4: silence + voiced + silence -> VAD runs without crash
     voiced_segment = _make_voiced(1.5)
-    audio_with_silence = np.concatenate([
-        _make_silence(0.5),
-        voiced_segment,
-        _make_silence(0.5),
-    ])
+    audio_with_silence = np.concatenate(
+        [
+            _make_silence(0.5),
+            voiced_segment,
+            _make_silence(0.5),
+        ]
+    )
     t0 = time.perf_counter()
     result = strip_silence(audio_with_silence, SR)
     elapsed = time.perf_counter() - t0
     print(
-        f"[PASS] voiced+silence audio: original={len(audio_with_silence)/SR:.2f}s "
-        f"-> result={len(result)/SR:.2f}s  ({elapsed*1000:.1f}ms)"
+        f"[PASS] voiced+silence audio: original={len(audio_with_silence) / SR:.2f}s "
+        f"-> result={len(result) / SR:.2f}s  ({elapsed * 1000:.1f}ms)"
     )
 
     # Test 5: return type always float32 numpy array

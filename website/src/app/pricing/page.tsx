@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
 export const metadata = {
-  title: "Pricing — Rota AI",
+  title: "Pricing - Rota AI",
   description: "Rota AI is free and open source. No subscriptions, no account, no cloud lock.",
 };
 
@@ -53,7 +53,7 @@ export default function PricingPage() {
                 "100% offline with Ollama",
                 "Encrypted API key storage",
                 "Zero telemetry",
-                "MIT license — fork it, modify it",
+                "MIT license. Fork it, modify it.",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3 text-sm text-[#fafafa]">
                   <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#e4f222" }} />
@@ -63,8 +63,7 @@ export default function PricingPage() {
             </ul>
 
             <Link
-              href="/api/download"
-              download="RotaAI.exe"
+              href="/#download"
               className="group flex items-center justify-center gap-2 w-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
               style={{
                 background: "#e4f222",
@@ -73,7 +72,7 @@ export default function PricingPage() {
                 boxShadow: "0 4px 20px rgba(228,242,34,0.2)",
               }}
             >
-              Download for Windows
+              Download for your OS
               <svg className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             </Link>
           </div>

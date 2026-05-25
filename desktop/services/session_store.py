@@ -4,9 +4,9 @@ import json
 import sqlite3
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -32,12 +32,12 @@ class SessionRecord:
 
 # New columns added in this version
 _MIGRATION_COLUMNS: list[tuple[str, str]] = [
-    ("audio_path",      "TEXT DEFAULT ''"),
+    ("audio_path", "TEXT DEFAULT ''"),
     ("transcript_text", "TEXT DEFAULT ''"),
-    ("app_context",     "TEXT DEFAULT ''"),
-    ("backend_used",    "TEXT DEFAULT ''"),
-    ("filler_count",    "INTEGER DEFAULT 0"),
-    ("phrases_json",    "TEXT DEFAULT ''"),
+    ("app_context", "TEXT DEFAULT ''"),
+    ("backend_used", "TEXT DEFAULT ''"),
+    ("filler_count", "INTEGER DEFAULT 0"),
+    ("phrases_json", "TEXT DEFAULT ''"),
 ]
 
 
@@ -140,13 +140,13 @@ class SessionStore:
         session_id: str,
         transcript_text: str,
         *,
-        started_at: Optional[float] = None,
-        ended_at: Optional[float] = None,
+        started_at: float | None = None,
+        ended_at: float | None = None,
         audio_path: str = "",
-        app_context: Optional[Dict[str, str]] = None,
+        app_context: dict[str, str] | None = None,
         backend_used: str = "",
         filler_count: int = 0,
-        phrases: Optional[Dict[str, int]] = None,
+        phrases: dict[str, int] | None = None,
         recording_seconds: float = 0.0,
         words: int = 0,
         wpm: int = 0,
@@ -200,9 +200,7 @@ class SessionStore:
     def delete_session(self, session_id: str) -> bool:
         """Delete session by session_id. Returns True if a row was deleted."""
         with self._write_lock:
-            cur = self._conn.execute(
-                "DELETE FROM sessions WHERE session_id = ?", (session_id,)
-            )
+            cur = self._conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
             self._conn.commit()
             return cur.rowcount > 0
 
@@ -210,11 +208,11 @@ class SessionStore:
     #  Read operations
     # ------------------------------------------------------------------ #
 
-    def _row_to_dict(self, row: tuple, cursor: sqlite3.Cursor) -> Dict[str, Any]:
+    def _row_to_dict(self, row: tuple, cursor: sqlite3.Cursor) -> dict[str, Any]:
         cols = [d[0] for d in cursor.description]
-        return dict(zip(cols, row))
+        return dict(zip(cols, row, strict=False))
 
-    def get_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Return all sessions newest-first, up to limit."""
         cur = self._conn.execute(
             "SELECT * FROM sessions ORDER BY created_at DESC LIMIT ?", (limit,)
@@ -222,11 +220,11 @@ class SessionStore:
         rows = cur.fetchall()
         return [self._row_to_dict(r, cur) for r in rows]
 
-    def get_last_n(self, n: int) -> List[Dict[str, Any]]:
+    def get_last_n(self, n: int) -> list[dict[str, Any]]:
         """Return the last n sessions (newest-first)."""
         return self.get_history(limit=n)
 
-    def get_latest(self) -> Optional[dict]:
+    def get_latest(self) -> dict | None:
         cur = self._conn.execute(
             """
             SELECT session_id, words, wpm, filler_ratio, clarity_score, conciseness_score,
@@ -301,6 +299,7 @@ class SessionStore:
     def get_streak(self) -> dict:
         """Returns daily_streak and weekly_streak (consecutive days/weeks with ≥1 session)."""
         from datetime import date, timedelta
+
         cur = self._conn.execute(
             """
             SELECT DISTINCT date(started_at, 'unixepoch', 'localtime') AS day
@@ -329,7 +328,9 @@ class SessionStore:
         current_week = (iso_today[0], iso_today[1])
         while current_week in week_set:
             weekly_streak += 1
-            prev_monday = date.fromisocalendar(current_week[0], current_week[1], 1) - timedelta(weeks=1)
+            prev_monday = date.fromisocalendar(current_week[0], current_week[1], 1) - timedelta(
+                weeks=1
+            )
             iso_prev = prev_monday.isocalendar()
             current_week = (iso_prev[0], iso_prev[1])
 
@@ -339,9 +340,9 @@ class SessionStore:
         """Aggregate metrics. range_key: 'today' | 'week' | 'month' | 'all'"""
         where_map = {
             "today": "WHERE date(started_at, 'unixepoch', 'localtime') = date('now', 'localtime')",
-            "week":  "WHERE started_at >= strftime('%s', date('now', 'localtime', '-6 days'))",
+            "week": "WHERE started_at >= strftime('%s', date('now', 'localtime', '-6 days'))",
             "month": "WHERE started_at >= strftime('%s', date('now', 'localtime', 'start of month'))",
-            "all":   "",
+            "all": "",
         }
         where = where_map.get(range_key, "")
         cur = self._conn.execute(
@@ -354,22 +355,22 @@ class SessionStore:
         )
         row = cur.fetchone() or (0, 0.0, 0)
         words = int(row[0] or 0)
-        secs  = float(row[1] or 0.0)
-        mins  = secs / 60.0
+        secs = float(row[1] or 0.0)
+        mins = secs / 60.0
         sessions = int(row[2] or 0)
         # Time saved: dictating is faster than typing (assume 40 WPM baseline)
         time_saved = max(0.0, (words / 40.0) - mins)
         return {
-            "words":            words,
+            "words": words,
             "recording_seconds": secs,
-            "sessions":         sessions,
-            "wpm":              int(round(words / mins)) if mins > 1e-6 else 0,
-            "time_saved_mins":  time_saved,
+            "sessions": sessions,
+            "wpm": int(round(words / mins)) if mins > 1e-6 else 0,
+            "time_saved_mins": time_saved,
         }
 
-    def get_total_phrases(self) -> Dict[str, int]:
+    def get_total_phrases(self) -> dict[str, int]:
         """Aggregate phrase counts across all sessions."""
-        total: Dict[str, int] = {}
+        total: dict[str, int] = {}
         cur = self._conn.execute(
             "SELECT phrases_json FROM sessions WHERE phrases_json != '' AND phrases_json IS NOT NULL"
         )
@@ -382,9 +383,9 @@ class SessionStore:
                 pass
         return total
 
-    def get_app_usage(self) -> Dict[str, int]:
+    def get_app_usage(self) -> dict[str, int]:
         """Count sessions per app."""
-        usage: Dict[str, int] = {}
+        usage: dict[str, int] = {}
         cur = self._conn.execute(
             "SELECT app_context FROM sessions WHERE app_context != '' AND app_context IS NOT NULL"
         )

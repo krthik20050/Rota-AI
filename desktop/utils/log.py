@@ -6,6 +6,7 @@ Usage (same API as structlog):
     logger.info("event_name", key="value", count=42)
     logger.error("fail", exc_info=True)
 """
+
 import logging
 
 

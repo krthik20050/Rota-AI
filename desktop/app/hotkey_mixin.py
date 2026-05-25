@@ -1,4 +1,5 @@
 """Hotkey handling and recording start — mixed into RotaApp."""
+
 from __future__ import annotations
 
 import uuid
@@ -6,14 +7,15 @@ import uuid
 import structlog
 from PyQt6.QtCore import pyqtSlot
 
-from app.signal_bridges import RecordingState
 from app.logging_config import log_event
+from app.signal_bridges import RecordingState
 from audio.recording_session import RecordingSession
-from plat import get_window_detector, get_field_reader, get_app_detector
+from plat import get_app_detector, get_field_reader, get_window_detector
 
 _field_detector = None
 _field_reader = None
 _app_detector = None
+
 
 def _get_field_detector():
     global _field_detector
@@ -21,11 +23,13 @@ def _get_field_detector():
         _field_detector = get_window_detector()
     return _field_detector
 
+
 def _get_field_reader():
     global _field_reader
     if _field_reader is None:
         _field_reader = get_field_reader()
     return _field_reader
+
 
 def _get_app_detector():
     global _app_detector
@@ -38,21 +42,28 @@ def _get_app_detector():
 def get_focused_field_info():
     return _get_field_detector().get_focused_field_info()
 
+
 def warn_no_text_field_banner(exe_name):
     return _get_field_detector().warn_no_text_field_banner(exe_name)
+
 
 def scan_for_text_inputs(hwnd=0):
     return _get_field_detector().scan_for_text_inputs(hwnd)
 
+
 def focus_text_input(input_info):
     return _get_field_detector().focus_text_input(input_info)
+
 
 def get_field_text():
     return _get_field_reader().get_field_text()
 
+
 def get_active_app():
     return _get_app_detector().get_active_app()
-from ui.overlay.pill_state import PillState
+
+
+from ui.overlay.pill_state import PillState  # noqa: E402
 
 logger = structlog.get_logger(__name__)
 
@@ -153,7 +164,9 @@ class HotkeyMixin:
             self.show_toast("Processing is still stopping — wait a moment")
             return
         if not self._recording_enabled:
-            self.show_toast("Recording is disabled — restart the app if this persists", warning=True)
+            self.show_toast(
+                "Recording is disabled — restart the app if this persists", warning=True
+            )
             return
         if self.transcriber is None:
             if not self._transcriber_loading:

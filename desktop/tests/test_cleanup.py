@@ -1,7 +1,6 @@
 """Tests for core/cleanup.py — mocks Groq so no real API calls."""
-from unittest.mock import MagicMock, patch
 
-import pytest
+from unittest.mock import MagicMock, patch
 
 from ai.cleanup import clean_text
 
@@ -15,6 +14,7 @@ def _mock_groq(response_text: str):
 
 
 # --- No command → passthrough (zero API calls) ---
+
 
 def test_no_command_returns_input_unchanged():
     raw = "The meeting starts at nine."

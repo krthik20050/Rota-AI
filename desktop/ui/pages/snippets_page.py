@@ -1,28 +1,37 @@
 from __future__ import annotations
-import re
-import datetime
-import structlog
 
+import datetime
+import re
+
+import structlog
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QScrollArea, QStackedWidget, QTextEdit,
-    QVBoxLayout, QWidget,
-)
 from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtWidgets import (
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QScrollArea,
+    QStackedWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ui.components.flow_layout import FlowLayout
 
 logger = structlog.get_logger(__name__)
 
-CLR_ACCENT         = "#86EFAC"
-CLR_BORDER         = "rgba(255, 255, 255, 0.05)"
-CLR_CARD           = "#191E1C"
-CLR_TEXT_MUTED     = "#5A5A60"
+CLR_ACCENT = "#86EFAC"
+CLR_BORDER = "rgba(255, 255, 255, 0.05)"
+CLR_CARD = "#191E1C"
+CLR_TEXT_MUTED = "#5A5A60"
 CLR_TEXT_SECONDARY = "#A0A0A5"
-CLR_TEXT_PRIMARY   = "#F0F0F2"
-CLR_ERROR          = "#F87171"
-CLR_WARNING        = "#FBBF24"
+CLR_TEXT_PRIMARY = "#F0F0F2"
+CLR_ERROR = "#F87171"
+CLR_WARNING = "#FBBF24"
 
 
 class SnippetsPage(QWidget):
@@ -83,9 +92,11 @@ class SnippetsPage(QWidget):
 
         sec_btn_lay = QHBoxLayout()
         sec_btn_lay.setSpacing(6)
-        for label, slot in [("Import", self._import_snippets_clicked),
-                             ("Export", self._export_snippets_clicked),
-                             ("Reset Defaults", self._reset_snippets_defaults)]:
+        for label, slot in [
+            ("Import", self._import_snippets_clicked),
+            ("Export", self._export_snippets_clicked),
+            ("Reset Defaults", self._reset_snippets_defaults),
+        ]:
             btn = QPushButton(label)
             btn.setObjectName("SnippetSecBtn")
             btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -169,7 +180,18 @@ class SnippetsPage(QWidget):
         var_container.setStyleSheet("background: transparent;")
         var_flow = FlowLayout(var_container, hspacing=6, vspacing=6)
         var_flow.setContentsMargins(0, 0, 0, 0)
-        for var in ["date", "time", "clipboard", "today", "cursor", "day", "month", "year", "datetime", "timestamp"]:
+        for var in [
+            "date",
+            "time",
+            "clipboard",
+            "today",
+            "cursor",
+            "day",
+            "month",
+            "year",
+            "datetime",
+            "timestamp",
+        ]:
             v_btn = QPushButton(f"{{{{{var}}}}}")
             v_btn.setObjectName("SnippetVarBtn")
             v_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -222,7 +244,9 @@ class SnippetsPage(QWidget):
         self._snippet_expansion_input.setFocus()
 
     def _update_snippet_live_preview(self):
-        if not hasattr(self, "_snippet_expansion_input") or not hasattr(self, "_snippet_preview_widget"):
+        if not hasattr(self, "_snippet_expansion_input") or not hasattr(
+            self, "_snippet_preview_widget"
+        ):
             return
         raw_text = self._snippet_expansion_input.toPlainText()
         now = datetime.datetime.now()
@@ -233,12 +257,18 @@ class SnippetsPage(QWidget):
         preview = preview.replace("{{clipboard}}", "[Clipboard Content]")
         preview = preview.replace("{{cursor}}", "|")
         if not preview.strip():
-            self._snippet_preview_widget.setText("Type in the expansion field to see the live rendered output...")
+            self._snippet_preview_widget.setText(
+                "Type in the expansion field to see the live rendered output..."
+            )
         else:
             self._snippet_preview_widget.setText(preview)
         if hasattr(self, "_snippet_char_counter"):
             char_count = len(raw_text)
-            color = CLR_ERROR if char_count > 3800 else (CLR_WARNING if char_count > 3200 else CLR_TEXT_MUTED)
+            color = (
+                CLR_ERROR
+                if char_count > 3800
+                else (CLR_WARNING if char_count > 3200 else CLR_TEXT_MUTED)
+            )
             self._snippet_char_counter.setText(f"{char_count} / 4000")
             self._snippet_char_counter.setStyleSheet(f"color: {color}; font-size: 11px;")
 
@@ -260,7 +290,9 @@ class SnippetsPage(QWidget):
         all_status = self.snippets_manager.all_with_status()
         search = self._snippet_search_text.strip().lower()
         if search:
-            all_status = {k: v for k, v in all_status.items() if search in k.lower() or search in v[0].lower()}
+            all_status = {
+                k: v for k, v in all_status.items() if search in k.lower() or search in v[0].lower()
+            }
 
         if not all_status:
             msg = "No matches." if search else "No snippets yet.\nClick '+ Add New Snippet' below."
@@ -318,7 +350,12 @@ class SnippetsPage(QWidget):
         trig_lower = trigger.lower()
         if "mail" in trig_lower or "email" in trig_lower:
             icon_char = "✉"
-        elif "link" in trig_lower or "url" in trig_lower or "web" in trig_lower or "http" in trig_lower:
+        elif (
+            "link" in trig_lower
+            or "url" in trig_lower
+            or "web" in trig_lower
+            or "http" in trig_lower
+        ):
             icon_char = "🔗"
         elif "time" in trig_lower or "date" in trig_lower or "day" in trig_lower:
             icon_char = "🕒"
@@ -337,7 +374,7 @@ class SnippetsPage(QWidget):
         trig_lbl.setObjectName("SnippetRowTrigger")
         if not enabled:
             trig_lbl.setStyleSheet(f"color: {CLR_TEXT_MUTED}; text-decoration: line-through;")
-        preview_text = expansion.replace('\n', ' ').strip()
+        preview_text = expansion.replace("\n", " ").strip()
         if len(preview_text) > 42:
             preview_text = preview_text[:40] + "..."
         elif not preview_text:
@@ -373,7 +410,9 @@ class SnippetsPage(QWidget):
                 if self.snippets_manager:
                     self.snippets_manager.toggle(trig)
                     self._snippets_refresh()
+
             return _toggle_it
+
         tog.clicked.connect(make_toggler(trigger))
         h.addWidget(tog)
 
@@ -435,7 +474,9 @@ class SnippetsPage(QWidget):
     def _export_snippets_clicked(self):
         if not self.snippets_manager:
             return
-        file_path, _ = QFileDialog.getSaveFileName(self, "Export Snippets", "", "JSON Files (*.json)")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Export Snippets", "", "JSON Files (*.json)"
+        )
         if file_path:
             try:
                 content = self.snippets_manager.export_json()
@@ -447,7 +488,9 @@ class SnippetsPage(QWidget):
     def _import_snippets_clicked(self):
         if not self.snippets_manager:
             return
-        file_path, _ = QFileDialog.getOpenFileName(self, "Import Snippets", "", "JSON Files (*.json)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Import Snippets", "", "JSON Files (*.json)"
+        )
         if file_path:
             try:
                 with open(file_path, encoding="utf-8") as f:

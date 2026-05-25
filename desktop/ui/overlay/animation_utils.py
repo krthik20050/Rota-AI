@@ -13,8 +13,8 @@ import time
 from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import QColor, QFontMetricsF, QPainter, QPen
 
-
 # ── Easing functions ─────────────────────────────────────────────────────────
+
 
 def lerp(a: float, b: float, t: float) -> float:
     """Linear interpolation between a and b."""
@@ -64,8 +64,10 @@ def spring_bounce(t: float) -> float:
 
 # ── Haptic feedback ──────────────────────────────────────────────────────────
 
+
 def play_haptic(sound_type: str) -> None:
     """Soft sine-wave tones via sounddevice (non-blocking)."""
+
     def _play():
         try:
             import numpy as np
@@ -104,6 +106,7 @@ def play_haptic(sound_type: str) -> None:
 
 # ── DWM transparency (Windows) ───────────────────────────────────────────────
 
+
 def apply_dwm_transparency(win_id: int) -> None:
     """Extend DWM glass into entire client area — eliminates white bounding rect on Windows."""
     try:
@@ -128,6 +131,7 @@ def apply_dwm_transparency(win_id: int) -> None:
 
 # ── Paint helpers ────────────────────────────────────────────────────────────
 
+
 def draw_background(
     painter: QPainter,
     width: float,
@@ -144,7 +148,8 @@ def draw_background(
     painter.setPen(QPen(QColor(255, 255, 255, 20), 1.0))
     painter.drawRoundedRect(
         QRectF(0.5, 0.5, width - 1, height - 1),
-        radius - 0.5, radius - 0.5,
+        radius - 0.5,
+        radius - 0.5,
     )
 
 
@@ -217,12 +222,8 @@ def draw_recording_controls(painter: QPainter, width: float, height: float) -> N
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     painter.setPen(pen)
     painter.setBrush(Qt.BrushStyle.NoBrush)
-    painter.drawLine(
-        QPointF(cx_cancel - off, cy - off), QPointF(cx_cancel + off, cy + off)
-    )
-    painter.drawLine(
-        QPointF(cx_cancel + off, cy - off), QPointF(cx_cancel - off, cy + off)
-    )
+    painter.drawLine(QPointF(cx_cancel - off, cy - off), QPointF(cx_cancel + off, cy + off))
+    painter.drawLine(QPointF(cx_cancel + off, cy - off), QPointF(cx_cancel - off, cy + off))
 
     # Stop button (red)
     painter.setPen(Qt.PenStyle.NoPen)
@@ -232,6 +233,4 @@ def draw_recording_controls(painter: QPainter, width: float, height: float) -> N
     sq = 9.0
     painter.setBrush(QColor(255, 255, 255, 245))
     r = 2.0
-    painter.drawRoundedRect(
-        QRectF(cx_stop - sq / 2, cy - sq / 2, sq, sq), r, r
-    )
+    painter.drawRoundedRect(QRectF(cx_stop - sq / 2, cy - sq / 2, sq, sq), r, r)

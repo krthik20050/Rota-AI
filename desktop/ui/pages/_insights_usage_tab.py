@@ -1,13 +1,19 @@
 from __future__ import annotations
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QScrollArea, QStackedWidget,
-    QVBoxLayout, QWidget,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
+
 from ui.components.circular_progress import CircularProgress
 from ui.components.heatmap_grid import HeatmapGrid
-from ui.components.trend_chart import SpeechTrendChart
 from ui.components.speedometer import SpeedometerWidget
+from ui.components.trend_chart import SpeechTrendChart
 
 
 def build_usage_tab(page) -> QScrollArea:
@@ -26,23 +32,27 @@ def build_usage_tab(page) -> QScrollArea:
     stats = QHBoxLayout()
     stats.setSpacing(12)
     page.total_words_card = page._stat_card(
-        "Words Today", "0",
+        "Words Today",
+        "0",
         "Sum of all words dictated today (resets at local midnight).\n"
-        "Counts tokens in the cleaned and formatted output text."
+        "Counts tokens in the cleaned and formatted output text.",
     )
     page.wpm_card = page._stat_card(
-        "avg pace (wpm)", "0",
+        "avg pace (wpm)",
+        "0",
         "Words Per Minute = total words \u00f7 total active mic time today.\n"
-        "Only counts time the microphone was actively capturing speech."
+        "Only counts time the microphone was actively capturing speech.",
     )
     page.session_card = page._stat_card(
-        "Lifetime Words", "0",
-        "Cumulative word count across all dictation sessions since first use."
+        "Lifetime Words",
+        "0",
+        "Cumulative word count across all dictation sessions since first use.",
     )
     page.streak_card = page._stat_card(
-        "Daily Streak", "0 days",
+        "Daily Streak",
+        "0 days",
         "Consecutive days with at least one completed dictation.\n"
-        "Resets if you skip a full calendar day."
+        "Resets if you skip a full calendar day.",
     )
     stats.addWidget(page.total_words_card)
     stats.addWidget(page.wpm_card)
@@ -125,9 +135,9 @@ def build_usage_tab(page) -> QScrollArea:
     hm_lay.addWidget(page.heatmap_grid)
     lay.addWidget(heatmap_card)
 
-    page.daily_challenge_desc     = QLabel()
+    page.daily_challenge_desc = QLabel()
     page.daily_challenge_progress = QLabel()
-    page.daily_challenge_ring     = CircularProgress("", 0.0)
+    page.daily_challenge_ring = CircularProgress("", 0.0)
 
     insight_card = QFrame()
     insight_card.setObjectName("InsightCard")
@@ -151,6 +161,6 @@ def build_usage_tab(page) -> QScrollArea:
 
 
 def _lbl(text, obj_name):
-    l = QLabel(text)
-    l.setObjectName(obj_name)
-    return l
+    lbl = QLabel(text)
+    lbl.setObjectName(obj_name)
+    return lbl

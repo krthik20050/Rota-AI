@@ -1,4 +1,5 @@
 """Reusable combo box widgets shared between settings_window and _settings_sections."""
+
 from PyQt6.QtWidgets import QComboBox
 
 
@@ -20,17 +21,13 @@ class SmartComboBox(QComboBox):
     def showPopup(self):
         if self._recommended_idx >= 0:
             self.setItemText(
-                self._recommended_idx,
-                self._base_texts[self._recommended_idx] + "  (recommended)"
+                self._recommended_idx, self._base_texts[self._recommended_idx] + "  (recommended)"
             )
         super().showPopup()
 
     def hidePopup(self):
         if self._recommended_idx >= 0:
-            self.setItemText(
-                self._recommended_idx,
-                self._base_texts[self._recommended_idx]
-            )
+            self.setItemText(self._recommended_idx, self._base_texts[self._recommended_idx])
         super().hidePopup()
 
 

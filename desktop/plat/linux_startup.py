@@ -8,7 +8,7 @@ Reference: https://specifications.freedesktop.org/autostart-spec/autostart-spec-
 from __future__ import annotations
 
 import os
-import shutil
+
 import structlog
 
 logger = structlog.get_logger(__name__)

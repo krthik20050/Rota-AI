@@ -145,6 +145,7 @@ class RotaApp(
         self._macos_setup_pending = False
         if sys.platform == "darwin":
             from plat.macos_setup import is_setup_done
+
             self._macos_setup_pending = not is_setup_done()
 
         if self._macos_setup_pending:
@@ -166,6 +167,7 @@ class RotaApp(
 
     def _show_macos_setup(self):
         from ui.macos_first_run import MacOSSetupWizard
+
         self._macos_setup_dlg = MacOSSetupWizard(parent=None)
         self._macos_setup_dlg.setup_done.connect(self._on_macos_setup_done)
         screen = self.app.primaryScreen().availableGeometry()

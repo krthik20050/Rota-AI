@@ -1,4 +1,5 @@
 """Transcriber loading and hotkey readiness — mixed into RotaApp."""
+
 from __future__ import annotations
 
 import structlog
@@ -16,16 +17,22 @@ class TranscriberMixin:
         backend = getattr(self.hotkey_handler, "backend", None) or "ready"
         hotkey = str(self.config.get("hotkey") or "hotkey").upper()
         if self._transcriber_loading:
-            self.main_window.update_hotkey_status(f"Loading speech model... {hotkey} ready ({backend})")
+            self.main_window.update_hotkey_status(
+                f"Loading speech model... {hotkey} ready ({backend})"
+            )
         elif self.transcriber is None:
-            self.main_window.update_hotkey_status("Speech model unavailable — check Settings > Model")
+            self.main_window.update_hotkey_status(
+                "Speech model unavailable — check Settings > Model"
+            )
         else:
             self.main_window.update_hotkey_status(f"{hotkey} ready ({backend})")
 
     def _friendly_transcriber_error(self, error_message: str) -> str:
         msg = error_message.lower()
         if "disk" in msg or "space" in msg or "no space" in msg:
-            return "Speech model failed to load — insufficient disk space. Free up space and restart"
+            return (
+                "Speech model failed to load — insufficient disk space. Free up space and restart"
+            )
         if "memory" in msg or "oom" in msg:
             return "Speech model failed to load — not enough RAM. Try the 'tiny' model in Settings"
         if "download" in msg or "network" in msg or "connection" in msg:
@@ -58,7 +65,9 @@ class TranscriberMixin:
         thread.start()
 
     @pyqtSlot(object, str, str, float)
-    def _on_transcriber_loaded(self, transcriber, requested_model_size, actual_model_size, load_seconds):
+    def _on_transcriber_loaded(
+        self, transcriber, requested_model_size, actual_model_size, load_seconds
+    ):
         with self._transcriber_state_lock:
             self._retire_qthread(self._transcriber_thread, self._retired_transcriber_threads)
             self._transcriber_loading = False
@@ -66,7 +75,11 @@ class TranscriberMixin:
 
         if requested_model_size != self._current_model_size:
             pending_model_size = getattr(self, "_pending_transcriber_model_size", None)
-            logger.info("transcriber_load_outdated", requested=requested_model_size, current=self._current_model_size)
+            logger.info(
+                "transcriber_load_outdated",
+                requested=requested_model_size,
+                current=self._current_model_size,
+            )
             if pending_model_size and pending_model_size != requested_model_size:
                 self._load_transcriber_async(pending_model_size)
             return

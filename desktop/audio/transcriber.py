@@ -1,25 +1,26 @@
 import io
 import json
-from utils.log import get_logger
 import os
 import re
 import threading
 import time
 import wave
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator, Tuple
 
 import numpy as np
+
+from utils.log import get_logger
 
 logger = get_logger(__name__)
 
 _GROQ_MODEL = "whisper-large-v3-turbo"
-_GROQ_LATENCY_THRESHOLD = 3.0    # seconds — switch to local if exceeded
-_GROQ_RECOVERY_COOLDOWN = 30.0   # seconds — wait before re-trying Groq after failure
+_GROQ_LATENCY_THRESHOLD = 3.0  # seconds — switch to local if exceeded
+_GROQ_RECOVERY_COOLDOWN = 30.0  # seconds — wait before re-trying Groq after failure
 
-_SAMPLERATE = 16000              # must match AudioRecorder.samplerate
-_MAX_CHUNK_S = 55.0              # split sessions longer than this (Groq 25 MB limit safe zone)
-_SILENCE_RMS = 0.015             # RMS below this = silence (matches recorder threshold)
+_SAMPLERATE = 16000  # must match AudioRecorder.samplerate
+_MAX_CHUNK_S = 55.0  # split sessions longer than this (Groq 25 MB limit safe zone)
+_SILENCE_RMS = 0.015  # RMS below this = silence (matches recorder threshold)
 
 # Whisper known end-of-clip hallucination artifacts
 _HALLUCINATION_RE = re.compile(
@@ -63,7 +64,7 @@ def _numpy_to_wav_bytes(audio: np.ndarray, sample_rate: int = 16000) -> bytes:
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wf:
         wf.setnchannels(1)
-        wf.setsampwidth(2)   # 16-bit
+        wf.setsampwidth(2)  # 16-bit
         wf.setframerate(sample_rate)
         pcm = (audio * 32767.0).clip(-32768, 32767).astype(np.int16)
         wf.writeframes(pcm.tobytes())
@@ -96,7 +97,7 @@ class AudioTranscriber:
         self._compute_type = compute_type
         self._cpu_threads = cpu_threads
         self.transcription_quality = transcription_quality
-        self.model = None          # faster-whisper WhisperModel, lazy-loaded
+        self.model = None  # faster-whisper WhisperModel, lazy-loaded
         self._is_running = False
 
         # Groq state
@@ -136,6 +137,7 @@ class AudioTranscriber:
         if cpu_threads == 0:
             try:
                 import psutil
+
                 cpu_threads = psutil.cpu_count(logical=False) or os.cpu_count() or 4
             except Exception:
                 cpu_threads = os.cpu_count() or 4
@@ -216,6 +218,7 @@ class AudioTranscriber:
         """Return a cached Groq client, creating it once on first use."""
         if self._groq_client is None:
             from groq import Groq
+
             self._groq_client = Groq(api_key=self._groq_api_key)
         return self._groq_client
 
@@ -226,7 +229,7 @@ class AudioTranscriber:
         prompt_parts = []
         if self._initial_prompt:
             prompt_parts.append(self._initial_prompt)
-            
+
         tone = "neutral"
         if app_context:
             if hasattr(app_context, "tone"):
@@ -237,11 +240,17 @@ class AudioTranscriber:
                 tone = app_context
 
         if tone == "technical":
-            prompt_parts.append("Preserve technical terms, identifiers, and product names exactly. Do not invent code snippets, functions, classes, or terminal commands unless they were explicitly dictated.")
+            prompt_parts.append(
+                "Preserve technical terms, identifiers, and product names exactly. Do not invent code snippets, functions, classes, or terminal commands unless they were explicitly dictated."
+            )
         elif tone == "casual":
-            prompt_parts.append("Casual tone, slang, shortcuts, friendly text messages, quick chat.")
+            prompt_parts.append(
+                "Casual tone, slang, shortcuts, friendly text messages, quick chat."
+            )
         elif tone == "formal":
-            prompt_parts.append("Formal business English, professional vocabulary, structured sentences, proper capitalization, polite corporate dictation.")
+            prompt_parts.append(
+                "Formal business English, professional vocabulary, structured sentences, proper capitalization, polite corporate dictation."
+            )
         else:
             prompt_parts.append("Transcribe spoken dictation accurately.")
 
@@ -254,8 +263,10 @@ class AudioTranscriber:
             "prompt": " ".join(prompt_parts),
         }
         response = client.audio.transcriptions.create(**kwargs)
-        text = response if isinstance(response, str) else (
-            response.text if hasattr(response, "text") else str(response)
+        text = (
+            response
+            if isinstance(response, str)
+            else (response.text if hasattr(response, "text") else str(response))
         )
         return _strip_hallucinations(text.strip())
 
@@ -280,7 +291,7 @@ class AudioTranscriber:
             else:  # balanced
                 res_beam = 3
                 res_best = 3
-            
+
             beam_size = beam_size or res_beam
             best_of = best_of or res_best
 
@@ -310,11 +321,17 @@ class AudioTranscriber:
                 tone = app_context
 
         if tone == "technical":
-            prompt_parts.append("Preserve technical terms, identifiers, and product names exactly. Do not invent code snippets, functions, classes, or terminal commands unless they were explicitly dictated.")
+            prompt_parts.append(
+                "Preserve technical terms, identifiers, and product names exactly. Do not invent code snippets, functions, classes, or terminal commands unless they were explicitly dictated."
+            )
         elif tone == "casual":
-            prompt_parts.append("Casual tone, slang, shortcuts, friendly text messages, quick chat.")
+            prompt_parts.append(
+                "Casual tone, slang, shortcuts, friendly text messages, quick chat."
+            )
         elif tone == "formal":
-            prompt_parts.append("Formal business English, professional vocabulary, structured sentences, proper capitalization, polite corporate dictation.")
+            prompt_parts.append(
+                "Formal business English, professional vocabulary, structured sentences, proper capitalization, polite corporate dictation."
+            )
 
         if prompt_parts:
             kwargs["initial_prompt"] = " ".join(prompt_parts)
@@ -341,7 +358,9 @@ class AudioTranscriber:
                 pass
         return audio
 
-    def _transcribe_with_fallback(self, audio: np.ndarray, app_context: any = None) -> Tuple[str, str]:
+    def _transcribe_with_fallback(
+        self, audio: np.ndarray, app_context: any = None
+    ) -> tuple[str, str]:
         """
         Returns (transcript_text, backend_used).
         Tries Groq first; falls back to local on failure or high latency.
@@ -410,7 +429,7 @@ class AudioTranscriber:
         best_pos = target
 
         for pos in range(lo, hi - frame, frame):
-            rms = float(np.sqrt(np.mean(audio[pos:pos + frame].astype(np.float32) ** 2)))
+            rms = float(np.sqrt(np.mean(audio[pos : pos + frame].astype(np.float32) ** 2)))
             if rms < best_rms:
                 best_rms = rms
                 best_pos = pos
@@ -447,10 +466,12 @@ class AudioTranscriber:
                 texts.append(text)
             start = target
 
-        logger.info("long_session_chunks=%d joined_text_len=%d", len(texts), sum(len(t) for t in texts))
+        logger.info(
+            "long_session_chunks=%d joined_text_len=%d", len(texts), sum(len(t) for t in texts)
+        )
         return texts
 
-    def process_stream(self, audio_generator) -> Generator[Tuple[str, bool], None, None]:
+    def process_stream(self, audio_generator) -> Generator[tuple[str, bool], None, None]:
         """
         Accumulate all chunks, transcribe (chunking automatically for long sessions),
         yield (text, is_final=True). Signature unchanged — all callers unaffected.
@@ -477,17 +498,23 @@ class AudioTranscriber:
         texts = self._transcribe_chunked(full_audio.astype(np.float32, copy=False), app_context)
         return " ".join(texts)
 
-    def transcribe_array_with_backend(self, full_audio: np.ndarray, app_context: any = None) -> tuple[str, str]:
+    def transcribe_array_with_backend(
+        self, full_audio: np.ndarray, app_context: any = None
+    ) -> tuple[str, str]:
         """Single-shot transcription with backend metadata."""
         if full_audio is None or full_audio.size == 0:
             return "", ""
-        return self._transcribe_with_fallback(full_audio.astype(np.float32, copy=False), app_context=app_context)
+        return self._transcribe_with_fallback(
+            full_audio.astype(np.float32, copy=False), app_context=app_context
+        )
 
     def transcribe_array_local(self, full_audio: np.ndarray, app_context: any = None) -> str:
         """Single-shot transcription that always uses local faster-whisper."""
         if full_audio is None or full_audio.size == 0:
             return ""
-        text = self._transcribe_local(full_audio.astype(np.float32, copy=False), app_context=app_context)
+        text = self._transcribe_local(
+            full_audio.astype(np.float32, copy=False), app_context=app_context
+        )
         with self._backend_event_lock:
             self._last_backend_used = "local"
         return text
@@ -496,7 +523,9 @@ class AudioTranscriber:
         """Single-shot transcription that forces greedy (beam_size=1) decoding for live/partial feedback."""
         if full_audio is None or full_audio.size == 0:
             return ""
-        text = self._transcribe_local(full_audio.astype(np.float32, copy=False), beam_size=1, best_of=1)
+        text = self._transcribe_local(
+            full_audio.astype(np.float32, copy=False), beam_size=1, best_of=1
+        )
         with self._backend_event_lock:
             self._last_backend_used = "local"
         return text

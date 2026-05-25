@@ -1,7 +1,9 @@
 import time
-from PyQt6.QtCore import Qt, QPointF, QRectF, QTimer
-from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QLinearGradient, QBrush, QPainterPath
+
+from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer
+from PyQt6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import QWidget
+
 
 class SpeechTrendChart(QWidget):
     """
@@ -9,6 +11,7 @@ class SpeechTrendChart(QWidget):
     and Clarity (%) trend lines over recent dictation sessions.
     Uses smooth anti-aliased paths, color gradients, and glowing data nodes.
     """
+
     def __init__(self, labels: list = None, wpm: list = None, clarity: list = None, parent=None):
         super().__init__(parent)
         self.labels = labels or []
@@ -27,10 +30,10 @@ class SpeechTrendChart(QWidget):
 
     def setTrendData(self, labels: list, wpm: list, clarity: list):
         self._anim_timer.stop()
-        self.labels        = labels or []
-        self.wpm           = wpm or []
-        self.clarity       = clarity or []
-        self._full_wpm     = list(self.wpm)
+        self.labels = labels or []
+        self.wpm = wpm or []
+        self.clarity = clarity or []
+        self._full_wpm = list(self.wpm)
         self._full_clarity = list(self.clarity)
         self.update()
 
@@ -87,7 +90,7 @@ class SpeechTrendChart(QWidget):
             painter.drawText(
                 QRectF(0, 0, self.width(), self.height()),
                 Qt.AlignmentFlag.AlignCenter,
-                "Start dictating to generate trend metrics."
+                "Start dictating to generate trend metrics.",
             )
             return
 
@@ -151,7 +154,11 @@ class SpeechTrendChart(QWidget):
         clarity_points = []
         for i in range(num_points):
             x = padding_left + i * dx
-            y = padding_top + graph_height - ((self.clarity[i] - min_clarity) / clarity_range) * graph_height
+            y = (
+                padding_top
+                + graph_height
+                - ((self.clarity[i] - min_clarity) / clarity_range) * graph_height
+            )
             clarity_points.append(QPointF(x, y))
 
         clarity_line_path = QPainterPath()
@@ -170,17 +177,17 @@ class SpeechTrendChart(QWidget):
         for pt in wpm_points:
             # WPM Dot
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(147, 197, 253, 60)) # outer glow
+            painter.setBrush(QColor(147, 197, 253, 60))  # outer glow
             painter.drawEllipse(pt, 6.0, 6.0)
-            painter.setBrush(QColor("#93C5FD")) # solid core
+            painter.setBrush(QColor("#93C5FD"))  # solid core
             painter.drawEllipse(pt, 3.0, 3.0)
 
         for pt in clarity_points:
             # Clarity Dot
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(134, 239, 172, 60)) # outer glow
+            painter.setBrush(QColor(134, 239, 172, 60))  # outer glow
             painter.drawEllipse(pt, 6.0, 6.0)
-            painter.setBrush(QColor("#86EFAC")) # solid core
+            painter.setBrush(QColor("#86EFAC"))  # solid core
             painter.drawEllipse(pt, 3.0, 3.0)
 
         # ----------------------------------------------------
@@ -197,20 +204,38 @@ class SpeechTrendChart(QWidget):
             painter.drawText(
                 QRectF(pt.x() - 15, padding_top + graph_height + 4, 30, 12),
                 Qt.AlignmentFlag.AlignCenter,
-                lbl
+                lbl,
             )
 
         # Left WPM Axis values (Draw 0, 90, 180)
         painter.setPen(QColor("#93C5FD"))
-        painter.drawText(QRectF(8, padding_top - 6, 28, 12), Qt.AlignmentFlag.AlignRight, f"{max_wpm}")
-        painter.drawText(QRectF(8, padding_top + graph_height/2 - 6, 28, 12), Qt.AlignmentFlag.AlignRight, f"{max_wpm // 2}")
-        painter.drawText(QRectF(8, padding_top + graph_height - 6, 28, 12), Qt.AlignmentFlag.AlignRight, "0")
+        painter.drawText(
+            QRectF(8, padding_top - 6, 28, 12), Qt.AlignmentFlag.AlignRight, f"{max_wpm}"
+        )
+        painter.drawText(
+            QRectF(8, padding_top + graph_height / 2 - 6, 28, 12),
+            Qt.AlignmentFlag.AlignRight,
+            f"{max_wpm // 2}",
+        )
+        painter.drawText(
+            QRectF(8, padding_top + graph_height - 6, 28, 12), Qt.AlignmentFlag.AlignRight, "0"
+        )
 
         # Right Clarity Axis values (Draw 100%, 50%, 0%)
         painter.setPen(QColor("#86EFAC"))
-        painter.drawText(QRectF(self.width() - 36, padding_top - 6, 28, 12), Qt.AlignmentFlag.AlignLeft, "100%")
-        painter.drawText(QRectF(self.width() - 36, padding_top + graph_height/2 - 6, 28, 12), Qt.AlignmentFlag.AlignLeft, "50%")
-        painter.drawText(QRectF(self.width() - 36, padding_top + graph_height - 6, 28, 12), Qt.AlignmentFlag.AlignLeft, "0%")
+        painter.drawText(
+            QRectF(self.width() - 36, padding_top - 6, 28, 12), Qt.AlignmentFlag.AlignLeft, "100%"
+        )
+        painter.drawText(
+            QRectF(self.width() - 36, padding_top + graph_height / 2 - 6, 28, 12),
+            Qt.AlignmentFlag.AlignLeft,
+            "50%",
+        )
+        painter.drawText(
+            QRectF(self.width() - 36, padding_top + graph_height - 6, 28, 12),
+            Qt.AlignmentFlag.AlignLeft,
+            "0%",
+        )
 
         # Legend at top
         painter.setPen(QColor("#E8E8EA"))

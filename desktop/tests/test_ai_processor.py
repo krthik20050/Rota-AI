@@ -1,22 +1,21 @@
 """Tests for AIProcessor core: spoken punctuation, rule-based cleaning, prompt builder, and AI backend."""
-import os
-import json
-from unittest.mock import MagicMock, patch
-from dataclasses import dataclass
 
-import pytest
+import json
+import os
+from dataclasses import dataclass
+from unittest.mock import MagicMock, patch
 
 from ai.ai_processor import (
     AIProcessor,
+    _build_dynamic_prompt,
     _preprocess_spoken_punctuation,
     _rule_based_clean,
-    _build_dynamic_prompt,
 )
-
 
 # ==============================================================================
 # Helper: Fake AppContext for testing
 # ==============================================================================
+
 
 @dataclass
 class FakeAppContext:
@@ -30,22 +29,28 @@ class FakeAppContext:
 # Spoken Punctuation Pre-processor Tests
 # ==============================================================================
 
+
 def test_spoken_punctuation_period():
     assert _preprocess_spoken_punctuation("Hello world period") == "Hello world."
+
 
 def test_spoken_punctuation_comma():
     assert _preprocess_spoken_punctuation("Hello comma world") == "Hello, world"
 
+
 def test_spoken_punctuation_question_mark():
     assert _preprocess_spoken_punctuation("How are you question mark") == "How are you?"
+
 
 def test_spoken_punctuation_new_line():
     result = _preprocess_spoken_punctuation("first line new line second line")
     assert "\n" in result
 
+
 def test_spoken_punctuation_new_paragraph():
     result = _preprocess_spoken_punctuation("paragraph one new paragraph paragraph two")
     assert "\n\n" in result
+
 
 def test_spoken_punctuation_mixed():
     result = _preprocess_spoken_punctuation("Hello comma how are you question mark")
@@ -56,20 +61,24 @@ def test_spoken_punctuation_mixed():
 # Rule-Based Clean Tests
 # ==============================================================================
 
+
 def test_rule_based_removes_fillers():
     result = _rule_based_clean("um uh Hello world")
     assert "um" not in result
     assert "uh" not in result
     assert "Hello" in result
 
+
 def test_rule_based_capitalizes_sentences():
     result = _rule_based_clean("hello world. this is a test.")
     assert result.startswith("Hello")
     assert "This is a test." in result
 
+
 def test_rule_based_adds_trailing_period():
     result = _rule_based_clean("Hello world this is nice")
     assert result.endswith(".")
+
 
 def test_rule_based_empty_input():
     assert _rule_based_clean("") == ""
@@ -80,16 +89,19 @@ def test_rule_based_empty_input():
 # Dynamic Prompt Builder Tests
 # ==============================================================================
 
+
 def test_dynamic_prompt_includes_base():
     prompt = _build_dynamic_prompt("clean")
     assert "voice-to-text post-processor" in prompt
     assert "ANTI-HALLUCINATION" in prompt
+
 
 def test_dynamic_prompt_with_email_context():
     ctx = FakeAppContext(app_name="Outlook", category="email", tone="formal")
     prompt = _build_dynamic_prompt("clean", app_context=ctx)
     assert "Email Application" in prompt
     assert "Outlook" in prompt
+
 
 def test_dynamic_prompt_with_chat_context():
     ctx = FakeAppContext(app_name="Slack", category="chat", tone="casual")
@@ -98,31 +110,37 @@ def test_dynamic_prompt_with_chat_context():
     assert "Slack" in prompt
     assert "casual" in prompt
 
+
 def test_dynamic_prompt_with_editor_context():
     ctx = FakeAppContext(app_name="VS Code", category="editor", tone="technical")
     prompt = _build_dynamic_prompt("clean", app_context=ctx)
     assert "Code Editor" in prompt
     assert "camelCase" in prompt
 
+
 def test_dynamic_prompt_with_field_text():
     prompt = _build_dynamic_prompt("clean", field_text="I was just saying that")
     assert "EXISTING TEXT IN FIELD" in prompt
     assert "I was just saying that" in prompt
+
 
 def test_dynamic_prompt_with_personal_terms():
     prompt = _build_dynamic_prompt("clean", personal_terms=["RotaAI", "Groq", "WisprFlow"])
     assert "PERSONAL VOCABULARY" in prompt
     assert "RotaAI" in prompt
 
+
 def test_dynamic_prompt_professional_mode():
     """Professional mode should return a dedicated prompt, not the dynamic one."""
     prompt = _build_dynamic_prompt("professional")
     assert "FORMAL PROFESSIONAL" in prompt
 
+
 def test_dynamic_prompt_email_mode():
     """Email mode should return a dedicated email formatting prompt."""
     prompt = _build_dynamic_prompt("email")
     assert "PROFESSIONAL EMAIL" in prompt
+
 
 def test_dynamic_prompt_bullets_mode():
     prompt = _build_dynamic_prompt("bullets")
@@ -133,13 +151,14 @@ def test_dynamic_prompt_bullets_mode():
 # AIProcessor Tests
 # ==============================================================================
 
+
 @patch.dict(os.environ, {"GROQ_API_KEY": "fake-groq-key", "GEMINI_API_KEY": "fake-gemini-key"})
 def test_ai_processor_initialization():
     processor = AIProcessor(
         writing_mode="clean",
         ai_provider="groq",
         ollama_model="llama3.2:1b",
-        ollama_url="http://localhost:11434"
+        ollama_url="http://localhost:11434",
     )
     assert processor.writing_mode == "clean"
     assert processor.ai_provider == "groq"
@@ -189,9 +208,7 @@ def test_ai_processor_auto_provider():
 def test_groq_process_success(mock_groq_class):
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content="Polished text from Groq"))
-    ]
+    mock_response.choices = [MagicMock(message=MagicMock(content="Polished text from Groq"))]
     mock_client.chat.completions.create.return_value = mock_response
     mock_groq_class.return_value = mock_client
 
@@ -207,7 +224,9 @@ def test_groq_process_fallback_to_8b(mock_groq_class):
     # First call (70B) raises, second call (8B) succeeds
     mock_client.chat.completions.create.side_effect = [
         Exception("Rate limit"),
-        MagicMock(choices=[MagicMock(message=MagicMock(content="Polished text from instant fallback"))])
+        MagicMock(
+            choices=[MagicMock(message=MagicMock(content="Polished text from instant fallback"))]
+        ),
     ]
     mock_groq_class.return_value = mock_client
 
@@ -221,13 +240,7 @@ def test_groq_process_fallback_to_8b(mock_groq_class):
 @patch("urllib.request.urlopen")
 def test_gemini_process_success(mock_urlopen):
     response_data = {
-        "candidates": [
-            {
-                "content": {
-                    "parts": [{"text": "Polished text from Gemini"}]
-                }
-            }
-        ]
+        "candidates": [{"content": {"parts": [{"text": "Polished text from Gemini"}]}}]
     }
     mock_resp = MagicMock()
     mock_resp.read.return_value = json.dumps(response_data).encode("utf-8")
@@ -244,13 +257,12 @@ def test_gemini_process_success(mock_urlopen):
 def test_gemini_fallback_to_groq(mock_urlopen, mock_groq_class):
     """When Gemini fails, should cascade to Groq."""
     import urllib.error
+
     mock_urlopen.side_effect = urllib.error.URLError("Connection failed")
 
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content="Groq fallback text"))
-    ]
+    mock_response.choices = [MagicMock(message=MagicMock(content="Groq fallback text"))]
     mock_client.chat.completions.create.return_value = mock_response
     mock_groq_class.return_value = mock_client
 
@@ -286,9 +298,7 @@ def test_process_text_with_app_context(mock_groq_class):
     """Verify that app context is included in the prompt sent to the LLM."""
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content="Cleaned text"))
-    ]
+    mock_response.choices = [MagicMock(message=MagicMock(content="Cleaned text"))]
     mock_client.chat.completions.create.return_value = mock_response
     mock_groq_class.return_value = mock_client
 

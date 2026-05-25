@@ -1,0 +1,10 @@
+# Rota AI - macOS Python Dependencies
+# Install after PortAudio is available: brew install portaudio
+
+-r ../requirements.txt
+
+# macOS Accessibility, AppKit, Quartz, and Objective-C bridge.
+pyobjc-core>=10.0
+pyobjc-framework-AppKit>=10.0
+pyobjc-framework-ApplicationServices>=10.0
+pyobjc-framework-Quartz>=10.0

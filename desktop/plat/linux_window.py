@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from utils.log import get_logger
 
@@ -29,6 +29,7 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # AppContext dataclass -- mirrors the Windows version
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AppContext:
@@ -43,26 +44,59 @@ class AppContext:
 # ---------------------------------------------------------------------------
 
 _PROCESS_CATEGORY: dict[str, str] = {
-    "chrome": "browser", "firefox": "browser", "msedge": "browser",
-    "brave": "browser", "opera": "browser", "vivaldi": "browser",
-    "code": "editor", "cursor": "editor", "sublime_text": "editor",
-    "notepad": "editor", "xed": "editor", "gedit": "editor",
-    "kate": "editor", "neovim": "editor", "vim": "editor", "emacs": "editor",
-    "gnome-terminal": "terminal", "konsole": "terminal", "alacritty": "terminal",
-    "kitty": "terminal", "wezterm": "terminal", "foot": "terminal",
-    "tilix": "terminal", "terminator": "terminal", "xfce4-terminal": "terminal",
-    "slack": "chat", "discord": "chat", "telegramdesktop": "chat",
-    "signal": "chat", "thunderbird": "email", "evolution": "email",
-    "obsidian": "notes", "notion": "notes", "logseq": "notes",
-    "libreoffice": "office", "soffice": "office",
-    "vlc": "media", "spotify": "media", "mpv": "media",
-    "gimp": "media", "inkscape": "media",
+    "chrome": "browser",
+    "firefox": "browser",
+    "msedge": "browser",
+    "brave": "browser",
+    "opera": "browser",
+    "vivaldi": "browser",
+    "code": "editor",
+    "cursor": "editor",
+    "sublime_text": "editor",
+    "notepad": "editor",
+    "xed": "editor",
+    "gedit": "editor",
+    "kate": "editor",
+    "neovim": "editor",
+    "vim": "editor",
+    "emacs": "editor",
+    "gnome-terminal": "terminal",
+    "konsole": "terminal",
+    "alacritty": "terminal",
+    "kitty": "terminal",
+    "wezterm": "terminal",
+    "foot": "terminal",
+    "tilix": "terminal",
+    "terminator": "terminal",
+    "xfce4-terminal": "terminal",
+    "slack": "chat",
+    "discord": "chat",
+    "telegramdesktop": "chat",
+    "signal": "chat",
+    "thunderbird": "email",
+    "evolution": "email",
+    "obsidian": "notes",
+    "notion": "notes",
+    "logseq": "notes",
+    "libreoffice": "office",
+    "soffice": "office",
+    "vlc": "media",
+    "spotify": "media",
+    "mpv": "media",
+    "gimp": "media",
+    "inkscape": "media",
 }
 
 _CATEGORY_TONE: dict[str, str] = {
-    "browser": "neutral", "editor": "technical", "terminal": "technical",
-    "chat": "casual", "email": "formal", "office": "formal",
-    "notes": "neutral", "media": "neutral", "other": "neutral",
+    "browser": "neutral",
+    "editor": "technical",
+    "terminal": "technical",
+    "chat": "casual",
+    "email": "formal",
+    "office": "formal",
+    "notes": "neutral",
+    "media": "neutral",
+    "other": "neutral",
 }
 
 
@@ -71,7 +105,7 @@ def _classify(process_name: str) -> tuple[str, str]:
     # Handle snap/flatpak style names
     for prefix in ["snap.", "app."]:
         if stem.startswith(prefix):
-            stem = stem[len(prefix):]
+            stem = stem[len(prefix) :]
     category = _PROCESS_CATEGORY.get(stem, "other")
     tone = _CATEGORY_TONE.get(category, "neutral")
     return category, tone
@@ -84,6 +118,7 @@ def _classify(process_name: str) -> tuple[str, str]:
 _ATSPI_AVAILABLE = False
 try:
     import pyatspi
+
     _ATSPI_AVAILABLE = True
 except ImportError:
     logger.warning("pyatspi not available; window detection will be limited")
@@ -92,6 +127,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Public API -- mirrors the Windows field_detector interface
 # ---------------------------------------------------------------------------
+
 
 def get_focused_field_info() -> dict[str, Any]:
     """
@@ -113,7 +149,7 @@ def get_focused_field_info() -> dict[str, Any]:
         "pid": None,
         "window_title": "",
         "process_name": "",
-        "cursor_x": 0,   # 0,0 on Wayland — intentional, see docstring
+        "cursor_x": 0,  # 0,0 on Wayland — intentional, see docstring
         "cursor_y": 0,
         "is_text_field": True,  # optimistic default
         "focused_class": "",
@@ -121,8 +157,8 @@ def get_focused_field_info() -> dict[str, Any]:
     }
 
     _on_wayland = bool(
-        os.environ.get("WAYLAND_DISPLAY") or
-        os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+        os.environ.get("WAYLAND_DISPLAY")
+        or os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
     )
 
     # Strategy 1: AT-SPI
@@ -212,8 +248,15 @@ def scan_for_text_inputs(window_id: int = 0) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
 
     TEXT_INPUT_ROLES = {
-        "text", "entry", "text box", "text area", "password text",
-        "terminal", "document text", "edit bar", "combo box",
+        "text",
+        "entry",
+        "text box",
+        "text area",
+        "password text",
+        "terminal",
+        "document text",
+        "edit bar",
+        "combo box",
     }
 
     try:
@@ -287,12 +330,15 @@ def focus_text_input(input_info: dict[str, Any]) -> bool:
         try:
             import shutil
             import subprocess
+
             if shutil.which("xdotool"):
                 x1, y1, x2, y2 = rect
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
                 subprocess.run(
                     ["xdotool", "mousemove", str(cx), str(cy), "click", "1"],
-                    timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=3,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                 )
                 logger.debug("focus_text_input_xdotool_click", cx=cx, cy=cy)
                 return True
@@ -305,19 +351,24 @@ def focus_text_input(input_info: dict[str, Any]) -> bool:
         try:
             import shutil
             import subprocess
+
             if shutil.which("ydotool"):
                 x1, y1, x2, y2 = rect
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
                 # Move mouse to element centre
                 subprocess.run(
                     ["ydotool", "mousemove", "--absolute", "--", str(cx), str(cy)],
-                    timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=3,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                 )
                 time.sleep(0.02)
                 # Click left button (0xC0 = press + release in one command)
                 result = subprocess.run(
                     ["ydotool", "click", "0xC0"],
-                    timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=3,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                 )
                 if result.returncode == 0:
                     logger.debug("focus_text_input_ydotool_click", cx=cx, cy=cy)
@@ -349,15 +400,17 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
         pid = field_info.get("pid") if field_info else None
 
         _on_wayland = bool(
-            os.environ.get("WAYLAND_DISPLAY") or
-            os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+            os.environ.get("WAYLAND_DISPLAY")
+            or os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
         )
 
         # Strategy 1: xdotool (X11 or XWayland)
         if window_id and shutil.which("xdotool"):
             result = subprocess.run(
                 ["xdotool", "windowactivate", str(window_id)],
-                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=3,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             if result.returncode == 0:
                 time.sleep(0.05)
@@ -367,7 +420,9 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
         if pid and _on_wayland and os.environ.get("SWAYSOCK") and shutil.which("swaymsg"):
             result = subprocess.run(
                 ["swaymsg", f'[pid="{pid}"] focus'],
-                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=3,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             if result.returncode == 0:
                 time.sleep(0.05)
@@ -375,10 +430,17 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
             logger.debug("swaymsg_focus_failed", rc=result.returncode)
 
         # Strategy 3: Hyprland
-        if pid and _on_wayland and os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"):
+        if (
+            pid
+            and _on_wayland
+            and os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+            and shutil.which("hyprctl")
+        ):
             result = subprocess.run(
                 ["hyprctl", "dispatch", "focuswindow", f"pid:{pid}"],
-                timeout=3, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=3,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             if result.returncode == 0:
                 time.sleep(0.05)
@@ -436,6 +498,7 @@ def get_active_app() -> AppContext:
 # ---------------------------------------------------------------------------
 # Internal: AT-SPI implementations
 # ---------------------------------------------------------------------------
+
 
 def _find_focused_element(node, depth: int = 0, max_depth: int = 12):
     """Recursively find the first AT-SPI node with STATE_FOCUSED."""
@@ -520,13 +583,13 @@ def _process_name_from_atspi(app) -> str:
         if pid and pid > 0:
             # Read /proc/PID/comm for the process name
             try:
-                with open(f"/proc/{pid}/comm", "r") as f:
+                with open(f"/proc/{pid}/comm") as f:
                     return f.read().strip()
             except Exception:
                 pass
             # Fallback: read /proc/PID/cmdline
             try:
-                with open(f"/proc/{pid}/cmdline", "r") as f:
+                with open(f"/proc/{pid}/cmdline") as f:
                     cmdline = f.read().split("\x00")[0]
                     return cmdline.split("/")[-1] if cmdline else ""
             except Exception:
@@ -553,13 +616,15 @@ def _scan_children(node, text_roles: set, results: list, depth: int, max_depth: 
                 if extents:
                     x, y, w, h = extents
                     if w >= 20 and h >= 10:
-                        results.append({
-                            "window_id": id(node),
-                            "_atspi_node": node,  # live reference for focus_text_input
-                            "class_name": role,
-                            "rect": (x, y, x + w, y + h),
-                            "area": w * h,
-                        })
+                        results.append(
+                            {
+                                "window_id": id(node),
+                                "_atspi_node": node,  # live reference for focus_text_input
+                                "class_name": role,
+                                "rect": (x, y, x + w, y + h),
+                                "area": w * h,
+                            }
+                        )
             except Exception:
                 pass
 
@@ -581,10 +646,12 @@ def _scan_children(node, text_roles: set, results: list, depth: int, max_depth: 
 # Internal: python-xlib fallback (X11 only)
 # ---------------------------------------------------------------------------
 
+
 def _fill_cursor_via_xlib(result: dict[str, Any]) -> None:
     """Fill cursor_x / cursor_y using python-xlib query_pointer (X11 only)."""
     try:
         from Xlib import display
+
         d = display.Display()
         pointer = d.screen().root.query_pointer()
         result["cursor_x"] = pointer.root_x
@@ -597,7 +664,7 @@ def _fill_cursor_via_xlib(result: dict[str, Any]) -> None:
 def _fill_via_xlib(result: dict[str, Any]) -> None:
     """Fill result dict using python-xlib on X11."""
     try:
-        from Xlib import display, X
+        from Xlib import X, display
     except ImportError:
         logger.debug("python-xlib not available")
         return
@@ -607,9 +674,7 @@ def _fill_via_xlib(result: dict[str, Any]) -> None:
         root = d.screen().root
 
         # Get active window
-        active = root.get_full_property(
-            d.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType
-        )
+        active = root.get_full_property(d.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType)
         if not active or not active.value:
             return
 
@@ -620,9 +685,7 @@ def _fill_via_xlib(result: dict[str, Any]) -> None:
 
         # Get window title
         try:
-            title = win.get_full_property(
-                d.intern_atom("_NET_WM_NAME"), X.AnyPropertyType
-            )
+            title = win.get_full_property(d.intern_atom("_NET_WM_NAME"), X.AnyPropertyType)
             if title and title.value:
                 result["window_title"] = title.value.decode("utf-8", errors="replace")
             else:
@@ -634,15 +697,13 @@ def _fill_via_xlib(result: dict[str, Any]) -> None:
 
         # Get PID
         try:
-            pid_prop = win.get_full_property(
-                d.intern_atom("_NET_WM_PID"), X.AnyPropertyType
-            )
+            pid_prop = win.get_full_property(d.intern_atom("_NET_WM_PID"), X.AnyPropertyType)
             if pid_prop and pid_prop.value:
                 pid = pid_prop.value[0]
                 result["pid"] = pid
                 # Read process name
                 try:
-                    with open(f"/proc/{pid}/comm", "r") as f:
+                    with open(f"/proc/{pid}/comm") as f:
                         result["process_name"] = f.read().strip()
                 except Exception:
                     pass
@@ -668,13 +729,12 @@ def _active_app_via_xlib() -> AppContext:
     ctx = AppContext()
 
     try:
-        from Xlib import display, X
+        from Xlib import X, display
+
         d = display.Display()
         root = d.screen().root
 
-        active = root.get_full_property(
-            d.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType
-        )
+        active = root.get_full_property(d.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType)
         if not active or not active.value:
             d.close()
             return ctx
@@ -683,9 +743,7 @@ def _active_app_via_xlib() -> AppContext:
 
         # Window title
         try:
-            title = win.get_full_property(
-                d.intern_atom("_NET_WM_NAME"), X.AnyPropertyType
-            )
+            title = win.get_full_property(d.intern_atom("_NET_WM_NAME"), X.AnyPropertyType)
             if title and title.value:
                 ctx.app_name = title.value.decode("utf-8", errors="replace")
         except Exception:
@@ -693,13 +751,11 @@ def _active_app_via_xlib() -> AppContext:
 
         # PID -> process name
         try:
-            pid_prop = win.get_full_property(
-                d.intern_atom("_NET_WM_PID"), X.AnyPropertyType
-            )
+            pid_prop = win.get_full_property(d.intern_atom("_NET_WM_PID"), X.AnyPropertyType)
             if pid_prop and pid_prop.value:
                 pid = pid_prop.value[0]
                 try:
-                    with open(f"/proc/{pid}/comm", "r") as f:
+                    with open(f"/proc/{pid}/comm") as f:
                         ctx.process_name = f.read().strip()
                 except Exception:
                     pass

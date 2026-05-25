@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import os
+import shutil
+import sys
 import tempfile
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
 
 
 @dataclass
@@ -15,12 +17,12 @@ class HealthCheckItem:
     message: str
     critical: bool = False
     duration_ms: float = 0.0
-    details: Dict[str, str] = field(default_factory=dict)
+    details: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class HealthCheckReport:
-    checks: List[HealthCheckItem]
+    checks: list[HealthCheckItem]
     completed_at: float = field(default_factory=time.time)
 
     def has_critical_failure(self) -> bool:
@@ -29,8 +31,12 @@ class HealthCheckReport:
     def is_degraded(self) -> bool:
         return any(item.status in {"failed", "degraded"} for item in self.checks)
 
-    def failed_messages(self) -> List[str]:
-        return [f"{item.name}: {item.message}" for item in self.checks if item.status in {"failed", "degraded"}]
+    def failed_messages(self) -> list[str]:
+        return [
+            f"{item.name}: {item.message}"
+            for item in self.checks
+            if item.status in {"failed", "degraded"}
+        ]
 
 
 class StartupHealthChecker:
@@ -40,7 +46,7 @@ class StartupHealthChecker:
         self,
         appdata_dir: str,
         model_size: str,
-        hotkey_validator: Optional[Callable[[], tuple[bool, str]]] = None,
+        hotkey_validator: Callable[[], tuple[bool, str]] | None = None,
     ):
         self.appdata_dir = appdata_dir
         self.model_size = model_size
@@ -72,6 +78,7 @@ class StartupHealthChecker:
             self._check_storage(),
             self._check_microphone_access(),
             self._check_model_availability(),
+            self._check_platform_integration(),
             self._check_hotkey_registration(),
         ]
         return HealthCheckReport(checks=checks)
@@ -154,10 +161,19 @@ class StartupHealthChecker:
         started = time.perf_counter()
         try:
             import faster_whisper  # noqa: F401 — just verify the package is installed
+
             _VALID_SIZES = {
-                "tiny", "tiny.en", "base", "base.en",
-                "small", "small.en", "medium", "medium.en",
-                "large-v1", "large-v2", "large-v3",
+                "tiny",
+                "tiny.en",
+                "base",
+                "base.en",
+                "small",
+                "small.en",
+                "medium",
+                "medium.en",
+                "large-v1",
+                "large-v2",
+                "large-v3",
             }
             if self.model_size not in _VALID_SIZES:
                 return HealthCheckItem(
@@ -219,3 +235,123 @@ class StartupHealthChecker:
                 duration_ms=(time.perf_counter() - started) * 1000.0,
                 details={"error": str(exc)},
             )
+
+    def _check_platform_integration(self) -> HealthCheckItem:
+        started = time.perf_counter()
+        try:
+            if sys.platform == "darwin":
+                return self._check_macos_integration(started)
+            if sys.platform.startswith("linux"):
+                return self._check_linux_integration(started)
+            return HealthCheckItem(
+                name="platform_integration",
+                status="ok",
+                message="Windows platform integration available",
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+            )
+        except Exception as exc:
+            return HealthCheckItem(
+                name="platform_integration",
+                status="degraded",
+                message="Platform integration check failed",
+                critical=False,
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                details={"error": str(exc)},
+            )
+
+    def _check_macos_integration(self, started: float) -> HealthCheckItem:
+        missing: list[str] = []
+        degraded: list[str] = []
+
+        try:
+            import AppKit  # noqa: F401
+            import ApplicationServices  # noqa: F401
+            import Quartz  # noqa: F401
+        except ImportError as exc:
+            missing.append(f"PyObjC framework missing: {exc.name}")
+
+        try:
+            from plat.macos_setup import check_accessibility, check_input_monitoring
+
+            if not check_accessibility().ok:
+                missing.append("Accessibility permission")
+            if not check_input_monitoring().ok:
+                degraded.append("Input Monitoring permission")
+        except Exception as exc:
+            degraded.append(f"Permission check failed: {exc}")
+
+        if missing:
+            return HealthCheckItem(
+                name="platform_integration",
+                status="failed",
+                message="macOS integration incomplete: " + ", ".join(missing),
+                critical=True,
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                details={"degraded": ", ".join(degraded)},
+            )
+        if degraded:
+            return HealthCheckItem(
+                name="platform_integration",
+                status="degraded",
+                message="macOS integration partially available: " + ", ".join(degraded),
+                critical=False,
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+            )
+        return HealthCheckItem(
+            name="platform_integration",
+            status="ok",
+            message="macOS Accessibility and Input Monitoring are ready",
+            duration_ms=(time.perf_counter() - started) * 1000.0,
+        )
+
+    def _check_linux_integration(self, started: float) -> HealthCheckItem:
+        missing: list[str] = []
+        degraded: list[str] = []
+
+        try:
+            import evdev  # noqa: F401
+        except ImportError:
+            missing.append("evdev")
+
+        try:
+            import keyring  # noqa: F401
+        except ImportError:
+            degraded.append("keyring")
+
+        session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
+        if session_type == "wayland":
+            if not any(shutil.which(tool) for tool in ("wtype", "dotool", "ydotool")):
+                missing.append("one of wtype, dotool, or ydotool")
+            if shutil.which("wl-copy") is None:
+                degraded.append("wl-copy")
+        else:
+            if shutil.which("xdotool") is None:
+                missing.append("xdotool")
+            if shutil.which("xclip") is None and shutil.which("wl-copy") is None:
+                degraded.append("xclip or wl-copy")
+
+        if missing:
+            return HealthCheckItem(
+                name="platform_integration",
+                status="failed",
+                message="Linux integration missing: " + ", ".join(missing),
+                critical=True,
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                details={"degraded": ", ".join(degraded), "session": session_type or "unknown"},
+            )
+        if degraded:
+            return HealthCheckItem(
+                name="platform_integration",
+                status="degraded",
+                message="Linux integration partially available: " + ", ".join(degraded),
+                critical=False,
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                details={"session": session_type or "unknown"},
+            )
+        return HealthCheckItem(
+            name="platform_integration",
+            status="ok",
+            message="Linux platform tools are ready",
+            duration_ms=(time.perf_counter() - started) * 1000.0,
+            details={"session": session_type or "unknown"},
+        )

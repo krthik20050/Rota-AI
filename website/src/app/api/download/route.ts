@@ -4,6 +4,8 @@ const GITHUB_BASE = "https://github.com/krthik20050/Rota-AI/releases/latest/down
 
 const ASSETS: Record<string, { file: string; label: string }> = {
   windows: { file: "RotaAI-Setup.exe", label: "Windows" },
+  macos:   { file: "RotaAI-macOS.zip", label: "macOS" },
+  mac:     { file: "RotaAI-macOS.zip", label: "macOS" },
   linux:   { file: "RotaAI.AppImage", label: "Linux" },
 };
 

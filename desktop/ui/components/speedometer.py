@@ -1,8 +1,9 @@
 """
 Semi-circle speedometer widget for words-today visualization.
 """
-from PyQt6.QtCore import Qt, QRectF, pyqtProperty, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QPainter, QPen, QColor, QFont
+
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, Qt, pyqtProperty
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
 
 
@@ -31,7 +32,7 @@ class SpeedometerWidget(QWidget):
         """Instant update — used by periodic metrics refresh (non-insights)."""
         self._value = min(int(v), self._max)
         if self._anim and self._anim.state() == QPropertyAnimation.State.Running:
-            return   # don't interrupt a running animation
+            return  # don't interrupt a running animation
         self._display_value = self._value
         self.update()
 
@@ -40,7 +41,7 @@ class SpeedometerWidget(QWidget):
         self._value = min(int(v), self._max)
         if self._anim and self._anim.state() == QPropertyAnimation.State.Running:
             self._anim.stop()
-        self._display_value = 0     # always start arc from zero
+        self._display_value = 0  # always start arc from zero
         anim = QPropertyAnimation(self, b"display_value", self)
         anim.setStartValue(0)
         anim.setEndValue(self._value)
@@ -78,11 +79,15 @@ class SpeedometerWidget(QWidget):
         f = QFont("Courier New", 22)
         f.setWeight(QFont.Weight.Bold)
         p.setFont(f)
-        p.drawText(QRectF(0, cy - r * 0.72, w, r * 0.48),
-                   Qt.AlignmentFlag.AlignCenter, f"{self._display_value:,}")
+        p.drawText(
+            QRectF(0, cy - r * 0.72, w, r * 0.48),
+            Qt.AlignmentFlag.AlignCenter,
+            f"{self._display_value:,}",
+        )
 
         # Sub-label
         p.setPen(QColor("#5A5A60"))
         p.setFont(QFont("Segoe UI", 10))
-        p.drawText(QRectF(0, cy - r * 0.26, w, r * 0.26),
-                   Qt.AlignmentFlag.AlignCenter, "words today")
+        p.drawText(
+            QRectF(0, cy - r * 0.26, w, r * 0.26), Qt.AlignmentFlag.AlignCenter, "words today"
+        )

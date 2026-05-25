@@ -1,0 +1,28 @@
+# CODEOWNERS — defines who must approve PRs touching these paths.
+# GitHub enforces this: no merge without required reviewer's approval.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# ── Critical: OS-level access (injection, hotkeys, clipboard) ────────────────
+# These touch system security surface. Owner-only review required.
+desktop/injection/                  @karthikkrishnan
+desktop/audio/hotkey.py             @karthikkrishnan
+desktop/audio/audio_control.py      @karthikkrishnan
+desktop/app/instance_guard.py       @karthikkrishnan
+desktop/plat/                       @karthikkrishnan
+
+# ── Core app wiring + main entry ─────────────────────────────────────────────
+desktop/app/main.py                 @karthikkrishnan
+desktop/app/rota_app.py             @karthikkrishnan
+desktop/app/service_wiring.py       @karthikkrishnan
+
+# ── Security surface ─────────────────────────────────────────────────────────
+SECURITY.md                         @karthikkrishnan
+requirements.txt                    @karthikkrishnan
+
+# ── CI/CD pipelines ──────────────────────────────────────────────────────────
+.github/workflows/                  @karthikkrishnan
+.github/CODEOWNERS                  @karthikkrishnan
+.pre-commit-config.yaml             @karthikkrishnan
+
+# ── Everything else: open for trusted contributors ───────────────────────────
+# (no entry = any maintainer can approve)

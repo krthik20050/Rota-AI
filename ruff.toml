@@ -1,0 +1,35 @@
+target-version = "py312"
+line-length = 100
+src = ["desktop"]
+
+[lint]
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes
+  "I",    # isort
+  "B",    # flake8-bugbear (common bugs)
+  "S",    # flake8-bandit (security — subset)
+  "UP",   # pyupgrade
+]
+ignore = [
+  "S101",  # assert in tests is fine
+  "S110",  # try-except-pass — intentional in hardware/platform/cleanup paths
+  "S112",  # try-except-continue — intentional in AT-SPI/xdotool iteration
+  "S310",  # urllib URL open — all our URLs are hardcoded HTTPS to known APIs, not user input
+  "S311",  # random — used for mock data generation, not crypto
+  "S603",  # subprocess without shell=True is fine
+  "S607",  # partial executable paths
+  "E501",  # line too long — handled by formatter
+]
+
+[lint.per-file-ignores]
+"desktop/tests/*" = ["S", "B", "E402"]                  # relax security + bugbear in tests; late imports after pytest.mark setup
+"desktop/app/hotkey_mixin.py" = ["E402"]                 # late import avoids circular dependency
+"desktop/app/main.py" = ["E402"]                         # late imports after torch pre-warm block
+"desktop/ui/pages/_insights_updater.py" = ["E402"]       # late imports after module-level docstring
+"desktop/services/session_store.py" = ["S608"]           # SQL built from hardcoded string literals only, no user input
+
+[format]
+quote-style = "double"
+indent-style = "space"

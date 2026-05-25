@@ -41,20 +41,46 @@ _MAX_INJECT_LENGTH = 5000  # characters
 
 # SECURITY: Terminal / shell process names — injecting here can execute commands.
 # Only used for informational warnings; injection is not blocked.
-_TERMINAL_PROCESS_NAMES = frozenset({
-    "gnome-terminal", "gnome-terminal-server", "konsole", "xfce4-terminal",
-    "mate-terminal", "terminator", "tilix", "alacritty", "kitty",
-    "wezterm", "foot", "sakura", "terminology", "urxvt", "rxvt",
-    "xterm", "st-256color", "tmux", "screen",
-    "bash", "zsh", "fish", "sh", "dash",
-    "python", "python3", "python3.11", "python3.12",
-    "node", "docker",
-})
+_TERMINAL_PROCESS_NAMES = frozenset(
+    {
+        "gnome-terminal",
+        "gnome-terminal-server",
+        "konsole",
+        "xfce4-terminal",
+        "mate-terminal",
+        "terminator",
+        "tilix",
+        "alacritty",
+        "kitty",
+        "wezterm",
+        "foot",
+        "sakura",
+        "terminology",
+        "urxvt",
+        "rxvt",
+        "xterm",
+        "st-256color",
+        "tmux",
+        "screen",
+        "bash",
+        "zsh",
+        "fish",
+        "sh",
+        "dash",
+        "python",
+        "python3",
+        "python3.11",
+        "python3.12",
+        "node",
+        "docker",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Session & tool detection
 # ---------------------------------------------------------------------------
+
 
 class SessionType(Enum):
     X11 = "x11"
@@ -114,7 +140,9 @@ def _clipboard_copy(text: str, session: SessionType) -> bool:
             )
             if proc.returncode == 0:
                 return True
-            logger.warning("wl_copy_failed", rc=proc.returncode, stderr=proc.stderr.decode(errors="replace"))
+            logger.warning(
+                "wl_copy_failed", rc=proc.returncode, stderr=proc.stderr.decode(errors="replace")
+            )
 
         # Fallbacks that work on both X11 and Wayland backends.
         for cmd in (["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]):
@@ -133,6 +161,7 @@ def _clipboard_copy(text: str, session: SessionType) -> bool:
         # Last resort: pyperclip (Python-only, may pull in xclip/xsel itself).
         try:
             import pyperclip
+
             pyperclip.copy(text)
             return True
         except Exception:
@@ -155,13 +184,17 @@ def _clipboard_paste(session: SessionType) -> str | None:
             )
             if proc.returncode == 0:
                 return proc.stdout.decode("utf-8", errors="replace")
-        for cmd in (["xclip", "-selection", "clipboard", "-o"], ["xsel", "--clipboard", "--output"]):
+        for cmd in (
+            ["xclip", "-selection", "clipboard", "-o"],
+            ["xsel", "--clipboard", "--output"],
+        ):
             if _find_tool(cmd[0]):
                 proc = subprocess.run(cmd, capture_output=True, timeout=5)
                 if proc.returncode == 0:
                     return proc.stdout.decode("utf-8", errors="replace")
         try:
             import pyperclip
+
             return pyperclip.paste()
         except Exception:
             logger.exception("pyperclip_paste_failed")
@@ -182,8 +215,11 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
             )
             if proc.returncode == 0:
                 return True
-            logger.warning("xdotool_ctrl_v_failed", rc=proc.returncode,
-                           stderr=proc.stderr.decode(errors="replace"))
+            logger.warning(
+                "xdotool_ctrl_v_failed",
+                rc=proc.returncode,
+                stderr=proc.stderr.decode(errors="replace"),
+            )
 
         elif tool == KeyboardTool.WTYPE:
             proc = subprocess.run(
@@ -193,8 +229,11 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
             )
             if proc.returncode == 0:
                 return True
-            logger.warning("wtype_ctrl_v_failed", rc=proc.returncode,
-                           stderr=proc.stderr.decode(errors="replace"))
+            logger.warning(
+                "wtype_ctrl_v_failed",
+                rc=proc.returncode,
+                stderr=proc.stderr.decode(errors="replace"),
+            )
 
         elif tool == KeyboardTool.DOTOOL:
             # dotool protocol: "keydown <code>" / "keyup <code>" one per line
@@ -208,8 +247,11 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
             )
             if proc.returncode == 0:
                 return True
-            logger.warning("dotool_ctrl_v_failed", rc=proc.returncode,
-                           stderr=proc.stderr.decode(errors="replace"))
+            logger.warning(
+                "dotool_ctrl_v_failed",
+                rc=proc.returncode,
+                stderr=proc.stderr.decode(errors="replace"),
+            )
 
         elif tool == KeyboardTool.YDOTOOL:
             # ydotool key <keycode>:<1=press or 0=release>
@@ -220,8 +262,11 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
             result = subprocess.run(base_cmd + ["47:0", "29:0"], capture_output=True, timeout=10)
             if result.returncode == 0:
                 return True
-            logger.warning("ydotool_ctrl_v_failed", rc=result.returncode,
-                           stderr=result.stderr.decode(errors="replace"))
+            logger.warning(
+                "ydotool_ctrl_v_failed",
+                rc=result.returncode,
+                stderr=result.stderr.decode(errors="replace"),
+            )
 
         return False
     except Exception:
@@ -284,8 +329,11 @@ def _send_text_literal(tool: KeyboardTool, text: str) -> bool:
             )
             if proc.returncode == 0:
                 return True
-            logger.warning("xdotool_type_failed", rc=proc.returncode,
-                           stderr=proc.stderr.decode(errors="replace"))
+            logger.warning(
+                "xdotool_type_failed",
+                rc=proc.returncode,
+                stderr=proc.stderr.decode(errors="replace"),
+            )
 
         elif tool == KeyboardTool.WTYPE:
             # wtype can accept text directly.
@@ -296,8 +344,9 @@ def _send_text_literal(tool: KeyboardTool, text: str) -> bool:
             )
             if proc.returncode == 0:
                 return True
-            logger.warning("wtype_type_failed", rc=proc.returncode,
-                           stderr=proc.stderr.decode(errors="replace"))
+            logger.warning(
+                "wtype_type_failed", rc=proc.returncode, stderr=proc.stderr.decode(errors="replace")
+            )
 
         elif tool == KeyboardTool.DOTOOL:
             # dotool: type each character via its keycode is complex, so
@@ -306,14 +355,17 @@ def _send_text_literal(tool: KeyboardTool, text: str) -> bool:
             # so we chunk by plain text.
             proc = subprocess.run(
                 ["dotool"],
-                input=f"type {text}\n".encode("utf-8"),
+                input=f"type {text}\n".encode(),
                 capture_output=True,
                 timeout=30,
             )
             if proc.returncode == 0:
                 return True
-            logger.warning("dotool_type_failed", rc=proc.returncode,
-                           stderr=proc.stderr.decode(errors="replace"))
+            logger.warning(
+                "dotool_type_failed",
+                rc=proc.returncode,
+                stderr=proc.stderr.decode(errors="replace"),
+            )
 
         elif tool == KeyboardTool.YDOTOOL:
             proc = subprocess.run(
@@ -323,8 +375,11 @@ def _send_text_literal(tool: KeyboardTool, text: str) -> bool:
             )
             if proc.returncode == 0:
                 return True
-            logger.warning("ydotool_type_failed", rc=proc.returncode,
-                           stderr=proc.stderr.decode(errors="replace"))
+            logger.warning(
+                "ydotool_type_failed",
+                rc=proc.returncode,
+                stderr=proc.stderr.decode(errors="replace"),
+            )
 
         return False
     except Exception:
@@ -339,7 +394,8 @@ def _get_active_window_id(session: SessionType) -> str | None:
             if _find_tool("xdotool"):
                 proc = subprocess.run(
                     ["xdotool", "getactivewindow"],
-                    capture_output=True, timeout=5,
+                    capture_output=True,
+                    timeout=5,
                 )
                 if proc.returncode == 0:
                     return proc.stdout.decode().strip()
@@ -347,7 +403,8 @@ def _get_active_window_id(session: SessionType) -> str | None:
         try:
             proc = subprocess.run(
                 ["xdotool", "getactivewindow"],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             if proc.returncode == 0:
                 return proc.stdout.decode().strip()
@@ -389,6 +446,7 @@ def _get_focused_process_name(session: SessionType) -> str:
 # Public API — TextInjector class
 # ---------------------------------------------------------------------------
 
+
 class TextInjector:
     """
     Injects text into the active window via clipboard + Ctrl+V.
@@ -408,9 +466,11 @@ class TextInjector:
             keyboard_tool=self._keyboard.value if self._keyboard else None,
         )
         if self._keyboard is None:
-            logger.warning("no_keyboard_tool_found",
-                           session=self._session.value,
-                           hint="Install xdotool (X11) or wtype/dotool/ydotool (Wayland)")
+            logger.warning(
+                "no_keyboard_tool_found",
+                session=self._session.value,
+                hint="Install xdotool (X11) or wtype/dotool/ydotool (Wayland)",
+            )
 
     # -- Internal helpers ---------------------------------------------------
 
@@ -448,8 +508,9 @@ class TextInjector:
         # Log a warning when injecting into terminals (informational only).
         proc_name = _get_focused_process_name(self._session)
         if proc_name and proc_name.lower() in _TERMINAL_PROCESS_NAMES:
-            logger.warning("injection_target_is_terminal", process=proc_name,
-                           correlation_id=correlation_id)
+            logger.warning(
+                "injection_target_is_terminal", process=proc_name, correlation_id=correlation_id
+            )
 
         previous_clipboard = None
         window_before = None
@@ -485,10 +546,12 @@ class TextInjector:
             if field_info:
                 try:
                     from plat.linux_window import restore_focus_and_click
+
                     restored = restore_focus_and_click(field_info)
                     if not restored:
-                        logger.warning("focus_restore_skipped_or_failed",
-                                       correlation_id=correlation_id)
+                        logger.warning(
+                            "focus_restore_skipped_or_failed", correlation_id=correlation_id
+                        )
                 except Exception:
                     logger.exception("focus_restore_failed", correlation_id=correlation_id)
 
@@ -576,7 +639,7 @@ class TextInjector:
             return False, "No keyboard tool available"
 
         try:
-            for i in range(count):
+            for _ in range(count):
                 _send_backspace_key(tool)
                 time.sleep(0.005)  # 5 ms between backspaces
             return True, f"Deleted {count} characters"
@@ -645,6 +708,7 @@ class TextInjector:
             if last_field:
                 try:
                     from plat.linux_window import restore_focus_and_click
+
                     restored = restore_focus_and_click(last_field)
                 except Exception:
                     restored = False

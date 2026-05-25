@@ -4,7 +4,6 @@ import time
 import traceback
 
 import numpy as np
-
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from app.logging_config import log_event, logger
@@ -73,11 +72,18 @@ class ProcessorThread(QThread):
                 if segment_chunks:
                     segment_chunks.append(chunk)
                     silence_run += 1
-                    if silence_run >= self._SILENCE_CHUNKS and len(segment_chunks) >= self._MIN_SEGMENT_CHUNKS:
-                        segment_chunks, partial_segments = self._finalize_segment(segment_chunks, partial_segments)
+                    if (
+                        silence_run >= self._SILENCE_CHUNKS
+                        and len(segment_chunks) >= self._MIN_SEGMENT_CHUNKS
+                    ):
+                        segment_chunks, partial_segments = self._finalize_segment(
+                            segment_chunks, partial_segments
+                        )
                         silence_run = 0
 
-            segment_chunks, partial_segments = self._finalize_segment(segment_chunks, partial_segments)
+            segment_chunks, partial_segments = self._finalize_segment(
+                segment_chunks, partial_segments
+            )
 
             # Use the app context captured when recording started.
             # By stop time, focus is often back on Rota AI itself.
@@ -86,7 +92,12 @@ class ProcessorThread(QThread):
                 from injection.app_detector import get_active_app
 
                 app_ctx = get_active_app()
-            thread_logger.info("processor_active_app", app_name=app_ctx.app_name, process=app_ctx.process_name, tone=app_ctx.tone)
+            thread_logger.info(
+                "processor_active_app",
+                app_name=app_ctx.app_name,
+                process=app_ctx.process_name,
+                tone=app_ctx.tone,
+            )
 
             # Strip silence from full audio using Silero VAD before transcribing
             from audio.vad import strip_silence
@@ -111,8 +122,10 @@ class ProcessorThread(QThread):
                             cleaned_audio, app_context=app_ctx
                         )
                         raw_text = (raw_text or "").strip()
-                    except Exception as transcribe_exc:
-                        thread_logger.error("transcription_failed falling back to partials", exc_info=True)
+                    except Exception:
+                        thread_logger.error(
+                            "transcription_failed falling back to partials", exc_info=True
+                        )
                         raw_text = ""
                         backend_used = "error"
 
@@ -130,7 +143,16 @@ class ProcessorThread(QThread):
             )
 
             if not raw_text:
-                self.completed.emit("", "", False, str(self.correlation_id or ""), float(transcription_seconds or 0.0), 0.0, False, "")
+                self.completed.emit(
+                    "",
+                    "",
+                    False,
+                    str(self.correlation_id or ""),
+                    float(transcription_seconds or 0.0),
+                    0.0,
+                    False,
+                    "",
+                )
                 return
 
             # AI cleanup — passthrough if ai_processor not set
@@ -142,7 +164,7 @@ class ProcessorThread(QThread):
                         raw_text,
                         correlation_id=self.correlation_id,
                         app_context=app_ctx,
-                        field_text=getattr(self.session, 'field_text', ''),
+                        field_text=getattr(self.session, "field_text", ""),
                     )
                 except Exception:
                     thread_logger.error("ai_cleanup_failed_using_raw", exc_info=True)
@@ -198,9 +220,11 @@ class TranscriberLoadThread(QThread):
                 transcriber = AudioTranscriber(
                     model_size=self.model_size,
                     cpu_threads=self.cpu_threads,
-                    transcription_quality=self.transcription_quality
+                    transcription_quality=self.transcription_quality,
                 )
-                self.loaded.emit(transcriber, self.model_size, self.model_size, time.perf_counter() - load_start)
+                self.loaded.emit(
+                    transcriber, self.model_size, self.model_size, time.perf_counter() - load_start
+                )
             except RuntimeError as exc:
                 if "mkl_malloc" in str(exc).lower() and self.model_size != "base":
                     logger.warning("mkl_malloc_fallback", model_size=self.model_size)
@@ -208,9 +232,11 @@ class TranscriberLoadThread(QThread):
                     transcriber = AudioTranscriber(
                         model_size="base",
                         cpu_threads=self.cpu_threads,
-                        transcription_quality=self.transcription_quality
+                        transcription_quality=self.transcription_quality,
                     )
-                    self.loaded.emit(transcriber, self.model_size, "base", time.perf_counter() - load_start)
+                    self.loaded.emit(
+                        transcriber, self.model_size, "base", time.perf_counter() - load_start
+                    )
                 else:
                     raise
         except Exception as exc:

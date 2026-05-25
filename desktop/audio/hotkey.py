@@ -1,6 +1,7 @@
-from utils.log import get_logger
 import threading
 import time
+
+from utils.log import get_logger
 
 try:
     from pynput import keyboard as pynput_keyboard
@@ -18,6 +19,7 @@ class HotkeyHandler:
     Uses pynput first on Windows because it is more reliable for ordinary desktop apps,
     with the existing keyboard package kept as a fallback.
     """
+
     MODE_TOGGLE = "toggle"
     MODE_HOLD = "hold"
 
@@ -31,9 +33,21 @@ class HotkeyHandler:
     def _get_pynput_mod_map(cls):
         if cls._PYNPUT_MOD_MAP is None and pynput_keyboard is not None:
             cls._PYNPUT_MOD_MAP = {
-                "ctrl":  {pynput_keyboard.Key.ctrl, pynput_keyboard.Key.ctrl_l, pynput_keyboard.Key.ctrl_r},
-                "shift": {pynput_keyboard.Key.shift, pynput_keyboard.Key.shift_l, pynput_keyboard.Key.shift_r},
-                "alt":   {pynput_keyboard.Key.alt, pynput_keyboard.Key.alt_l, pynput_keyboard.Key.alt_r},
+                "ctrl": {
+                    pynput_keyboard.Key.ctrl,
+                    pynput_keyboard.Key.ctrl_l,
+                    pynput_keyboard.Key.ctrl_r,
+                },
+                "shift": {
+                    pynput_keyboard.Key.shift,
+                    pynput_keyboard.Key.shift_l,
+                    pynput_keyboard.Key.shift_r,
+                },
+                "alt": {
+                    pynput_keyboard.Key.alt,
+                    pynput_keyboard.Key.alt_l,
+                    pynput_keyboard.Key.alt_r,
+                },
             }
         return cls._PYNPUT_MOD_MAP or {}
 
@@ -47,7 +61,7 @@ class HotkeyHandler:
             return rev
         # Named special keys: tab, space, enter, esc, delete, home, end, etc.
         for attr in dir(pynput_keyboard.Key):
-            if attr.startswith('_'):
+            if attr.startswith("_"):
                 continue
             key_obj = getattr(pynput_keyboard.Key, attr, None)
             if key_obj is not None and isinstance(key_obj, pynput_keyboard.Key):
@@ -72,7 +86,7 @@ class HotkeyHandler:
             if key in key_set:
                 return name
         # Character key
-        char = getattr(key, 'char', None)
+        char = getattr(key, "char", None)
         if char:
             return char.lower()
         return None
@@ -80,32 +94,32 @@ class HotkeyHandler:
     @classmethod
     def _names_to_hotkey_str(cls, mods: set, main_name: str = "") -> str:
         """Convert captured modifier set + main key name to canonical hotkey string.
-        
+
         Example: ({'ctrl', 'shift'}, 'k') → 'ctrl+shift+k'
                  ({}, 'tab') → 'tab'
                  ({'ctrl', 'alt'}, 'space') → 'ctrl+alt+space'
         """
         parts = []
         # Always put modifiers in canonical order
-        for mod in ('ctrl', 'shift', 'alt'):
+        for mod in ("ctrl", "shift", "alt"):
             if mod in mods:
                 parts.append(mod)
         if main_name:
             parts.append(main_name.lower())
-        return '+'.join(parts) if parts else ''
+        return "+".join(parts) if parts else ""
 
     @classmethod
     def capture_hotkey(cls, timeout: float = 8.0) -> str | None:
         """Record the next key combination the user presses.
-        
+
         Temporarily installs a global keyboard listener, waits for a key press,
         and returns the canonical hotkey string (e.g. 'ctrl+shift+k', 'tab', 'f9').
-        
+
         Pressing Escape cancels and returns None.
-        
+
         Args:
             timeout: Seconds to wait before giving up.
-            
+
         Returns:
             Hotkey string like 'ctrl+k', 'tab', 'f9', or None if cancelled/timeout.
         """
@@ -165,7 +179,14 @@ class HotkeyHandler:
         main = next((p for p in parts if p not in known_mods), "")
         return mods, main
 
-    def __init__(self, hotkey="tab", mode=MODE_TOGGLE, start_callback=None, stop_callback=None, error_callback=None):
+    def __init__(
+        self,
+        hotkey="tab",
+        mode=MODE_TOGGLE,
+        start_callback=None,
+        stop_callback=None,
+        error_callback=None,
+    ):
         self.hotkey = (hotkey or "tab").lower()
         self._hotkey_mods, self._hotkey_main = self._parse_hotkey_str(self.hotkey)
         self.mode = mode
@@ -186,15 +207,15 @@ class HotkeyHandler:
         # Extra hotkeys: list of (mods: frozenset, main: str, callback)
         self._extra_hotkeys: list = []
         # Modifier-only chord state (used when hotkey has no main key, e.g. "ctrl+shift")
-        self._modifier_chord_active: bool = False   # all required mods are currently held
-        self._modifier_chord_dirty: bool = False    # a non-required key was pressed during chord
+        self._modifier_chord_active: bool = False  # all required mods are currently held
+        self._modifier_chord_dirty: bool = False  # a non-required key was pressed during chord
 
     def _get_keyboard_hook(self):
         """Lazy-loads the fallback python-keyboard hook engine.
-        
-        WHY: The 'keyboard' library immediately registers a system-wide LL hook 
-        upon import, spawning a Win32 thread which conflicts with pynput's hook 
-        and throws 0x8001010d / access violations. Deferring the import ensures 
+
+        WHY: The 'keyboard' library immediately registers a system-wide LL hook
+        upon import, spawning a Win32 thread which conflicts with pynput's hook
+        and throws 0x8001010d / access violations. Deferring the import ensures
         this hook thread is never spawned as long as the primary pynput backend works.
         """
         global keyboard_hook
@@ -228,7 +249,7 @@ class HotkeyHandler:
             # Try named function key (f1-f12, space, tab, etc.)
             named = getattr(pynput_keyboard.Key, main, None)
             if named is not None:
-                matched_main = (key == named)
+                matched_main = key == named
             else:
                 # Single character key
                 matched_main = (getattr(key, "char", None) or "").lower() == main
@@ -347,7 +368,7 @@ class HotkeyHandler:
                 continue
             named = getattr(pynput_keyboard.Key, main, None)
             if named is not None:
-                matched = (key == named)
+                matched = key == named
             else:
                 matched = (getattr(key, "char", None) or "").lower() == main
             if matched:
@@ -438,7 +459,9 @@ class HotkeyHandler:
                 self._listener.daemon = True
                 self._listener.start()
                 self.backend = "pynput"
-                logger.info("global_hotkey_started", extra={"backend": self.backend, "hotkey": self.hotkey})
+                logger.info(
+                    "global_hotkey_started", extra={"backend": self.backend, "hotkey": self.hotkey}
+                )
                 return True
             except Exception as exc:
                 errors.append(exc)
@@ -450,13 +473,17 @@ class HotkeyHandler:
                 self._press_hook = kh.on_press(self._on_keyboard_press)
                 self._release_hook = kh.on_release(self._on_keyboard_release)
                 self.backend = "keyboard"
-                logger.info("global_hotkey_started", extra={"backend": self.backend, "hotkey": self.hotkey})
+                logger.info(
+                    "global_hotkey_started", extra={"backend": self.backend, "hotkey": self.hotkey}
+                )
                 return True
             except Exception as exc:
                 errors.append(exc)
                 logger.exception("keyboard_hotkey_start_failed")
 
-        raise RuntimeError("Global hotkey listener could not start") from (errors[-1] if errors else None)
+        raise RuntimeError("Global hotkey listener could not start") from (
+            errors[-1] if errors else None
+        )
 
     def stop_listening(self):
         """Stops listening for the global hotkey."""
@@ -516,6 +543,7 @@ class HotkeyHandler:
 
 
 if __name__ == "__main__":
+
     def on_start():
         print("Recording...  [press F9 again to stop]")
 
@@ -524,8 +552,8 @@ if __name__ == "__main__":
 
     handler = HotkeyHandler(start_callback=on_start, stop_callback=on_stop)
     handler.start_listening()
-    print(f"Toggle mode active (backend: pending). Press F9 to start/stop. Ctrl+C to quit.")
-    print(f"Hold F9 3s+ = backward-compat hold (stays on until next quick press).")
+    print("Toggle mode active (backend: pending). Press F9 to start/stop. Ctrl+C to quit.")
+    print("Hold F9 3s+ = backward-compat hold (stays on until next quick press).")
     try:
         while True:
             time.sleep(0.5)

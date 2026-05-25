@@ -11,11 +11,12 @@ from __future__ import annotations
 
 import fcntl
 import os
+
 import structlog
 
 logger = structlog.get_logger(__name__)
 
-_LOCK_PATH = "/tmp/rota-ai.lock"
+_LOCK_PATH = "/tmp/rota-ai.lock"  # noqa: S108
 _lock_fd = None
 
 
@@ -33,7 +34,7 @@ def try_acquire_instance_lock() -> bool:
         os.write(_lock_fd, str(os.getpid()).encode())
         logger.info("instance_lock_acquired", pid=os.getpid())
         return True
-    except (OSError, IOError):
+    except OSError:
         logger.warning("instance_lock_failed", lock_path=_LOCK_PATH)
         if _lock_fd is not None:
             try:

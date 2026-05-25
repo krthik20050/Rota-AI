@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Privacy — Rota AI",
+  title: "Privacy - Rota AI",
   description: "Rota AI does not collect, store, or transmit any personal data. Your voice stays on your machine.",
 };
 

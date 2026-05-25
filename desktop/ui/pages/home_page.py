@@ -4,25 +4,32 @@ Rota AI — Home Page Widget
 Two-column layout: history timeline (left) | stats panel (right).
 Extracted from main_window.py to keep MainWindow under 500 lines.
 """
+
 from __future__ import annotations
 
 import random
 import re
 import time
 from collections import Counter
-from datetime import datetime, date as Date, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from datetime import date as Date
 
 import pyperclip
 import structlog
-from PyQt6.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QEasingCurve, pyqtSignal
+from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer
 from PyQt6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ui.components.history_item import HistoryItemWidget
 from ui.styles.main_window_qss import (
-    CLR_ACCENT, CLR_ERROR, CLR_WARNING,
     STATS_PANEL_W,
 )
 
@@ -44,7 +51,7 @@ class HomePage(QWidget):
 
         # Stats animation — fires only on first data load
         self._stats_initialized = False
-        self._stats_targets = [0, 0, 0]   # [wpm, words_today, lifetime]
+        self._stats_targets = [0, 0, 0]  # [wpm, words_today, lifetime]
         self._stats_anim_start = 0.0
         self._stats_anim_duration = 1.4
         self._stats_anim_timer = QTimer(self)
@@ -53,7 +60,7 @@ class HomePage(QWidget):
 
         # Section-label slot-machine rotation — fires once at startup
         self._label_anim_frame = 0
-        self._label_anim_total = 20          # 20 × 55 ms ≈ 1.1 s
+        self._label_anim_total = 20  # 20 × 55 ms ≈ 1.1 s
         self._label_anim_timer = QTimer(self)
         self._label_anim_timer.setInterval(55)
         self._label_anim_timer.timeout.connect(self._label_rotation_tick)
@@ -384,14 +391,16 @@ class HomePage(QWidget):
 
     def _on_retry(self, entry_id: int):
         from PyQt6.QtWidgets import QMessageBox
+
         row = self.history_manager.get_entry(entry_id)
         if row is None:
             return
         _, _, raw_text, _, _ = row
         if self.ai_processor is None:
             QMessageBox.information(
-                self, "Retry",
-                "Smart formatting engine not available. Enable Smart Formatting in Settings."
+                self,
+                "Retry",
+                "Smart formatting engine not available. Enable Smart Formatting in Settings.",
             )
             return
         try:
@@ -404,10 +413,12 @@ class HomePage(QWidget):
 
     def _on_extract_audio(self, entry_id: int):
         from PyQt6.QtWidgets import QMessageBox
+
         QMessageBox.information(
-            self, "Extract Audio",
+            self,
+            "Extract Audio",
             "Audio is not stored for past recordings.\n\n"
-            "Rota keeps text transcriptions only. Audio extraction is not available."
+            "Rota keeps text transcriptions only. Audio extraction is not available.",
         )
 
     # ──────────────────────────────────────────────────────────
@@ -416,9 +427,7 @@ class HomePage(QWidget):
     def _parse_date(self, timestamp: str) -> Date | None:
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
             try:
-                dt_utc = datetime.strptime(timestamp.split(".")[0], fmt).replace(
-                    tzinfo=timezone.utc
-                )
+                dt_utc = datetime.strptime(timestamp.split(".")[0], fmt).replace(tzinfo=UTC)
                 return dt_utc.astimezone().date()
             except ValueError:
                 continue
@@ -427,7 +436,7 @@ class HomePage(QWidget):
     def _format_date(self, d: Date | None) -> str:
         if d is None:
             return "UNKNOWN DATE"
-        mode = (self._config.get("date_display", "relative") if self._config else "relative")
+        mode = self._config.get("date_display", "relative") if self._config else "relative"
         if mode == "relative":
             delta = (Date.today() - d).days
             if delta == 0:
@@ -441,9 +450,21 @@ class HomePage(QWidget):
     # Stats animation
     # ──────────────────────────────────────────────────────────
     _SLOT_WORDS = [
-        "VELOCITY", "OUTPUT", "SPEED", "RATE", "COUNT",
-        "FLOW", "DATA", "PACE", "TOTAL", "WORDS",
-        "VOLUME", "METRIC", "SCORE", "TRACK", "PULSE",
+        "VELOCITY",
+        "OUTPUT",
+        "SPEED",
+        "RATE",
+        "COUNT",
+        "FLOW",
+        "DATA",
+        "PACE",
+        "TOTAL",
+        "WORDS",
+        "VOLUME",
+        "METRIC",
+        "SCORE",
+        "TRACK",
+        "PULSE",
     ]
 
     def _label_rotation_tick(self):

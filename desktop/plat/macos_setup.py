@@ -8,6 +8,7 @@ Checks:
   3. Accessibility     — required permission (user must grant)
   4. Input Monitoring  — optional permission (improves hotkey reliability)
 """
+
 from __future__ import annotations
 
 import os
@@ -15,31 +16,31 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
-_SETUP_FLAG = os.path.expanduser(
-    "~/Library/Application Support/RotaAI/.macos_setup_done"
-)
+_SETUP_FLAG = os.path.expanduser("~/Library/Application Support/RotaAI/.macos_setup_done")
 
 
 @dataclass
 class CheckResult:
-    key: str           # unique identifier used by the wizard
-    label: str         # display name
-    detail: str        # current status description shown to user
-    ok: bool           # True = no action needed
-    critical: bool     # False = optional, user can skip
+    key: str  # unique identifier used by the wizard
+    label: str  # display name
+    detail: str  # current status description shown to user
+    ok: bool  # True = no action needed
+    critical: bool  # False = optional, user can skip
     can_install: bool  # True = we can auto-fix this via subprocess
-    needs_user: bool   # True = requires user to open System Settings
+    needs_user: bool  # True = requires user to open System Settings
 
 
 # ---------------------------------------------------------------------------
 # Checks
 # ---------------------------------------------------------------------------
 
+
 def check_portaudio() -> CheckResult:
     """Check if PortAudio is available (sounddevice loads it at import)."""
     ok = False
     try:
         import sounddevice  # noqa: F401
+
         ok = True
     except Exception:
         ok = False
@@ -71,6 +72,7 @@ def check_pyobjc() -> CheckResult:
     try:
         import AppKit  # noqa: F401
         import ApplicationServices  # noqa: F401
+
         ok = True
     except ImportError:
         ok = False
@@ -90,6 +92,7 @@ def check_accessibility() -> CheckResult:
     ok = False
     try:
         from ApplicationServices import AXIsProcessTrustedWithOptions
+
         ok = bool(AXIsProcessTrustedWithOptions(None))
     except Exception:
         ok = False
@@ -113,6 +116,7 @@ def check_input_monitoring() -> CheckResult:
             kCGHeadInsertEventTap,
             kCGSessionEventTap,
         )
+
         tap = CGEventTapCreate(
             kCGSessionEventTap,
             kCGHeadInsertEventTap,
@@ -148,6 +152,7 @@ def run_checks() -> list[CheckResult]:
 # ---------------------------------------------------------------------------
 # Installers (blocking — always run in a background thread)
 # ---------------------------------------------------------------------------
+
 
 def install_portaudio() -> tuple[bool, str]:
     """
@@ -215,25 +220,31 @@ def install_pyobjc() -> tuple[bool, str]:
 # Permission helpers
 # ---------------------------------------------------------------------------
 
+
 def open_accessibility_settings() -> None:
     """Open System Settings → Privacy & Security → Accessibility."""
-    subprocess.Popen([
-        "open",
-        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-    ])
+    subprocess.Popen(
+        [
+            "open",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        ]
+    )
 
 
 def open_input_monitoring_settings() -> None:
     """Open System Settings → Privacy & Security → Input Monitoring."""
-    subprocess.Popen([
-        "open",
-        "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
-    ])
+    subprocess.Popen(
+        [
+            "open",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Setup completion flag
 # ---------------------------------------------------------------------------
+
 
 def is_setup_done() -> bool:
     """Return True if the user has completed (or skipped) first-run setup."""
@@ -251,6 +262,7 @@ def mark_setup_done() -> None:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _find_brew() -> str | None:
     """Return path to the brew binary, or None if Homebrew is not installed."""
@@ -273,7 +285,8 @@ def _install_homebrew() -> tuple[bool, str]:
     try:
         result = subprocess.run(
             [
-                "/bin/bash", "-c",
+                "/bin/bash",
+                "-c",
                 "NONINTERACTIVE=1 /bin/bash -c "
                 '"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
             ],

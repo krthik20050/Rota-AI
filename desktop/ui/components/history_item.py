@@ -2,13 +2,22 @@
 History item card — timeline aesthetic.
 Time on LEFT, content on RIGHT, vertical three-dot menu for actions.
 """
-from PyQt6.QtCore import QTimer, QPropertyAnimation, QEasingCurve, pyqtSignal, Qt
-from PyQt6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QMenu, QDialog,
-    QTextEdit, QGraphicsOpacityEffect,
-)
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
+
 import pyperclip
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFrame,
+    QGraphicsOpacityEffect,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 
 class _TranscriptDialog(QDialog):
@@ -55,26 +64,35 @@ class _TranscriptDialog(QDialog):
 class HistoryItemWidget(QFrame):
     """Timeline-style card — HH:MM on left, transcription on right."""
 
-    copy_requested       = pyqtSignal(str)
-    copy_raw_requested   = pyqtSignal(str)
-    delete_requested     = pyqtSignal(int)
-    retry_requested      = pyqtSignal(int)
+    copy_requested = pyqtSignal(str)
+    copy_raw_requested = pyqtSignal(str)
+    delete_requested = pyqtSignal(int)
+    retry_requested = pyqtSignal(int)
     transcript_requested = pyqtSignal(int)
-    undo_requested       = pyqtSignal(int)
+    undo_requested = pyqtSignal(int)
     extract_audio_requested = pyqtSignal(int)
 
-    def __init__(self, entry_id, timestamp, raw_text, cleaned_text, is_prompt,
-                 parent=None, *, is_latest=False):
+    def __init__(
+        self,
+        entry_id,
+        timestamp,
+        raw_text,
+        cleaned_text,
+        is_prompt,
+        parent=None,
+        *,
+        is_latest=False,
+    ):
         super().__init__(parent)
-        self.entry_id           = entry_id
-        self.raw_text_value     = raw_text or ""
+        self.entry_id = entry_id
+        self.raw_text_value = raw_text or ""
         self.cleaned_text_value = cleaned_text or ""
-        self._raw_visible       = False
+        self._raw_visible = False
         self.setObjectName("HistoryItem")
 
         accent_border = "rgba(134, 239, 172, 0.22)" if is_latest else "rgba(255, 255, 255, 0.04)"
-        hover_border  = "rgba(134, 239, 172, 0.4)" if is_latest else "rgba(255, 255, 255, 0.08)"
-        hover_bg      = "#1E2420" if is_latest else "#1C1C1E"
+        hover_border = "rgba(134, 239, 172, 0.4)" if is_latest else "rgba(255, 255, 255, 0.08)"
+        hover_bg = "#1E2420" if is_latest else "#1C1C1E"
 
         self.setStyleSheet(f"""
             QFrame#HistoryItem {{
@@ -233,7 +251,7 @@ class HistoryItemWidget(QFrame):
         text = str(timestamp)
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
             try:
-                dt_utc = datetime.strptime(text.split(".")[0], fmt).replace(tzinfo=timezone.utc)
+                dt_utc = datetime.strptime(text.split(".")[0], fmt).replace(tzinfo=UTC)
                 dt_local = dt_utc.astimezone()
                 return dt_local.strftime("%I:%M"), dt_local.strftime("%p")
             except ValueError:
@@ -266,19 +284,17 @@ class HistoryItemWidget(QFrame):
             }
         """)
 
-        act_copy      = menu.addAction("Copy")
-        act_copy_raw  = menu.addAction("Copy Raw")
+        act_copy = menu.addAction("Copy")
+        act_copy_raw = menu.addAction("Copy Raw")
         menu.addSeparator()
-        act_transcript  = menu.addAction("Transcript")
-        act_retry       = menu.addAction("Retry")
-        act_undo        = menu.addAction("Undo Edit")
-        act_extract     = menu.addAction("Extract Audio")
+        act_transcript = menu.addAction("Transcript")
+        act_retry = menu.addAction("Retry")
+        act_undo = menu.addAction("Undo Edit")
+        act_extract = menu.addAction("Extract Audio")
         menu.addSeparator()
         act_delete = menu.addAction("Delete")
 
-        chosen = menu.exec(self.menu_btn.mapToGlobal(
-            self.menu_btn.rect().bottomLeft()
-        ))
+        chosen = menu.exec(self.menu_btn.mapToGlobal(self.menu_btn.rect().bottomLeft()))
 
         if chosen == act_copy:
             self._emit_copy()

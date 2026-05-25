@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, date
-from typing import Any, Dict, List
+from datetime import date, datetime
 
-from services.session_store import SessionStore
+from services._insights_analytics import InsightsAnalyticsMixin
 from services._insights_models import (
+    ACHIEVEMENTS,
+    PERSONAS,
+    Achievement,
+    DailyChallenge,
     Persona,
     PhraseInsight,
     YearInReview,
-    Achievement,
-    DailyChallenge,
-    PERSONAS,
-    ACHIEVEMENTS,
 )
-from services._insights_analytics import InsightsAnalyticsMixin
+from services.session_store import SessionStore
 
 # Re-export public dataclasses so existing imports keep working
 __all__ = [
@@ -55,7 +54,7 @@ class EnhancedInsightsService(InsightsAnalyticsMixin):
             description=matched_persona["description"],
         )
 
-    def get_phrase_rankings(self, limit: int = 10) -> List[PhraseInsight]:
+    def get_phrase_rankings(self, limit: int = 10) -> list[PhraseInsight]:
         phrases = self.session_store.get_total_phrases()
         sorted_phrases = sorted(phrases.items(), key=lambda x: x[1], reverse=True)[:limit]
         return [
@@ -63,7 +62,7 @@ class EnhancedInsightsService(InsightsAnalyticsMixin):
             for i, (phrase, count) in enumerate(sorted_phrases)
         ]
 
-    def get_app_usage(self) -> Dict[str, int]:
+    def get_app_usage(self) -> dict[str, int]:
         return self.session_store.get_app_usage()
 
     def calculate_percentile(self, clarity_score: int) -> int:
@@ -89,7 +88,8 @@ class EnhancedInsightsService(InsightsAnalyticsMixin):
         avg_wpm = int(total_words / (total_time / 60)) if total_time > 0 else 0
         avg_clarity = (
             int(sum(h.get("clarity_score", 0) for h in history) / total_sessions)
-            if total_sessions > 0 else 0
+            if total_sessions > 0
+            else 0
         )
 
         streak = self.session_store.get_streak()
@@ -120,14 +120,12 @@ class EnhancedInsightsService(InsightsAnalyticsMixin):
     # Achievements & daily challenge
     # ------------------------------------------------------------------
 
-    def get_achievements(self) -> List[Achievement]:
+    def get_achievements(self) -> list[Achievement]:
         history = self.session_store.get_history(limit=1000)
         streak = self.session_store.get_streak()
 
         total_sessions = len(history)
-        sessions_with_zero_filler = sum(
-            1 for h in history if h.get("filler_ratio", 1) == 0
-        )
+        sessions_with_zero_filler = sum(1 for h in history if h.get("filler_ratio", 1) == 0)
 
         achievements = []
         for ach in ACHIEVEMENTS:
@@ -144,14 +142,16 @@ class EnhancedInsightsService(InsightsAnalyticsMixin):
             elif ach["id"] == "power_user":
                 unlocked = total_sessions >= 100
 
-            achievements.append(Achievement(
-                id=ach["id"],
-                name=ach["name"],
-                description=ach["description"],
-                icon=ach["icon"],
-                unlocked=unlocked,
-                unlocked_at=datetime.now().isoformat() if unlocked else None,
-            ))
+            achievements.append(
+                Achievement(
+                    id=ach["id"],
+                    name=ach["name"],
+                    description=ach["description"],
+                    icon=ach["icon"],
+                    unlocked=unlocked,
+                    unlocked_at=datetime.now().isoformat() if unlocked else None,
+                )
+            )
 
         return achievements
 
@@ -177,7 +177,7 @@ class EnhancedInsightsService(InsightsAnalyticsMixin):
     # Dashboard aggregation
     # ------------------------------------------------------------------
 
-    def get_dashboard_insights(self) -> Dict:
+    def get_dashboard_insights(self) -> dict:
         persona = self.get_persona()
         streak = self.session_store.get_streak()
         history = self.session_store.get_history(limit=1)

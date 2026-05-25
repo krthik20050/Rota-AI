@@ -6,12 +6,14 @@ Calls on_update_found(latest_version, release_url) on the calling thread
 if a newer version is available. The caller is responsible for scheduling
 any UI work onto the Qt main thread (e.g. via QTimer.singleShot).
 """
+
 from __future__ import annotations
 
 import json
 import threading
-import urllib.request
 import urllib.error
+import urllib.request
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -40,6 +42,7 @@ def check_for_update(current_version: str, on_update_found) -> None:
                          called from the background thread when an update exists.
                          Callers must marshal to the Qt thread themselves.
     """
+
     def _check() -> None:
         try:
             req = urllib.request.Request(

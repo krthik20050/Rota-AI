@@ -11,13 +11,14 @@ Requires:
 
 Interface matches the Windows HotkeyHandler so it can be swapped in directly.
 """
+
 from __future__ import annotations
 
 import glob
 import os
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
 
 import structlog
 
@@ -25,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 try:
     import evdev
-    from evdev import ecodes, InputDevice, list_devices
+    from evdev import InputDevice, ecodes
 except ImportError:
     evdev = None  # type: ignore[assignment]
 
@@ -39,24 +40,46 @@ except ImportError:
 # pynput key → canonical name mapping
 # ---------------------------------------------------------------------------
 
+
 def _build_pynput_key_map() -> dict:
     """Build {pynput.Key.xxx: canonical_name} mapping."""
     if _pynput_available is None:
         return {}
     from pynput.keyboard import Key
+
     m: dict = {
-        Key.ctrl: "ctrl", Key.ctrl_l: "ctrl", Key.ctrl_r: "ctrl",
-        Key.shift: "shift", Key.shift_l: "shift", Key.shift_r: "shift",
-        Key.alt: "alt", Key.alt_l: "alt", Key.alt_r: "alt",
-        Key.alt_gr: "alt", Key.cmd: "meta", Key.cmd_l: "meta", Key.cmd_r: "meta",
-        Key.tab: "tab", Key.space: "space", Key.enter: "enter",
-        Key.backspace: "backspace", Key.esc: "esc",
-        Key.delete: "delete", Key.insert: "insert",
-        Key.home: "home", Key.end: "end",
-        Key.page_up: "pageup", Key.page_down: "pagedown",
-        Key.up: "up", Key.down: "down", Key.left: "left", Key.right: "right",
-        Key.caps_lock: "capslock", Key.num_lock: "numlock",
-        Key.scroll_lock: "scrolllock", Key.pause: "pause",
+        Key.ctrl: "ctrl",
+        Key.ctrl_l: "ctrl",
+        Key.ctrl_r: "ctrl",
+        Key.shift: "shift",
+        Key.shift_l: "shift",
+        Key.shift_r: "shift",
+        Key.alt: "alt",
+        Key.alt_l: "alt",
+        Key.alt_r: "alt",
+        Key.alt_gr: "alt",
+        Key.cmd: "meta",
+        Key.cmd_l: "meta",
+        Key.cmd_r: "meta",
+        Key.tab: "tab",
+        Key.space: "space",
+        Key.enter: "enter",
+        Key.backspace: "backspace",
+        Key.esc: "esc",
+        Key.delete: "delete",
+        Key.insert: "insert",
+        Key.home: "home",
+        Key.end: "end",
+        Key.page_up: "pageup",
+        Key.page_down: "pagedown",
+        Key.up: "up",
+        Key.down: "down",
+        Key.left: "left",
+        Key.right: "right",
+        Key.caps_lock: "capslock",
+        Key.num_lock: "numlock",
+        Key.scroll_lock: "scrolllock",
+        Key.pause: "pause",
         Key.print_screen: "sysrq",
     }
     for i in range(1, 25):
@@ -80,9 +103,11 @@ def _pynput_key_name(key) -> str | None:
     # Regular character key
     if _pynput_available is not None:
         from pynput.keyboard import KeyCode
+
         if isinstance(key, KeyCode) and key.char:
             return key.char.lower()
     return None
+
 
 # ---------------------------------------------------------------------------
 # evdev key-code → canonical name mapping
@@ -90,15 +115,20 @@ def _pynput_key_name(key) -> str | None:
 # ecodes table.
 # ---------------------------------------------------------------------------
 
+
 def _build_key_lookup() -> dict[int, str]:
     """Build {evdev_key_code: lowercase_name} for keys referenced in hotkeys."""
     lookup: dict[int, str] = {}
     # Modifier keys (left and right)
     for prefix, base in [
-        ("KEY_LEFTCTRL", "ctrl"), ("KEY_RIGHTCTRL", "ctrl"),
-        ("KEY_LEFTSHIFT", "shift"), ("KEY_RIGHTSHIFT", "shift"),
-        ("KEY_LEFTALT", "alt"), ("KEY_RIGHTALT", "alt"),
-        ("KEY_LEFTMETA", "meta"), ("KEY_RIGHTMETA", "meta"),
+        ("KEY_LEFTCTRL", "ctrl"),
+        ("KEY_RIGHTCTRL", "ctrl"),
+        ("KEY_LEFTSHIFT", "shift"),
+        ("KEY_RIGHTSHIFT", "shift"),
+        ("KEY_LEFTALT", "alt"),
+        ("KEY_RIGHTALT", "alt"),
+        ("KEY_LEFTMETA", "meta"),
+        ("KEY_RIGHTMETA", "meta"),
     ]:
         code = getattr(ecodes, prefix, None)
         if code is not None:
@@ -110,11 +140,27 @@ def _build_key_lookup() -> dict[int, str]:
             lookup[code] = f"f{i}"
     # Common named keys
     for name in (
-        "KEY_SPACE", "KEY_TAB", "KEY_ENTER", "KEY_BACKSPACE", "KEY_ESC",
-        "KEY_DELETE", "KEY_INSERT", "KEY_HOME", "KEY_END", "KEY_PAGEUP",
-        "KEY_PAGEDOWN", "KEY_UP", "KEY_DOWN", "KEY_LEFT", "KEY_RIGHT",
-        "KEY_CAPSLOCK", "KEY_NUMLOCK", "KEY_SCROLLLOCK",
-        "KEY_SYSRQ", "KEY_PAUSE", "KEY_COMPOSE",
+        "KEY_SPACE",
+        "KEY_TAB",
+        "KEY_ENTER",
+        "KEY_BACKSPACE",
+        "KEY_ESC",
+        "KEY_DELETE",
+        "KEY_INSERT",
+        "KEY_HOME",
+        "KEY_END",
+        "KEY_PAGEUP",
+        "KEY_PAGEDOWN",
+        "KEY_UP",
+        "KEY_DOWN",
+        "KEY_LEFT",
+        "KEY_RIGHT",
+        "KEY_CAPSLOCK",
+        "KEY_NUMLOCK",
+        "KEY_SCROLLLOCK",
+        "KEY_SYSRQ",
+        "KEY_PAUSE",
+        "KEY_COMPOSE",
     ):
         code = getattr(ecodes, name, None)
         if code is not None:
@@ -123,7 +169,7 @@ def _build_key_lookup() -> dict[int, str]:
     for i in range(26):
         code = getattr(ecodes, f"KEY_{chr(ord('A') + i)}", None)
         if code is not None:
-            lookup[code] = chr(ord('a') + i)
+            lookup[code] = chr(ord("a") + i)
     # Digits 0-9
     for i in range(10):
         code = getattr(ecodes, f"KEY_{i}", None)
@@ -150,6 +196,7 @@ def _get_key_lookup() -> dict[int, str]:
 # ---------------------------------------------------------------------------
 # Hotkey string parser  (same convention as the Windows backend)
 # ---------------------------------------------------------------------------
+
 
 def _parse_hotkey_str(hotkey: str) -> tuple[frozenset[str], str]:
     """Parse 'ctrl+shift+r' → (frozenset({'ctrl','shift'}), 'r')."""
@@ -206,22 +253,23 @@ def _capture_hotkey_pynput(timeout: float = 8.0) -> str | None:
 
 def capture_hotkey(timeout: float = 8.0) -> str | None:
     """Record the next key combination the user presses (Linux/evdev version).
-    
+
     Temporarily grabs all keyboard devices, waits for a key press, and returns
     the canonical hotkey string (e.g. 'ctrl+shift+k', 'tab', 'f9').
-    
+
     Pressing Escape cancels and returns None.
-    
+
     Args:
         timeout: Seconds to wait before giving up.
-        
+
     Returns:
         Hotkey string like 'ctrl+k', 'tab', 'f9', or None if cancelled/timeout.
     """
     try:
-        from evdev import ecodes, InputDevice, list_devices, categorize
         import glob
         import select
+
+        from evdev import InputDevice, ecodes
     except ImportError:
         logger.warning("capture_hotkey: evdev not available, trying pynput")
         if os.environ.get("DISPLAY") and _pynput_available is not None:
@@ -259,10 +307,14 @@ def capture_hotkey(timeout: float = 8.0) -> str | None:
 
     # Known modifier key codes
     mod_codes = {
-        ecodes.KEY_LEFTCTRL: "ctrl", ecodes.KEY_RIGHTCTRL: "ctrl",
-        ecodes.KEY_LEFTSHIFT: "shift", ecodes.KEY_RIGHTSHIFT: "shift",
-        ecodes.KEY_LEFTALT: "alt", ecodes.KEY_RIGHTALT: "alt",
-        ecodes.KEY_LEFTMETA: "meta", ecodes.KEY_RIGHTMETA: "meta",
+        ecodes.KEY_LEFTCTRL: "ctrl",
+        ecodes.KEY_RIGHTCTRL: "ctrl",
+        ecodes.KEY_LEFTSHIFT: "shift",
+        ecodes.KEY_RIGHTSHIFT: "shift",
+        ecodes.KEY_LEFTALT: "alt",
+        ecodes.KEY_RIGHTALT: "alt",
+        ecodes.KEY_LEFTMETA: "meta",
+        ecodes.KEY_RIGHTMETA: "meta",
     }
 
     held_mods: set = set()
@@ -321,6 +373,7 @@ def capture_hotkey(timeout: float = 8.0) -> str | None:
 # Keyboard device discovery
 # ---------------------------------------------------------------------------
 
+
 def _discover_keyboard_devices() -> list[InputDevice]:
     """
     Return /dev/input/event* devices that look like keyboards.
@@ -332,7 +385,6 @@ def _discover_keyboard_devices() -> list[InputDevice]:
         return []
 
     keyboards: list[InputDevice] = []
-    key_lookup = _get_key_lookup()
     permission_denied_count = 0
 
     for path in sorted(glob.glob("/dev/input/event*")):
@@ -381,9 +433,11 @@ def _discover_keyboard_devices() -> list[InputDevice]:
     # yet — the 'input' group membership hasn't propagated to the session.
     if not keyboards and permission_denied_count > 0:
         import grp
+
         try:
             input_group = grp.getgrnam("input")
             import os
+
             in_group = os.getlogin() in input_group.gr_mem or input_group.gr_gid in os.getgroups()
         except Exception:
             in_group = False
@@ -413,6 +467,7 @@ def _discover_keyboard_devices() -> list[InputDevice]:
 # ---------------------------------------------------------------------------
 # HotkeyHandler
 # ---------------------------------------------------------------------------
+
 
 class HotkeyHandler:
     """
@@ -717,15 +772,9 @@ class HotkeyHandler:
 
     def is_healthy(self) -> bool:
         if self.backend == "pynput":
-            return (
-                self._pynput_listener is not None
-                and self._pynput_listener.is_alive()
-            )
+            return self._pynput_listener is not None and self._pynput_listener.is_alive()
         if self.backend == "evdev":
-            return (
-                self._listener_thread is not None
-                and self._listener_thread.is_alive()
-            )
+            return self._listener_thread is not None and self._listener_thread.is_alive()
         return False
 
     # ------------------------------------------------------------------
@@ -813,11 +862,7 @@ class HotkeyHandler:
                     # This keydown started recording; release should not stop it
                     self._started_this_press = False
                 elif self._is_recording:
-                    held = (
-                        (time.monotonic() - press_time)
-                        if press_time is not None
-                        else 0.0
-                    )
+                    held = (time.monotonic() - press_time) if press_time is not None else 0.0
                     if held >= self.HOLD_COMPAT_THRESHOLD:
                         logger.debug("hold_compat: ignoring release, recording stays on")
                     else:
@@ -925,7 +970,7 @@ class HotkeyHandler:
                                 self._on_key_event(event)
                             except Exception:
                                 logger.exception("hotkey_event_handler_failed")
-                    except (OSError, IOError) as exc:
+                    except OSError as exc:
                         logger.warning(
                             "hotkey_device_read_error",
                             path=getattr(dev, "path", "?"),
@@ -944,9 +989,7 @@ class HotkeyHandler:
             logger.exception("hotkey_listener_loop_crash")
             if self.error_callback:
                 try:
-                    self.error_callback(
-                        RuntimeError("Hotkey listener loop crashed")
-                    )
+                    self.error_callback(RuntimeError("Hotkey listener loop crashed"))
                 except Exception:
                     pass
         finally:
@@ -967,10 +1010,14 @@ class HotkeyHandler:
 _MODIFIER_CODES: set[int] = set()
 if evdev is not None:
     for name in (
-        "KEY_LEFTCTRL", "KEY_RIGHTCTRL",
-        "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
-        "KEY_LEFTALT", "KEY_RIGHTALT",
-        "KEY_LEFTMETA", "KEY_RIGHTMETA",
+        "KEY_LEFTCTRL",
+        "KEY_RIGHTCTRL",
+        "KEY_LEFTSHIFT",
+        "KEY_RIGHTSHIFT",
+        "KEY_LEFTALT",
+        "KEY_RIGHTALT",
+        "KEY_LEFTMETA",
+        "KEY_RIGHTMETA",
     ):
         code = getattr(ecodes, name, None)
         if code is not None:
@@ -982,6 +1029,7 @@ if evdev is not None:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+
     def on_start() -> None:
         print("Recording...  [press hotkey again to stop]")
 

@@ -12,11 +12,11 @@ description: "I tested 5 free voice dictation tools on Windows so you don't have
 
 I tested every free voice dictation tool I could find while procrastinating on an OS assignment. Here's the ranking:
 
-1. **Rota AI** — AI cleanup that actually works. The only tool that makes your transcription sound like a human wrote it.
-2. **Windows Built-in Dictation** — Already on your machine. Zero setup. Decent accuracy but no cleanup.
-3. **Google Docs Voice Typing** — Works in the browser. Surprisingly good. Zero privacy.
-4. **Otter.ai (Free Tier)** — Good for meetings. Minutes cap hurts for solo writing.
-5. **Dictation.io** — Bare minimum. Gets words on screen. That's about it.
+1. **Rota AI** > AI cleanup that actually works. The only tool that makes your transcription sound like a human wrote it.
+2. **Windows Built-in Dictation** > Already on your machine. Zero setup. Decent accuracy but no cleanup.
+3. **Google Docs Voice Typing** > Works in the browser. Surprisingly good. Zero privacy.
+4. **Otter.ai (Free Tier)** > Good for meetings. Minutes cap hurts for solo writing.
+5. **Dictation.io** > Bare minimum. Gets words on screen. That's about it.
 
 The big takeaway: transcription is maybe 40% of the battle. The real challenge is cleanup. More on that below.
 
@@ -49,10 +49,10 @@ Quick note on my setup because it matters:
 
 I tested each tool by dictating the same 500-word passage about CPU scheduling. Same room. Same ambient noise (my fan was going, classic). Scored each one on four things:
 
-1. **Text placement** — Does it put text where I actually want it?
-2. **Actually free** — Not a 7-day trial that asks for my credit card
-3. **AI cleanup** — Does it fix the messy parts or just dump raw transcription?
-4. **Privacy** — Where does my audio go?
+1. **Text placement** > Does it put text where I actually want it?
+2. **Actually free** > Not a 7-day trial that asks for my credit card
+3. **AI cleanup** > Does it fix the messy parts or just dump raw transcription?
+4. **Privacy** > Where does my audio go?
 
 ---
 

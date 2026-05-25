@@ -1,13 +1,17 @@
-from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QPainter, QColor, QPen, QFont
+from PyQt6.QtCore import QRectF, Qt
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
+
 
 class CircularProgress(QWidget):
     """
     An elegant, color-graded Circular Progress widget using QPainter.
     Ideal for displaying metric percentages like Clarity, Conciseness, etc.
     """
-    def __init__(self, title: str, percentage: float = 0.0, accent_color_hex: str = "#86EFAC", parent=None):
+
+    def __init__(
+        self, title: str, percentage: float = 0.0, accent_color_hex: str = "#86EFAC", parent=None
+    ):
         super().__init__(parent)
         self.title = title
         self.percentage = percentage
@@ -26,7 +30,7 @@ class CircularProgress(QWidget):
         width = self.width()
         height = self.height()
         size = min(width, height)
-        
+
         # Calculations for circular track
         margin = 12
         radius = size - 2 * margin
@@ -47,7 +51,7 @@ class CircularProgress(QWidget):
         fg_pen.setWidth(8)
         fg_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(fg_pen)
-        
+
         start_angle = 90 * 16
         span_angle = -int((self.percentage / 100.0) * 360 * 16)
         painter.drawArc(rect, start_angle, span_angle)
@@ -58,9 +62,7 @@ class CircularProgress(QWidget):
         painter.setFont(font_pct)
         pct_text = f"{int(round(self.percentage))}%"
         painter.drawText(
-            QRectF(x, y + radius / 2 - 20, radius, 30),
-            Qt.AlignmentFlag.AlignCenter,
-            pct_text
+            QRectF(x, y + radius / 2 - 20, radius, 30), Qt.AlignmentFlag.AlignCenter, pct_text
         )
 
         # Center Text - Title underneath
@@ -70,5 +72,5 @@ class CircularProgress(QWidget):
         painter.drawText(
             QRectF(x - 10, y + radius / 2 + 10, radius + 20, 20),
             Qt.AlignmentFlag.AlignCenter,
-            self.title
+            self.title,
         )

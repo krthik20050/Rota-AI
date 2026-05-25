@@ -43,4 +43,3 @@ class InsightsService:
             conciseness_score=metrics.conciseness_score,
             words=metrics.total_words,
         )
-

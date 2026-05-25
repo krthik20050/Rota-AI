@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Terms — Rota AI",
+  title: "Terms - Rota AI",
   description: "MIT License terms for Rota AI.",
 };
 

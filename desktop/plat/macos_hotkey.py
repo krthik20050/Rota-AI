@@ -15,10 +15,11 @@ Reference: VoiceType macOS backend (Honeybee1023/VoiceType)
 
 from __future__ import annotations
 
-import structlog
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
+
+import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -34,29 +35,81 @@ except Exception:
 
 # USB HID keycode mapping (same as VoiceType's keycode_map)
 _KEYCODE_MAP: dict[str, int] = {
-    "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7,
-    "c": 8, "v": 9, "b": 11, "q": 12, "w": 13, "e": 14, "r": 15,
-    "y": 16, "t": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22,
-    "5": 23, "=": 24, "9": 25, "7": 26, "-": 27, "8": 28, "0": 29,
-    "]": 30, "o": 31, "u": 32, "[": 33, "i": 34, "p": 35, "l": 37,
-    "j": 38, "'": 39, "k": 40, ";": 41, "\\": 42, ",": 43, "/": 44,
-    "n": 45, "m": 46, ".": 47, "`": 50,
+    "a": 0,
+    "s": 1,
+    "d": 2,
+    "f": 3,
+    "h": 4,
+    "g": 5,
+    "z": 6,
+    "x": 7,
+    "c": 8,
+    "v": 9,
+    "b": 11,
+    "q": 12,
+    "w": 13,
+    "e": 14,
+    "r": 15,
+    "y": 16,
+    "t": 17,
+    "1": 18,
+    "2": 19,
+    "3": 20,
+    "4": 21,
+    "6": 22,
+    "5": 23,
+    "=": 24,
+    "9": 25,
+    "7": 26,
+    "-": 27,
+    "8": 28,
+    "0": 29,
+    "]": 30,
+    "o": 31,
+    "u": 32,
+    "[": 33,
+    "i": 34,
+    "p": 35,
+    "l": 37,
+    "j": 38,
+    "'": 39,
+    "k": 40,
+    ";": 41,
+    "\\": 42,
+    ",": 43,
+    "/": 44,
+    "n": 45,
+    "m": 46,
+    ".": 47,
+    "`": 50,
     # Additional keys
-    "tab": 48, "space": 49, "enter": 36, "return": 36,
-    "backspace": 51, "delete": 51, "esc": 53, "escape": 53,
-    "up": 126, "down": 125, "left": 123, "right": 124,
-    "home": 115, "end": 119, "pageup": 116, "pagedown": 121,
+    "tab": 48,
+    "space": 49,
+    "enter": 36,
+    "return": 36,
+    "backspace": 51,
+    "delete": 51,
+    "esc": 53,
+    "escape": 53,
+    "up": 126,
+    "down": 125,
+    "left": 123,
+    "right": 124,
+    "home": 115,
+    "end": 119,
+    "pageup": 116,
+    "pagedown": 121,
 }
 # F1-F12 (correct Quartz virtual keycodes)
-_KEYCODE_MAP["f1"] = 0x7A   # 122
-_KEYCODE_MAP["f2"] = 0x78   # 120
-_KEYCODE_MAP["f3"] = 0x63   # 99
-_KEYCODE_MAP["f4"] = 0x76   # 118
-_KEYCODE_MAP["f5"] = 0x60   # 96
-_KEYCODE_MAP["f6"] = 0x61   # 97
-_KEYCODE_MAP["f7"] = 0x62   # 98
-_KEYCODE_MAP["f8"] = 0x64   # 100
-_KEYCODE_MAP["f9"] = 0x65   # 101
+_KEYCODE_MAP["f1"] = 0x7A  # 122
+_KEYCODE_MAP["f2"] = 0x78  # 120
+_KEYCODE_MAP["f3"] = 0x63  # 99
+_KEYCODE_MAP["f4"] = 0x76  # 118
+_KEYCODE_MAP["f5"] = 0x60  # 96
+_KEYCODE_MAP["f6"] = 0x61  # 97
+_KEYCODE_MAP["f7"] = 0x62  # 98
+_KEYCODE_MAP["f8"] = 0x64  # 100
+_KEYCODE_MAP["f9"] = 0x65  # 101
 _KEYCODE_MAP["f10"] = 0x6D  # 109
 _KEYCODE_MAP["f11"] = 0x67  # 103
 _KEYCODE_MAP["f12"] = 0x6F  # 111
@@ -187,6 +240,7 @@ def _quartz_hotkey_loop(
 # capture_hotkey — record the next key combination the user presses
 # ---------------------------------------------------------------------------
 
+
 def capture_hotkey(timeout: float = 8.0) -> str | None:
     """
     Record the next key combination the user presses.
@@ -286,9 +340,7 @@ def capture_hotkey(timeout: float = 8.0) -> str | None:
             held_mods.discard(name)
 
     try:
-        listener = pynput_keyboard.Listener(
-            on_press=on_press, on_release=on_release
-        )
+        listener = pynput_keyboard.Listener(on_press=on_press, on_release=on_release)
         listener.daemon = True
         listener.start()
         done.wait(timeout=timeout)
@@ -302,6 +354,7 @@ def capture_hotkey(timeout: float = 8.0) -> str | None:
 # ---------------------------------------------------------------------------
 # HotkeyHandler — drop-in compatible with Windows/Linux HotkeyHandler
 # ---------------------------------------------------------------------------
+
 
 class HotkeyHandler:
     """
@@ -381,12 +434,11 @@ class HotkeyHandler:
     def _matches_pynput_key(self, key) -> bool:
         """True if key is the trigger key AND all required modifiers are held."""
         mods, main = self._hotkey_mods, self._hotkey_main
-        mod_map = self._get_pynput_mod_map()
 
         matched_main = False
         named = getattr(pynput_keyboard.Key, main, None)
         if named is not None:
-            matched_main = (key == named)
+            matched_main = key == named
         else:
             matched_main = (getattr(key, "char", None) or "").lower() == main
 
@@ -471,7 +523,7 @@ class HotkeyHandler:
                     continue
                 named = getattr(pynput_keyboard.Key, main, None)
                 if named is not None:
-                    matched = (key == named)
+                    matched = key == named
                 else:
                     matched = (getattr(key, "char", None) or "").lower() == main
                 if matched:
@@ -523,7 +575,13 @@ class HotkeyHandler:
                 self._listener_stop.clear()
                 self._listener_thread = threading.Thread(
                     target=_quartz_hotkey_loop,
-                    args=(self.hotkey, lambda: self._handle_press() if not self.is_recording else self._handle_release(), self._listener_stop),
+                    args=(
+                        self.hotkey,
+                        lambda: self._handle_press()
+                        if not self.is_recording
+                        else self._handle_release(),
+                        self._listener_stop,
+                    ),
                     daemon=True,
                 )
                 self._listener_thread.start()
