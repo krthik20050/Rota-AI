@@ -36,7 +36,7 @@ export default async function BlogPostPage({ params }: Props) {
         }}
       >
         <Link href="/" className="flex items-center">
-          <img src="/logo.png" alt="Rota AI" className="h-8 w-auto" />
+          <img src="/logo.svg" alt="Rota AI" className="h-8 w-auto" />
         </Link>
         <Link
           href="/blog"

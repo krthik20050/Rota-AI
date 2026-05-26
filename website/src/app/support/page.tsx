@@ -21,7 +21,7 @@ export default function SupportPage() {
     <div className="min-h-screen bg-[#09090b]">
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-10 h-14" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(9,9,11,0.92)", backdropFilter: "blur(16px)" }}>
         <Link href="/" className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="Rota AI" className="h-8 w-auto" />
+          <img src="/logo.svg" alt="Rota AI" className="h-8 w-auto" />
         </Link>
         <div className="flex items-center gap-6 text-xs uppercase tracking-[0.15em] text-[#71717a]">
           <Link href="/#how-it-works" className="hover:text-[#fafafa] transition-colors hidden sm:block">How it works</Link>

@@ -8,7 +8,7 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-[#09090b]">
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-10 h-14" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(9,9,11,0.92)", backdropFilter: "blur(16px)" }}>
         <a href="/" className="flex items-center">
-          <img src="/logo.png" alt="Rota AI" className="h-8 w-auto" />
+          <img src="/logo.svg" alt="Rota AI" className="h-8 w-auto" />
         </a>
         <a href="/" className="text-xs uppercase tracking-[0.15em] text-[#71717a] hover:text-[#fafafa] transition-colors">← Home</a>
       </nav>

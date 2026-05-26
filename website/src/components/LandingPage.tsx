@@ -405,7 +405,7 @@ function FlowchartDemo() {
           className="flex items-center justify-center px-6 py-3 rounded-sm"
           style={{ background: "rgba(9,9,11,1)", border: "1px solid rgba(228,242,34,0.28)", boxShadow: "0 0 28px rgba(228,242,34,0.1)" }}
         >
-          <img src="/logo.png" className="h-9 w-auto" alt="Rota AI" />
+          <img src="/logo.svg" className="h-9 w-auto" alt="Rota AI" />
         </motion.div>
       </div>
 
@@ -926,7 +926,7 @@ function CircularAppGrid() {
           className="absolute"
           style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
         >
-          <img src="/logo.png" alt="Rota AI" style={{ height: 34, width: "auto", opacity: 0.85 }} />
+          <img src="/logo.svg" alt="Rota AI" style={{ height: 34, width: "auto", opacity: 0.85 }} />
         </div>
 
         {/* App icons on rings */}
@@ -1015,7 +1015,7 @@ function Nav({ onDownloadClick }: { onDownloadClick: () => void }) {
       }}
     >
       <Link href="/" className="flex items-center">
-        <img src="/logo.png" alt="Rota AI" className="h-14 sm:h-16 w-auto" />
+        <img src="/logo.svg" alt="Rota AI" className="h-14 sm:h-16 w-auto" />
       </Link>
       <div className="hidden sm:flex items-center gap-8 text-xs tracking-[0.18em] uppercase text-[#71717a]">
         <a href="#features" className="hover:text-[#fafafa] transition-colors">Features</a>
@@ -1235,7 +1235,7 @@ export function LandingPage() {
 
             {/* Big logo as section hero */}
             <FadeIn className="flex justify-center mb-4">
-              <img src="/logo.png" alt="Rota AI" className="h-28 sm:h-40 w-auto" />
+              <img src="/logo.svg" alt="Rota AI" className="h-28 sm:h-40 w-auto" />
             </FadeIn>
             <FadeIn className="mb-16">
               <p className="text-center text-sm text-[#71717a] max-w-lg mx-auto leading-relaxed">
@@ -1387,7 +1387,7 @@ export function LandingPage() {
         <footer className="py-20 px-6 border-t border-white/5">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
             <div className="flex items-center">
-              <img src="/logo.png" alt="Rota AI" className="h-16 sm:h-20 w-auto" />
+              <img src="/logo.svg" alt="Rota AI" className="h-16 sm:h-20 w-auto" />
             </div>
             <div className="flex gap-12 text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-600">
               <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Github</a>
