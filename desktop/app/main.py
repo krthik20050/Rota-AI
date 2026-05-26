@@ -1,3 +1,4 @@
+import argparse
 import faulthandler
 import os
 import sys
@@ -57,7 +58,7 @@ def _show_crash_dialog(title: str, exc_type, exc_value, tb_str: str) -> None:
         msg.setInformativeText(
             "Rota encountered an unexpected error.\n\n"
             "Please copy the details below and report this at:\n"
-            "github.com/ruvnet/rota-ai/issues"
+            "github.com/krthik20050/Rota-AI/issues"
         )
         msg.setDetailedText(tb_str)
         msg.exec()
@@ -109,6 +110,28 @@ threading.excepthook = _thread_excepthook
 
 def run() -> None:
     configure_logging()
+
+    # ── CLI argument parsing ──────────────────────────────────────────────
+    parser = argparse.ArgumentParser(prog="rota", description="Rota AI — voice dictation")
+    parser.add_argument(
+        "--hotkey-backend",
+        choices=["auto", "pynput", "portal", "evdev"],
+        default="auto",
+        help=(
+            "Force a specific hotkey backend (Linux only). "
+            "'auto' picks the best available: pynput for X11, portal for Wayland, evdev as fallback. "
+            "Use this to override auto-detection, e.g. if your compositor doesn't support the portal."
+        ),
+    )
+    args = parser.parse_args()
+    if args.hotkey_backend != "auto":
+        os.environ["ROTA_HOTKEY_BACKEND"] = args.hotkey_backend
+        logger.info(
+            "hotkey_backend_override",
+            backend=args.hotkey_backend,
+        )
+    # ── end CLI parsing ───────────────────────────────────────────────────
+
     sock = try_acquire_instance_listener()
     if sock is None:
         # Grant the running instance permission to steal focus.

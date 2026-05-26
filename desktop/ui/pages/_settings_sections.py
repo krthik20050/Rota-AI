@@ -11,11 +11,13 @@ from PyQt6.QtGui import QFontDatabase
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
     QSpinBox,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -296,6 +298,98 @@ def build_text_formatting_section(dlg, parent):
     )
 
     dlg._add_form_section(parent, ai_writing_form)
+
+
+def build_audio_section(dlg, parent):
+    """Audio section: noise suppression toggle, audio quality settings."""
+    dlg._add_section(parent, "Audio", "Configure audio processing and noise handling")
+
+    audio_form = QFormLayout()
+    audio_form.setSpacing(16)
+    audio_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+    audio_form.setFormAlignment(Qt.AlignmentFlag.AlignTop)
+
+    dlg.denoise_check = QCheckBox("Enable noise suppression")
+    audio_form.addRow(
+        dlg._field_label(
+            "Noise Reduction",
+            "Filters background noise before transcription. Helps in noisy environments but may slightly reduce accuracy.",
+        ),
+        dlg.denoise_check,
+    )
+
+    dlg._add_form_section(parent, audio_form)
+
+
+def build_per_app_section(dlg, parent):
+    """Per-App settings section: override writing mode by application."""
+    dlg._add_section(parent, "Per-App Overrides", "Customize settings for specific applications")
+
+    per_app_form = QFormLayout()
+    per_app_form.setSpacing(16)
+    per_app_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+    per_app_form.setFormAlignment(Qt.AlignmentFlag.AlignTop)
+
+    dlg.per_app_list = QFrame()
+    dlg.per_app_list.setObjectName("PerAppList")
+    dlg.per_app_list.setStyleSheet(
+        "QFrame#PerAppList { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; }"
+    )
+    dlg.per_app_layout = QVBoxLayout(dlg.per_app_list)
+    dlg.per_app_layout.setContentsMargins(12, 12, 12, 12)
+    dlg.per_app_layout.setSpacing(8)
+    per_app_form.addRow(
+        dlg._field_label(
+            "App Overrides",
+            "Override writing mode and AI provider for specific apps. "
+            "Say 'scratch that' in a terminal and it will use raw mode automatically.",
+        ),
+        dlg.per_app_list,
+    )
+
+    add_app_btn = QPushButton("+ Add Current Application")
+    add_app_btn.setObjectName("PerAppAddBtn")
+    add_app_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    add_app_btn.clicked.connect(lambda: _add_current_app_per_app(dlg))
+    per_app_form.addRow("", add_app_btn)
+
+    dlg._add_form_section(parent, per_app_form)
+
+
+def _add_current_app_per_app(dlg):
+    """Detect the currently focused app and add it to per-app config."""
+    try:
+        app_name = _detect_active_app()
+        if not app_name:
+            return
+        _add_per_app_row(dlg, app_name, "clean", "auto")
+        dlg._rebuild_per_app_list()
+    except Exception:
+        pass
+
+
+def _detect_active_app() -> str:
+    """Detect the currently active/focused application name using existing injection/app_detector."""
+    try:
+        from injection.app_detector import get_active_app
+
+        ctx = get_active_app()
+        if ctx and ctx.process_name:
+            return ctx.process_name.lower().replace(".exe", "")
+    except Exception:
+        pass
+    return ""
+
+
+def _add_per_app_row(dlg, app_name: str, writing_mode: str, ai_provider: str):
+    """Add a per-app override entry to the config."""
+    per_app = dlg.config.get("per_app_config", {}).copy()
+    per_app[app_name] = {
+        "writing_mode": writing_mode,
+        "ai_provider": ai_provider,
+    }
+    dlg.config.set("per_app_config", per_app)
+    dlg._rebuild_per_app_list()
 
 
 def build_appearance_section(dlg, parent):
