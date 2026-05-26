@@ -5,7 +5,7 @@ import time
 # SECURITY: Maximum lengths to prevent abuse
 _MAX_TRANSCRIPT_LENGTH = 10000  # chars — reject longer inputs to LLM
 _MAX_PERSONAL_TERMS = 50  # cap personal dictionary terms sent to LLM
-_MAX_SYSTEM_PROMPT_LENGTH = 8000  # chars — prevent prompt overflow
+_MAX_SYSTEM_PROMPT_LENGTH = 12000  # chars — prevent prompt overflow
 
 # SECURITY: Patterns that indicate prompt injection attempts
 _INJECTION_PATTERNS = [
