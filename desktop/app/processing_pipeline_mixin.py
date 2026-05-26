@@ -340,8 +340,19 @@ class ProcessingPipelineMixin:
             _refresh_debug = self._refresh_debug_window
 
             def _run_analytics():
+                # Always-available insight values (populated only when analytics succeed)
+                _insight_summary = ""
+                _insight_suggestion = ""
+                _insight_clarity = 0
+                _insight_conciseness = 0
+                _analytics_ok = False
+
                 try:
                     _history.add_entry(raw, cleaned, is_prompt)
+                except Exception:
+                    logger.warning("history_add_entry_failed", exc_info=True)
+
+                try:
                     text_metrics = calculate_text_metrics(raw)
 
                     # Avoid full metrics calculation for cleaned — only need word count
@@ -395,26 +406,33 @@ class ProcessingPipelineMixin:
                         )
                     )
 
-                    # Schedule UI updates back on the main thread
-                    def _ui_updates():
-                        try:
-                            _update_metrics()
-                            _main_window.update_insight(
-                                insight.summary,
-                                insight.suggestion,
-                                insight.clarity_score,
-                                insight.conciseness_score,
-                            )
-                            _main_window.refresh_history(highlight_latest=True)
-                            if hasattr(_main_window, "_dict_refresh"):
-                                _main_window._dict_refresh()
-                            _refresh_debug()
-                        except Exception:
-                            pass
-
-                    QTimer.singleShot(0, _ui_updates)
+                    _insight_summary = insight.summary
+                    _insight_suggestion = insight.suggestion
+                    _insight_clarity = insight.clarity_score
+                    _insight_conciseness = insight.conciseness_score
+                    _analytics_ok = True
                 except Exception:
                     logger.warning("analytics_thread_failed", exc_info=True)
+
+                # Always schedule UI refresh — history must update even when analytics fails
+                def _ui_updates():
+                    try:
+                        _update_metrics()
+                        if _analytics_ok:
+                            _main_window.update_insight(
+                                _insight_summary,
+                                _insight_suggestion,
+                                _insight_clarity,
+                                _insight_conciseness,
+                            )
+                        _main_window.refresh_history(highlight_latest=True)
+                        if hasattr(_main_window, "_dict_refresh"):
+                            _main_window._dict_refresh()
+                        _refresh_debug()
+                    except Exception:
+                        pass
+
+                QTimer.singleShot(0, _ui_updates)
 
             threading.Thread(target=_run_analytics, daemon=True).start()
         except Exception as _exc:
@@ -528,9 +546,10 @@ class ProcessingPipelineMixin:
         self.main_window.set_error_details(err_msg)
         self._refresh_debug_window()
         self._maybe_notify_backend_fallback()
-        self.show_toast(
-            f"Processing failed: {err_msg[:60]} — see full details in the app",
-            warning=True,
+        # Show error report dialog with "Send Report" button
+        QTimer.singleShot(
+            600,
+            lambda: self._report_processing_error(err_msg, traceback_text),
         )
         self._sessions.pop(correlation_id, None)
         self._clear_processor_refs(correlation_id)

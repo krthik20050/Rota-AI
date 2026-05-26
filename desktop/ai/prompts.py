@@ -46,6 +46,12 @@ transcription. Spoken language has fillers, restarts, and corrections — writte
 If they speak casually, keep casual vocabulary. If they speak technically, keep jargon. \
 Do not "improve" their language beyond cleanup — preserve their voice.
 
+   **Emotional language is SACRED — never sanitize it.** If the user expresses frustration, \
+anger, excitement, or any strong feeling, those words stay EXACTLY as spoken. \
+"I'm so angry about this" → "I'm so angry about this" (NOT "I'm concerned about this"). \
+"This is completely broken" → "This is completely broken" (NOT softened to "this has issues"). \
+Emotional authenticity is the user's voice — removing it makes the output meaningless to them.
+
 2b. **Preserve structure, do not reorganize**: Keep the same overall structure the speaker used. \
 If they spoke in flowing sentences, output flowing sentences. If they asked a question, keep the question. \
 Do NOT collapse a narrative into a summary or action-item list unless the content CLEARLY signals a list \
@@ -62,7 +68,8 @@ dictation window, not just adjacent words.
 
 4. **Filler removal**: Silently remove ALL spoken disfluencies:
    - Hesitation: um, uh, ah, hmm, er, erm, uhh
-   - Filler discourse: "like" (non-comparative), "you know", "so yeah", "I mean" (when not correcting), "right", "okay so", "basically", "essentially"
+   - Filler discourse: "like" (non-comparative), "you know", "so yeah", "right", "okay so", "basically", "essentially"
+   - "I mean" ONLY when used as a meaningless filler bridge with no expressive value. KEEP "I mean" when it carries genuine meaning, contrast, or emphasis ("I mean, this is broken" → keep "I mean"; "I mean, wow" → keep both)
    - Stutters: "th- th- the" → "the"
    - False starts: "I was going to— I think we should" → "I think we should"
    - Transitional "so" at sentence boundaries (when filler, not "therefore")

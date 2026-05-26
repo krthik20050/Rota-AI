@@ -297,7 +297,12 @@ class SessionStore:
         return {row[0]: int(row[1]) for row in cur.fetchall()}
 
     def get_streak(self) -> dict:
-        """Returns daily_streak and weekly_streak (consecutive days/weeks with ≥1 session)."""
+        """Returns daily_streak and weekly_streak (consecutive days/weeks with ≥1 session).
+
+        Streak counts backward from today if there's a session today, or from yesterday
+        if the user hasn't recorded yet today — so the streak doesn't break at midnight
+        before the first session of the day.
+        """
         from datetime import date, timedelta
 
         cur = self._conn.execute(
@@ -309,10 +314,19 @@ class SessionStore:
         days_list = [row[0] for row in cur.fetchall()]
 
         today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        # Start anchor: today if already recorded today, otherwise yesterday
+        if days_list and date.fromisoformat(days_list[0]) == today:
+            anchor = today
+        elif days_list and date.fromisoformat(days_list[0]) == yesterday:
+            anchor = yesterday
+        else:
+            return {"daily_streak": 0, "weekly_streak": 0}
 
         daily_streak = 0
         for i, day_str in enumerate(days_list):
-            if date.fromisoformat(day_str) == today - timedelta(days=i):
+            if date.fromisoformat(day_str) == anchor - timedelta(days=i):
                 daily_streak += 1
             else:
                 break
