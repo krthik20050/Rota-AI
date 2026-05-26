@@ -86,6 +86,8 @@ desktop-launcher.example.bat
 
 # Debug / temp files
 *.png
+!desktop/assets/icon.png
+!desktop/assets/icon_256.png
 *.jpg
 *.jpeg
 *.gif

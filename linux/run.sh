@@ -89,7 +89,7 @@ Type=Application
 Name=Rota AI
 Comment=Open source voice dictation for Linux
 Exec=${REPO_DIR}/linux/run.sh
-Icon=${REPO_DIR}/desktop/assets/icon.svg
+Icon=${REPO_DIR}/desktop/assets/icon_256.png
 Terminal=false
 Categories=Utility;Accessibility;
 DESKTOP
