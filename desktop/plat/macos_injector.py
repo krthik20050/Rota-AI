@@ -561,15 +561,19 @@ class TextInjector:
             return False, f"Injection failed: {exc}"
 
         finally:
-            # Restore clipboard (but not immediately for paste-based methods)
-            if _last_undo_content is not None:
+            # Always restore the clipboard snapshot if one was taken, so stale
+            # snapshot data never leaks into the next injection call.
+            had_rich_data = bool(_ClipboardSnapshot._types_and_data)
+            if had_rich_data:
                 try:
                     time.sleep(0.1)
-                    had_rich_data = bool(_ClipboardSnapshot._types_and_data)
                     _ClipboardSnapshot.restore()
-                    if not had_rich_data:
-                        # No rich snapshot was taken; fall back to plain text
-                        _clipboard_copy(_last_undo_content)
+                except Exception:
+                    _ClipboardSnapshot._types_and_data = []
+            if _last_undo_content is not None and not had_rich_data:
+                try:
+                    time.sleep(0.1)
+                    _clipboard_copy(_last_undo_content)
                 except Exception:
                     pass
 

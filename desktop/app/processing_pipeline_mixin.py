@@ -275,7 +275,17 @@ class ProcessingPipelineMixin:
             expanded = self.snippets.expand(cleaned)
             inject_text = expanded if expanded is not None else cleaned
 
+            # Per-app config: override settings based on active app
             app_ctx = getattr(session, "app_context", None) if session else None
+            if app_ctx:
+                app_name = getattr(app_ctx, "process_name", "") or getattr(app_ctx, "app_name", "")
+                per_app = self.config.get("per_app_config", {}).get(app_name, {})
+                if per_app and self.ai_processor is not None:
+                    if "writing_mode" in per_app:
+                        self.ai_processor.writing_mode = per_app["writing_mode"]
+                    if "ai_provider" in per_app:
+                        self.ai_processor.ai_provider = per_app["ai_provider"]
+
             is_terminal = app_ctx and getattr(app_ctx, "category", "") == "terminal"
             if is_terminal:
                 logger.warning(
@@ -283,6 +293,20 @@ class ProcessingPipelineMixin:
                     correlation_id=correlation_id,
                     process=getattr(app_ctx, "process_name", ""),
                 )
+
+            # Cursor marker split injection: if {{cursor}} is in the text,
+            # inject only the part before {{cursor}} — the cursor stays there
+            cursor_marker = (
+                self.snippets.cursor_marker()
+                if hasattr(self.snippets, "cursor_marker")
+                else "__CURSOR_MARKER__"
+            )
+            cursor_split_tail = None
+            if cursor_marker in inject_text:
+                parts = inject_text.split(cursor_marker, 1)
+                inject_text = parts[0]
+                if len(parts) > 1 and parts[1]:
+                    cursor_split_tail = parts[1]
 
             log_event("injection_start", correlation_id=correlation_id)
             injection_start = time.perf_counter()
@@ -293,6 +317,21 @@ class ProcessingPipelineMixin:
                 field_info=field_info,
                 use_paste_shortcut=True,
             )
+            # If there's text after cursor, store it for optional paste
+            if cursor_split_tail:
+                # Store remaining text so Ctrl+V after injection pastes it
+                try:
+                    import pyperclip
+
+                    pyperclip.copy(cursor_split_tail)
+                except Exception:
+                    pass
+                QTimer.singleShot(
+                    100,
+                    lambda: self.show_toast(
+                        "Cursor placed — paste (Ctrl+V) to insert remaining text"
+                    ),
+                )
             if success:
                 self.auto_improvement.track_injection(correlation_id, inject_text)
             else:

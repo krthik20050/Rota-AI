@@ -277,17 +277,28 @@ class AIProcessor:
     # ------------------------------------------------------------------
 
     def _gemini_call(
-        self, model_name: str, text: str, system_prompt: str, correlation_id
+        self,
+        model_name: str,
+        text: str,
+        system_prompt: str,
+        correlation_id,
+        _acquire_rl: bool = True,
     ) -> str | None:
-        """Call one specific Gemini model. Marks 60s cooldown on 429."""
+        """Call one specific Gemini model. Marks 60s cooldown on 429.
+
+        Pass _acquire_rl=False when the caller (_cloud_cascade) has already
+        acquired a rate-limit token for the entire Gemini provider group so we
+        don't burn multiple tokens per cascade for the same provider.
+        """
         if not self._gemini_api_key:
             return None
-        allowed, retry_after = _gemini_rate_limiter.acquire()
-        if not allowed:
-            logger.warning(
-                "gemini_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
-            )
-            return None
+        if _acquire_rl:
+            allowed, retry_after = _gemini_rate_limiter.acquire()
+            if not allowed:
+                logger.warning(
+                    "gemini_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
+                )
+                return None
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
         )
@@ -325,75 +336,6 @@ class AIProcessor:
                 )
         except Exception as exc:
             logger.error("gemini_failed", model=model_name, error=str(exc), cid=correlation_id)
-        return None
-
-    def _gemini_process(self, text: str, system_prompt: str, correlation_id) -> str | None:
-        if not self._gemini_api_key:
-            logger.warning("gemini_key_missing", cid=correlation_id)
-            return None
-        # SECURITY: Rate limit — prevent quota exhaustion
-        allowed, retry_after = _gemini_rate_limiter.acquire()
-        if not allowed:
-            logger.warning(
-                "gemini_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
-            )
-            return None
-        # SECURITY: Key sent as header, not URL query param (avoids logging in proxies/servers)
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-        payload = json.dumps(
-            {
-                "systemInstruction": {"parts": [{"text": system_prompt}]},
-                "contents": [{"parts": [{"text": text}]}],
-                "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048},
-            }
-        ).encode("utf-8")
-
-        # Try primary model, then fallback to gemini-2.5-flash if quota exhausted
-        for model_url in [
-            url,
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        ]:
-            req = urllib.request.Request(
-                model_url,
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": self._gemini_api_key,
-                },
-                method="POST",
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=12) as resp:
-                    body = json.loads(resp.read().decode("utf-8"))
-                    candidates = body.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts:
-                            cleaned = parts[0].get("text", "").strip()
-                            if cleaned:
-                                model_name = model_url.split("/models/")[1].split(":")[0]
-                                logger.debug(
-                                    "gemini_cleanup_ok", model=model_name, cid=correlation_id
-                                )
-                                return cleaned
-            except urllib.error.HTTPError as exc:
-                if exc.code == 429 and model_url == url:
-                    # Primary model quota hit — try fallback model
-                    logger.warning("gemini_quota_exceeded_trying_fallback", cid=correlation_id)
-                    continue
-                logger.error(
-                    "gemini_http_error", code=exc.code, reason=exc.reason, cid=correlation_id
-                )
-                try:
-                    err_body = exc.read().decode("utf-8")[:500]
-                    err_body = re.sub(r"[A-Za-z0-9_\-]{30,}", "[REDACTED]", err_body)
-                    logger.error("gemini_error_body", body=err_body, cid=correlation_id)
-                except Exception:
-                    pass
-                return None
-            except Exception as exc:
-                logger.error("gemini_cleanup_failed", error=str(exc), cid=correlation_id)
-                return None
         return None
 
     # ------------------------------------------------------------------
@@ -459,6 +401,11 @@ class AIProcessor:
         start = self._rr_idx % n
         ordered = slots[start:] + slots[:start]
 
+        # Acquire one rate-limit token per provider for the entire cascade so
+        # trying multiple models of the same provider doesn't burn N tokens.
+        gemini_rl_ok: bool | None = None  # None = not yet checked
+        groq_rl_ok: bool | None = None
+
         for provider, model_id in ordered:
             if self._in_cooldown(model_id):
                 logger.debug("rr_skip_cooldown", model=model_id, cid=correlation_id)
@@ -466,9 +413,33 @@ class AIProcessor:
 
             result = None
             if provider == "gemini":
-                result = self._gemini_call(model_id, wrapped_text, system_prompt, correlation_id)
+                if gemini_rl_ok is None:
+                    allowed, retry_after = _gemini_rate_limiter.acquire()
+                    gemini_rl_ok = allowed
+                    if not allowed:
+                        logger.warning(
+                            "gemini_rate_limited_cascade",
+                            retry_after_s=round(retry_after, 1),
+                            cid=correlation_id,
+                        )
+                if gemini_rl_ok:
+                    result = self._gemini_call(
+                        model_id, wrapped_text, system_prompt, correlation_id, _acquire_rl=False
+                    )
             elif provider == "groq":
-                result = self._groq_call(model_id, wrapped_text, system_prompt, correlation_id)
+                if groq_rl_ok is None:
+                    allowed, retry_after = _groq_rate_limiter.acquire()
+                    groq_rl_ok = allowed
+                    if not allowed:
+                        logger.warning(
+                            "groq_rate_limited_cascade",
+                            retry_after_s=round(retry_after, 1),
+                            cid=correlation_id,
+                        )
+                if groq_rl_ok:
+                    result = self._groq_call(
+                        model_id, wrapped_text, system_prompt, correlation_id, _acquire_rl=False
+                    )
 
             if result is not None:
                 self._rr_idx = (slots.index((provider, model_id)) + 1) % n
@@ -478,17 +449,23 @@ class AIProcessor:
         return None
 
     def _groq_call(
-        self, model_name: str, text: str, system_prompt: str, correlation_id
+        self,
+        model_name: str,
+        text: str,
+        system_prompt: str,
+        correlation_id,
+        _acquire_rl: bool = True,
     ) -> str | None:
         """Call one specific Groq model. Marks 60s cooldown on rate-limit errors."""
         if not self._groq_api_key:
             return None
-        allowed, retry_after = _groq_rate_limiter.acquire()
-        if not allowed:
-            logger.warning(
-                "groq_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
-            )
-            return None
+        if _acquire_rl:
+            allowed, retry_after = _groq_rate_limiter.acquire()
+            if not allowed:
+                logger.warning(
+                    "groq_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
+                )
+                return None
         try:
             client = self._get_groq_client()
             response = client.chat.completions.create(
@@ -516,66 +493,6 @@ class AIProcessor:
                     "groq_failed",
                     model=model_name,
                     error=f"{type(exc).__name__}: {str(exc)[:120]}",
-                    cid=correlation_id,
-                )
-            return None
-
-    def _groq_process(self, text: str, system_prompt: str, correlation_id) -> str | None:
-        if not self._groq_api_key:
-            logger.warning("groq_key_missing", cid=correlation_id)
-            return None
-        # SECURITY: Rate limit — prevent quota exhaustion
-        allowed, retry_after = _groq_rate_limiter.acquire()
-        if not allowed:
-            logger.warning(
-                "groq_rate_limited", retry_after_s=round(retry_after, 1), cid=correlation_id
-            )
-            return None
-        try:
-            client = self._get_groq_client()
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text},
-                ],
-                temperature=0.1,
-                max_tokens=2048,
-                timeout=10,
-            )
-            cleaned = response.choices[0].message.content.strip()
-            if cleaned:
-                logger.debug("groq_cleanup_ok", cid=correlation_id)
-                return cleaned
-            return None
-        except Exception as e:
-            # Fallback to faster instant model if primary fails
-            # Truncate: Groq SDK exception strings can include full response bodies with quota info
-            logger.warning(
-                "groq_primary_failed_trying_fallback",
-                error=f"{type(e).__name__}: {str(e)[:120]}",
-                cid=correlation_id,
-            )
-            try:
-                client = self._get_groq_client()
-                response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": text},
-                    ],
-                    temperature=0.1,
-                    max_tokens=2048,
-                    timeout=5,
-                )
-                cleaned = response.choices[0].message.content.strip()
-                if cleaned:
-                    logger.debug("groq_fallback_ok", cid=correlation_id)
-                    return cleaned
-            except Exception as ex:
-                logger.error(
-                    "groq_cleanup_failed",
-                    error=f"{type(ex).__name__}: {str(ex)[:120]}",
                     cid=correlation_id,
                 )
             return None

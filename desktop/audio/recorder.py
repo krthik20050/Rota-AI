@@ -153,17 +153,20 @@ class AudioRecorder(QObject):
             return
 
         self._is_recording = False
+        # Null out _active_session BEFORE stopping the stream so the audio
+        # callback cannot race to call audio_queue.put() on a session that
+        # is about to be marked stopped.
+        target_session = session or self._active_session
+        self._active_session = None
         if self._stream:
             self._stream.stop()
             self._stream.close()
             self._stream = None
 
-        target_session = session or self._active_session
         if target_session is not None:
             target_session.audio_queue.put(None)
             target_session.mark_stopped()
         self._rms_value = 0.0
-        self._active_session = None
 
     def get_chunks(self, session: RecordingSession | None = None):
         """Generator that yields audio chunks from the session queue."""

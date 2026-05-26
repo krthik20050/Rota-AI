@@ -164,6 +164,7 @@ class RotaApp(
         self.tray = self._create_tray()
         self.hotkey_handler = None
         self._pipeline_runner: Callable[[str], None] | None = None
+        self._backup_manager = None
         self._refresh_debug_window()
 
     def _show_macos_setup(self):
@@ -285,7 +286,20 @@ class RotaApp(
         except Exception as e:
             logger.warning("undo_hotkey_register_failed", error=str(e))
         logger.info("deferred_startup_done")
+        self._start_auto_backup()
         self._schedule_update_check()
+
+    def _start_auto_backup(self):
+        """Start the auto-backup daemon thread."""
+        try:
+            from services.backup import AutoBackupManager
+
+            enabled = self.config.get("auto_backup_enabled", True)
+            self._backup_manager = AutoBackupManager(enabled=enabled)
+            self._backup_manager.start()
+        except Exception:
+            logger.warning("auto_backup_start_failed", exc_info=True)
+            self._backup_manager = None
 
     def _run_startup_health_checks(self, hotkey_ok):
         if sys.platform == "win32":
@@ -441,10 +455,23 @@ class RotaApp(
             )
             self._start_hotkey_listener()
 
+            # Re-register undo hotkey on the new handler instance.
+            # The old handler was replaced above so the startup registration is gone.
+            try:
+                if self.hotkey_handler is not None and self.hotkey_handler.backend == "pynput":
+                    self.hotkey_handler.add_hotkey(
+                        "ctrl+shift+z",
+                        lambda: QTimer.singleShot(0, self._do_undo_injection),
+                    )
+                    logger.info("undo_hotkey_re_registered")
+            except Exception as e:
+                logger.warning("undo_hotkey_re_register_failed", error=str(e))
+
             if self.transcriber is not None:
                 self.transcriber.transcription_quality = str(
                     self.config.get("transcription_quality", "balanced")
                 )
+                self.transcriber.denoise_enabled = bool(self.config.get("denoise_enabled", False))
 
             if self.ai_processor is not None:
                 self.ai_processor.writing_mode = self.config.get("writing_mode", "clean")
@@ -525,6 +552,15 @@ class RotaApp(
         if self._transcriber_thread is not None and self._transcriber_thread.isRunning():
             self._transcriber_thread.quit()
             self._transcriber_thread.wait(1000)
+
+        # Auto-backup on exit
+        if hasattr(self, "_backup_manager") and self._backup_manager is not None:
+            try:
+                self._backup_manager.backup_now()
+                self._backup_manager.stop()
+            except Exception:
+                pass
+
         self.app.quit()
 
     def _schedule_update_check(self):

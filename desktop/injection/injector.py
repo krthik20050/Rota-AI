@@ -215,10 +215,12 @@ class TextInjector:
             return False, "Injection failed"
 
         finally:
-            # Restore previous clipboard. We already waited 150 ms inside the
-            # loop, so this runs after the paste event has been processed.
+            # Restore previous clipboard. Wait an additional 100 ms here so
+            # slow apps (Electron, browsers) have time to process the Ctrl+V
+            # message before we overwrite the clipboard contents.
             if previous_clipboard is not None:
                 try:
+                    time.sleep(0.1)
                     pyperclip.copy(previous_clipboard)
                 except Exception:
                     pass

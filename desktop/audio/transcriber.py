@@ -348,8 +348,10 @@ class AudioTranscriber:
         if peak > 1e-6:
             audio = (audio * (0.708 / peak)).astype(np.float32)
         # 3. Optional noise reduction (disabled by default for accuracy safety)
-        # Enable only when explicitly requested with ROTA_ENABLE_DENOISE=1.
-        if os.environ.get("ROTA_ENABLE_DENOISE", "0") == "1":
+        # Enable via config or ROTA_ENABLE_DENOISE=1 environment variable.
+        if os.environ.get("ROTA_ENABLE_DENOISE", "0") == "1" or getattr(
+            self, "denoise_enabled", False
+        ):
             try:
                 import noisereduce as nr
 
@@ -458,6 +460,10 @@ class AudioTranscriber:
                 segment = full_audio[start:]
             else:
                 split = self._find_split_point(full_audio, target)
+                if split <= start:
+                    # Guard: _find_split_point returned a non-advancing position;
+                    # force progress to avoid an infinite loop.
+                    split = min(start + max_samples, len(full_audio))
                 segment = full_audio[start:split]
                 target = split
 
