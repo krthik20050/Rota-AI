@@ -73,6 +73,9 @@ class RotaTrayIcon(QSystemTrayIcon):
 
         self.menu.addSeparator()
 
+        self.report_action = QAction("Report a Bug")
+        self.menu.addAction(self.report_action)
+
         self.exit_action = QAction("Quit Rota")
         self.menu.addAction(self.exit_action)
 

@@ -61,6 +61,7 @@ def build_recording_section(dlg, parent):
 
     dlg.hotkey_status = QLabel("")
     dlg.hotkey_status.setObjectName("FieldHint")
+    dlg.hotkey_status.setVisible(False)
     form.addRow("", dlg.hotkey_status)
 
     dlg.hotkey_mode_combo = NonScrollComboBox()
@@ -391,6 +392,7 @@ def _start_settings_hotkey_capture(dlg):
     dlg.hotkey_record_btn.setText("Listening...")
     dlg.hotkey_status.setText("Press your desired key combination now")
     dlg.hotkey_status.setObjectName("StatusOk")
+    dlg.hotkey_status.setVisible(True)
 
     def _capture():
         try:

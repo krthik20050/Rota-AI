@@ -146,6 +146,33 @@ SETTINGS_QSS = """
         color: #F0F0F2;
         border-color: rgba(255, 255, 255, 25);
     }
+    QLabel#HotkeyPill {
+        background-color: #222226;
+        color: #F0F0F2;
+        border: 1px solid rgba(255, 255, 255, 8);
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    QPushButton#RecordHotkeyBtn {
+        background-color: rgba(255, 255, 255, 6);
+        color: #A0A0A5;
+        border: 1px solid rgba(255, 255, 255, 15);
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    QPushButton#RecordHotkeyBtn:hover {
+        background-color: rgba(255, 255, 255, 12);
+        color: #F0F0F2;
+        border-color: rgba(255, 255, 255, 25);
+    }
+    QPushButton#RecordHotkeyBtn:disabled {
+        color: #4A4A52;
+        border-color: rgba(255, 255, 255, 6);
+    }
     QScrollArea {
         background: transparent;
         border: none;

@@ -41,6 +41,8 @@ class SettingsWindow(QDialog):
     def __init__(self, config_manager):
         super().__init__()
         self.config_manager = config_manager
+        # Alias expected by _settings_sections.py helpers (they use dlg.config)
+        self.config = config_manager
         self.setWindowTitle("Settings (Rota)")
         self.resize(560, 760)
         self.setMinimumSize(480, 600)
@@ -166,12 +168,20 @@ class SettingsWindow(QDialog):
 
     def _load_config(self):
         conf = self.config_manager.config
-        self.gemini_key_input.setText(conf.get("gemini_api_key", ""))
-        self.groq_key_input.setText(conf.get("groq_api_key", ""))
+        self.gemini_key_input.setText(
+            conf.get("gemini_api_key", "") or os.environ.get("GEMINI_API_KEY", "")
+        )
+        self.groq_key_input.setText(
+            conf.get("groq_api_key", "") or os.environ.get("GROQ_API_KEY", "")
+        )
 
-        hotkey_val = conf.get("hotkey", "f9").lower()
-        hk_idx = self.hotkey_combo.findData(hotkey_val)
-        self.hotkey_combo.setCurrentIndex(hk_idx if hk_idx >= 0 else 8)
+        # Hotkey display is set by build_recording_section; refresh it here in case
+        # config changed since the widget was built
+        if hasattr(self, "hotkey_display"):
+            from ui.pages._settings_sections import _hotkey_display_name
+
+            self.hotkey_display.setText(_hotkey_display_name(conf.get("hotkey", "f9")))
+
         mode = conf.get("hotkey_mode", "hold")
         idx = self.hotkey_mode_combo.findData(mode)
         self.hotkey_mode_combo.setCurrentIndex(idx if idx >= 0 else 0)
@@ -238,7 +248,7 @@ class SettingsWindow(QDialog):
         if groq_key:
             os.environ["GROQ_API_KEY"] = groq_key
 
-        self.config_manager.set("hotkey", self.hotkey_combo.currentData() or "f9")
+        # Hotkey is saved immediately when captured via the record button; no combo to read here.
         self.config_manager.set("hotkey_mode", self.hotkey_mode_combo.currentData())
         self.config_manager.set("model_size", self.model_size_combo.currentData())
         self.config_manager.set("ai_enabled", self.ai_enabled_check.isChecked())

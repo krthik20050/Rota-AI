@@ -32,6 +32,7 @@ from ui.overlay.pill_overlay import PillOverlay
 from ui.settings_window import SettingsWindow
 from ui.toast import Toast
 from ui.tray import RotaTrayIcon
+from utils.error_reporter import build_error_body, open_github_report
 
 logger = structlog.get_logger(__name__)
 
@@ -221,6 +222,7 @@ class RotaApp(
         tray = RotaTrayIcon(icon_path=icon_path if os.path.exists(icon_path) else None)
         tray.open_action.triggered.connect(self.show_history)
         tray.settings_action.triggered.connect(self.show_settings)
+        tray.report_action.triggered.connect(self._report_bug_from_tray)
         tray.exit_action.triggered.connect(self.exit_app)
         tray.open_action.setVisible(True)
         tray.settings_action.setVisible(True)
@@ -247,15 +249,12 @@ class RotaApp(
 
         history_days = int(self.config.get("history_days", 30) or 30)
         try:
+            # Prune history.db (raw transcript text) based on display window setting.
+            # session_store is NEVER pruned — it holds analytics (word counts, streaks,
+            # lifetime totals) that must survive beyond the display window.
             pruned_h = self.history.prune_old_entries(history_days)
-            pruned_s = self.session_store.prune_old_sessions(history_days)
-            if pruned_h or pruned_s:
-                logger.info(
-                    "startup_db_pruned",
-                    history_rows=pruned_h,
-                    session_rows=pruned_s,
-                    days=history_days,
-                )
+            if pruned_h:
+                logger.info("startup_db_pruned", history_rows=pruned_h, days=history_days)
         except Exception as e:
             logger.error("startup_db_prune_failed", error=str(e))
 
@@ -541,6 +540,85 @@ class RotaApp(
             QTimer.singleShot(0, lambda: self._show_update_toast(latest, url))
 
         check_for_update(__version__, on_update_found)
+
+    def _report_bug_from_tray(self) -> None:
+        """Open GitHub new-issue page. If there's a recent error, pre-fill it."""
+        last_err = getattr(self.main_window, "_last_error_message", "")
+        title = f"Bug: {last_err[:80]}" if last_err else "Bug report"
+        body = build_error_body(
+            error_detail=last_err or "(describe the issue here)",
+            context="Reported via tray menu",
+        )
+        open_github_report(title, body)
+
+    def _report_processing_error(self, err_msg: str, traceback_text: str = "") -> None:
+        """Show a dialog letting the user send a processing error to GitHub."""
+        from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+
+        dlg = QDialog(self.main_window)
+        dlg.setWindowTitle("Rota — Processing Error")
+        dlg.setFixedWidth(460)
+        dlg.setStyleSheet("""
+            QDialog { background: #1A1A1D; color: #E8E8EA; }
+            QLabel { color: #E8E8EA; background: transparent; }
+            QLabel#Title { font-size: 15px; font-weight: 700; color: #F0F0F2; }
+            QLabel#Body { font-size: 13px; color: #A0A0A5; }
+            QPushButton {
+                background: rgba(255,255,255,0.06); color: #A0A0A5;
+                border: 1px solid rgba(255,255,255,0.14); border-radius: 8px;
+                padding: 8px 18px; font-size: 13px;
+            }
+            QPushButton:hover { background: rgba(255,255,255,0.12); color: #F0F0F2; }
+            QPushButton#ReportBtn {
+                background: rgba(134,239,172,0.1); color: #86EFAC;
+                border: 1px solid rgba(134,239,172,0.3);
+            }
+            QPushButton#ReportBtn:hover { background: rgba(134,239,172,0.2); }
+        """)
+
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(28, 24, 28, 24)
+        lay.setSpacing(12)
+
+        title_lbl = QLabel("Processing error")
+        title_lbl.setObjectName("Title")
+        lay.addWidget(title_lbl)
+
+        body_lbl = QLabel(
+            f"{err_msg[:160]}\n\n"
+            "Click 'Send Report' to open a pre-filled GitHub issue — "
+            "review the details, then submit."
+        )
+        body_lbl.setObjectName("Body")
+        body_lbl.setWordWrap(True)
+        lay.addWidget(body_lbl)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dlg.reject)
+
+        report_btn = QPushButton("Send Report")
+        report_btn.setObjectName("ReportBtn")
+
+        def _send():
+            body = build_error_body(
+                error_detail=err_msg,
+                traceback_text=traceback_text,
+                context="Processing pipeline error",
+            )
+            open_github_report(f"Bug: processing error — {err_msg[:60]}", body)
+            dlg.accept()
+
+        report_btn.clicked.connect(_send)
+
+        btn_row.addStretch()
+        btn_row.addWidget(close_btn)
+        btn_row.addWidget(report_btn)
+        lay.addLayout(btn_row)
+
+        dlg.exec()
 
     def _show_update_toast(self, latest: str, url: str) -> None:
         import webbrowser
