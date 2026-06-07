@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 const WORDS = [
@@ -18,19 +18,55 @@ const EXPO_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 const WORD_IN:  [number, number, number, number] = [0.215, 0.61, 0.355, 1];
 const WORD_OUT: [number, number, number, number] = [0.4, 0, 1, 1];
 
+const SESSION_KEY = "rota_preloader_seen";
+
 export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
   const [show, setShow]   = useState(true);
   const [index, setIndex] = useState(0);
   const [h, setH]         = useState(0);
+  const completedRef = useRef(false);
 
   useEffect(() => {
+    // ── Session check: skip preloader if already seen this tab session ──
+    // sessionStorage persists across refreshes but clears on tab close,
+    // so the preloader shows once per tab session, never on back/refresh.
+    if (typeof window !== "undefined" && window.sessionStorage.getItem(SESSION_KEY)) {
+      completedRef.current = true;
+      onComplete();
+      return;
+    }
+
+    // Detect back/forward navigation — skip preloader to avoid blank page
+    try {
+      const navEntries = performance.getEntriesByType("navigation");
+      if (navEntries.length > 0) {
+        const navType = (navEntries[0] as PerformanceNavigationTiming).type;
+        if (navType === "back_forward") {
+          completedRef.current = true;
+          onComplete();
+          return;
+        }
+      }
+    } catch {
+      // performance API not available — fall through
+    }
+
+    // Mark this session as having seen the preloader
+    try {
+      window.sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      // sessionStorage may not be available (private browsing, etc.)
+    }
+
     setH(window.innerHeight);
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [onComplete]);
 
-  // First word: 900ms · middle words: 300ms · last word: 1000ms then exit
   useEffect(() => {
+    if (completedRef.current) return;
     if (index === WORDS.length - 1) {
       const t = setTimeout(() => setShow(false), 1000);
       return () => clearTimeout(t);
@@ -40,6 +76,7 @@ export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
   }, [index]);
 
   useEffect(() => {
+    if (completedRef.current) return;
     if (!show) {
       const t = setTimeout(onComplete, 1300);
       return () => clearTimeout(t);
@@ -59,7 +96,7 @@ export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
             position: "fixed",
             inset: 0,
             zIndex: 9999,
-            background: "#ffffff",
+            background: "#f5f0e8",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

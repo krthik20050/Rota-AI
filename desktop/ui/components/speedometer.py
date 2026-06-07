@@ -2,15 +2,15 @@
 Semi-circle speedometer widget for words-today visualization.
 """
 
-from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, Qt, pyqtProperty
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, Qt, Property
+from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtWidgets import QWidget
 
 
 class SpeedometerWidget(QWidget):
     """Paints a semi-circle arc speedometer with value + label."""
 
-    def __init__(self, max_value: int = 3000, parent=None):
+    def __init__(self, max_value: int = 10000, parent=None):
         super().__init__(parent)
         self._value = 0
         self._display_value = 0
@@ -19,7 +19,7 @@ class SpeedometerWidget(QWidget):
         self.setFixedSize(220, 130)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
 
-    @pyqtProperty(int)
+    @Property(int)
     def display_value(self) -> int:
         return self._display_value
 

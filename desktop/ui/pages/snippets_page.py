@@ -1,12 +1,20 @@
+"""
+Rota AI — Snippets Page (Wispr Flow-inspired)
+==============================================
+Voice-triggered text expansion manager.
+Clean list + inline editor design.
+"""
+
 from __future__ import annotations
 
 import datetime
 import re
 
 import structlog
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -33,6 +41,19 @@ CLR_TEXT_PRIMARY = "#F0F0F2"
 CLR_ERROR = "#F87171"
 CLR_WARNING = "#FBBF24"
 
+_ROW_QSS_SELECTED = (
+    f"QFrame#SnippetRow {{ border: 1px solid {CLR_ACCENT}; background: rgba(134, 239, 172, 0.12); border-radius: 12px; }}"
+    f"QFrame#SnippetRow:hover {{ border: 1px solid {CLR_ACCENT}; background: rgba(134, 239, 172, 0.18); }}"
+)
+_ROW_QSS_DISABLED = (
+    f"QFrame#SnippetRow {{ border: 1px solid {CLR_BORDER}; background: rgba(255,255,255,0.02); border-radius: 12px; }}"
+    f"QFrame#SnippetRow:hover {{ border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.04); }}"
+)
+_ROW_QSS_NORMAL = (
+    f"QFrame#SnippetRow {{ border: 1px solid {CLR_BORDER}; background: {CLR_CARD}; border-radius: 12px; }}"
+    f"QFrame#SnippetRow:hover {{ border: 1px solid rgba(134, 239, 172, 0.35); background: rgba(255, 255, 255, 0.06); }}"
+)
+
 
 class SnippetsPage(QWidget):
     def __init__(self, snippets_manager, parent=None):
@@ -47,12 +68,13 @@ class SnippetsPage(QWidget):
         lay.setContentsMargins(20, 18, 20, 18)
         lay.setSpacing(24)
 
+        # ── Left panel: snippet list ──────────────────────────────
         left_col = QFrame()
         left_col.setObjectName("SnippetLeftCol")
         left_col.setFixedWidth(280)
         left_lay = QVBoxLayout(left_col)
         left_lay.setContentsMargins(0, 0, 0, 0)
-        left_lay.setSpacing(16)
+        left_lay.setSpacing(12)
 
         title_lay = QVBoxLayout()
         title_lay.setSpacing(4)
@@ -64,6 +86,7 @@ class SnippetsPage(QWidget):
         title_lay.addWidget(left_subtitle)
         left_lay.addLayout(title_lay)
 
+        # Search
         self._snippet_search_input = QLineEdit()
         self._snippet_search_input.setObjectName("SnippetSearch")
         self._snippet_search_input.setPlaceholderText("Search snippets...")
@@ -71,6 +94,15 @@ class SnippetsPage(QWidget):
         self._snippet_search_input.textChanged.connect(self._snippet_search_changed)
         left_lay.addWidget(self._snippet_search_input)
 
+        # Category filter
+        self._category_combo = QComboBox()
+        self._category_combo.setObjectName("SnippetCategoryFilter")
+        self._category_combo.addItem("All Categories", "__all__")
+        self._category_combo.currentIndexChanged.connect(self._category_filter_changed)
+        self._category_combo.setFixedHeight(30)
+        left_lay.addWidget(self._category_combo)
+
+        # Snippet list scroll
         self._snippet_scroll = QScrollArea()
         self._snippet_scroll.setWidgetResizable(True)
         self._snippet_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -82,6 +114,7 @@ class SnippetsPage(QWidget):
         self._snippet_scroll.setWidget(self._snippet_container)
         left_lay.addWidget(self._snippet_scroll, 1)
 
+        # Add button
         add_btn = QPushButton("+ Add New Snippet")
         add_btn.setObjectName("SnippetActionBtn")
         add_btn.setFixedHeight(36)
@@ -90,12 +123,13 @@ class SnippetsPage(QWidget):
         add_btn.clicked.connect(self._add_snippet_clicked)
         left_lay.addWidget(add_btn)
 
+        # Secondary actions row
         sec_btn_lay = QHBoxLayout()
         sec_btn_lay.setSpacing(6)
         for label, slot in [
             ("Import", self._import_snippets_clicked),
             ("Export", self._export_snippets_clicked),
-            ("Reset Defaults", self._reset_snippets_defaults),
+            ("Reset", self._reset_snippets_defaults),
         ]:
             btn = QPushButton(label)
             btn.setObjectName("SnippetSecBtn")
@@ -104,8 +138,10 @@ class SnippetsPage(QWidget):
             btn.clicked.connect(slot)
             sec_btn_lay.addWidget(btn, 1)
         left_lay.addLayout(sec_btn_lay)
+
         lay.addWidget(left_col)
 
+        # ── Right panel: stacked (empty state / editor) ───────────
         self._snippet_stack = QStackedWidget()
         self._snippet_stack.setObjectName("SnippetStack")
         self._snippet_stack.addWidget(self._build_empty_state())
@@ -115,16 +151,20 @@ class SnippetsPage(QWidget):
         self._snippets_refresh()
 
     def _build_empty_state(self):
+        """Clean empty state with centered content."""
         page = QWidget()
         empty_lay = QVBoxLayout(page)
         empty_lay.setContentsMargins(0, 0, 0, 0)
         empty_lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         card = QFrame()
         card.setObjectName("SnippetEmptyCard")
+        card.setFixedWidth(320)
         card_lay = QVBoxLayout(card)
         card_lay.setContentsMargins(36, 48, 36, 48)
         card_lay.setSpacing(16)
         card_lay.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         icon = QLabel("⚡")
         icon.setObjectName("SnippetEmptyIcon")
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -142,6 +182,7 @@ class SnippetsPage(QWidget):
         return page
 
     def _build_editor(self):
+        """Right-side editor panel for creating/editing snippets."""
         self._snippet_editor_page = QWidget()
         editor_lay = QVBoxLayout(self._snippet_editor_page)
         editor_lay.setContentsMargins(0, 0, 0, 0)
@@ -153,14 +194,20 @@ class SnippetsPage(QWidget):
         form_lay.setContentsMargins(24, 24, 24, 24)
         form_lay.setSpacing(16)
 
-        form_lay.addWidget(QLabel("Spoken Trigger Phrase"))
+        # Trigger
+        trigger_lbl = QLabel("Spoken Trigger Phrase")
+        trigger_lbl.setStyleSheet(f"color: {CLR_TEXT_SECONDARY}; font-size: 12px; font-weight: 600;")
+        form_lay.addWidget(trigger_lbl)
         self._snippet_trigger_input = QLineEdit()
         self._snippet_trigger_input.setObjectName("SnippetTriggerInput")
         self._snippet_trigger_input.setPlaceholderText("e.g. email signature, cal link")
         form_lay.addWidget(self._snippet_trigger_input)
 
+        # Expansion header with char counter
         exp_header = QHBoxLayout()
-        exp_header.addWidget(QLabel("Expanded Text"))
+        exp_label = QLabel("Expanded Text")
+        exp_label.setStyleSheet(f"color: {CLR_TEXT_SECONDARY}; font-size: 12px; font-weight: 600;")
+        exp_header.addWidget(exp_label)
         exp_header.addStretch()
         self._snippet_char_counter = QLabel("0 / 4000")
         self._snippet_char_counter.setStyleSheet(f"color: {CLR_TEXT_MUTED}; font-size: 11px;")
@@ -169,9 +216,11 @@ class SnippetsPage(QWidget):
 
         self._snippet_expansion_input = QTextEdit()
         self._snippet_expansion_input.setObjectName("SnippetExpansionInput")
-        self._snippet_expansion_input.setPlaceholderText("The full text that will expand here...")
+        self._snippet_expansion_input.setPlaceholderText("The full text that will expand when you speak the trigger...")
+        self._snippet_expansion_input.setMinimumHeight(140)
         form_lay.addWidget(self._snippet_expansion_input, 2)
 
+        # Variable insert buttons
         var_label = QLabel("Insert Variable:")
         var_label.setStyleSheet(f"color: {CLR_TEXT_SECONDARY}; font-size: 11px;")
         form_lay.addWidget(var_label)
@@ -181,16 +230,8 @@ class SnippetsPage(QWidget):
         var_flow = FlowLayout(var_container, hspacing=6, vspacing=6)
         var_flow.setContentsMargins(0, 0, 0, 0)
         for var in [
-            "date",
-            "time",
-            "clipboard",
-            "today",
-            "cursor",
-            "day",
-            "month",
-            "year",
-            "datetime",
-            "timestamp",
+            "date", "time", "clipboard", "today", "cursor",
+            "day", "month", "year", "datetime", "timestamp",
         ]:
             v_btn = QPushButton(f"{{{{{var}}}}}")
             v_btn.setObjectName("SnippetVarBtn")
@@ -200,7 +241,10 @@ class SnippetsPage(QWidget):
             var_flow.addWidget(v_btn)
         form_lay.addWidget(var_container)
 
-        form_lay.addWidget(QLabel("Live Preview"))
+        # Live preview
+        preview_label = QLabel("Live Preview")
+        preview_label.setStyleSheet(f"color: {CLR_TEXT_SECONDARY}; font-size: 12px; font-weight: 600;")
+        form_lay.addWidget(preview_label)
         self._snippet_preview_widget = QLabel()
         self._snippet_preview_widget.setObjectName("SnippetLivePreview")
         self._snippet_preview_widget.setWordWrap(True)
@@ -211,42 +255,49 @@ class SnippetsPage(QWidget):
         form_lay.addWidget(self._snippet_preview_widget, 1)
         self._snippet_expansion_input.textChanged.connect(self._update_snippet_live_preview)
 
+        # Action buttons
         edit_btn_lay = QHBoxLayout()
         edit_btn_lay.setSpacing(8)
+
         self._snippet_delete_btn = QPushButton("Delete")
         self._snippet_delete_btn.setObjectName("SnippetDeleteBtn")
         self._snippet_delete_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._snippet_delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._snippet_delete_btn.clicked.connect(self._delete_snippet_clicked)
-        edit_btn_lay.addWidget(self._snippet_delete_btn)
+
         self._snippet_dup_btn = QPushButton("Duplicate")
         self._snippet_dup_btn.setObjectName("SnippetSecBtn")
         self._snippet_dup_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._snippet_dup_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._snippet_dup_btn.clicked.connect(self._duplicate_snippet_clicked)
+
+        edit_btn_lay.addWidget(self._snippet_delete_btn)
         edit_btn_lay.addWidget(self._snippet_dup_btn)
         edit_btn_lay.addStretch()
+
         self._snippet_save_btn = QPushButton("Save  Ctrl+S")
         self._snippet_save_btn.setObjectName("SnippetSaveBtn")
         self._snippet_save_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._snippet_save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._snippet_save_btn.clicked.connect(self._save_snippet_clicked)
         edit_btn_lay.addWidget(self._snippet_save_btn)
+
         form_lay.addLayout(edit_btn_lay)
         editor_lay.addWidget(editor_form)
 
+        # Ctrl+S shortcut
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self._snippet_editor_page)
         save_shortcut.activated.connect(self._save_snippet_clicked)
         return self._snippet_editor_page
+
+    # ── Editor helpers ────────────────────────────────────────────
 
     def _insert_var_placeholder(self, var: str):
         self._snippet_expansion_input.insertPlainText(f"{{{{{var}}}}}")
         self._snippet_expansion_input.setFocus()
 
     def _update_snippet_live_preview(self):
-        if not hasattr(self, "_snippet_expansion_input") or not hasattr(
-            self, "_snippet_preview_widget"
-        ):
+        if not hasattr(self, "_snippet_expansion_input") or not hasattr(self, "_snippet_preview_widget"):
             return
         raw_text = self._snippet_expansion_input.toPlainText()
         now = datetime.datetime.now()
@@ -257,22 +308,19 @@ class SnippetsPage(QWidget):
         preview = preview.replace("{{clipboard}}", "[Clipboard Content]")
         preview = preview.replace("{{cursor}}", "|")
         if not preview.strip():
-            self._snippet_preview_widget.setText(
-                "Type in the expansion field to see the live rendered output..."
-            )
+            self._snippet_preview_widget.setText("Type in the expansion field to see the live rendered output...")
         else:
             self._snippet_preview_widget.setText(preview)
         if hasattr(self, "_snippet_char_counter"):
             char_count = len(raw_text)
-            color = (
-                CLR_ERROR
-                if char_count > 3800
-                else (CLR_WARNING if char_count > 3200 else CLR_TEXT_MUTED)
-            )
+            color = CLR_ERROR if char_count > 3800 else (CLR_WARNING if char_count > 3200 else CLR_TEXT_MUTED)
             self._snippet_char_counter.setText(f"{char_count} / 4000")
             self._snippet_char_counter.setStyleSheet(f"color: {color}; font-size: 11px;")
 
+    # ── Snippet list ──────────────────────────────────────────────
+
     def _snippets_refresh(self):
+        """Rebuild the snippet list from the manager."""
         while self._snippet_layout.count():
             item = self._snippet_layout.takeAt(0)
             w = item.widget()
@@ -287,12 +335,35 @@ class SnippetsPage(QWidget):
             self._snippet_stack.setCurrentIndex(0)
             return
 
+        # Refresh category filter
+        self._category_combo.blockSignals(True)
+        current_cat = self._category_combo.currentData()
+        self._category_combo.clear()
+        self._category_combo.addItem("All Categories", "__all__")
+        for cat in self.snippets_manager.all_categories():
+            self._category_combo.addItem(cat, cat)
+        idx = self._category_combo.findData(current_cat)
+        self._category_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._category_combo.blockSignals(False)
+
+        selected_category = self._category_combo.currentData()
         all_status = self.snippets_manager.all_with_status()
+
+        # Filter by category
+        if selected_category and selected_category != "__all__":
+            filtered = {}
+            for trigger, (expansion, enabled) in all_status.items():
+                cat = self.snippets_manager.get_category(trigger)
+                if cat == "" and selected_category == "Uncategorized":
+                    filtered[trigger] = (expansion, enabled)
+                elif cat == selected_category:
+                    filtered[trigger] = (expansion, enabled)
+            all_status = filtered
+
+        # Search filter
         search = self._snippet_search_text.strip().lower()
         if search:
-            all_status = {
-                k: v for k, v in all_status.items() if search in k.lower() or search in v[0].lower()
-            }
+            all_status = {k: v for k, v in all_status.items() if search in k.lower() or search in v[0].lower()}
 
         if not all_status:
             msg = "No matches." if search else "No snippets yet.\nClick '+ Add New Snippet' below."
@@ -304,58 +375,45 @@ class SnippetsPage(QWidget):
             self._snippet_stack.setCurrentIndex(0)
             return
 
-        for trigger, (expansion, enabled) in all_status.items():
+        # Build rows — newest first (reversed from dict insertion order)
+        items = list(all_status.items())
+        for trigger, (expansion, enabled) in reversed(items):
             row = self._build_snippet_row(trigger, expansion, enabled)
             self._snippet_layout.addWidget(row)
 
         self._snippet_layout.addStretch()
 
+        # Sync editor with selected snippet
         snippets = {k: v[0] for k, v in all_status.items()}
         if self._selected_snippet_key in snippets:
-            self._snippet_stack.setCurrentIndex(1)
-            self._snippet_trigger_input.setText(self._selected_snippet_key)
-            self._snippet_expansion_input.setHtml("")
-            self._snippet_expansion_input.setPlainText(snippets[self._selected_snippet_key])
-            self._snippet_delete_btn.setVisible(True)
-            self._snippet_dup_btn.setVisible(True)
+            self._show_snippet_in_editor(self._selected_snippet_key, snippets[self._selected_snippet_key])
         else:
             self._selected_snippet_key = None
             self._snippet_stack.setCurrentIndex(0)
 
     def _build_snippet_row(self, trigger, expansion, enabled):
+        """Build a single snippet list row with icon, trigger, preview, toggle."""
         row = QFrame()
         row.setObjectName("SnippetRow")
         row.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
         is_selected = self._selected_snippet_key == trigger
         if is_selected:
-            row.setStyleSheet(
-                f"QFrame#SnippetRow {{ border: 1px solid {CLR_ACCENT}; background: rgba(134, 239, 172, 0.12); border-radius: 12px; }}"
-                f"QFrame#SnippetRow:hover {{ border: 1px solid {CLR_ACCENT}; background: rgba(134, 239, 172, 0.18); }}"
-            )
+            row.setStyleSheet(_ROW_QSS_SELECTED)
         elif not enabled:
-            row.setStyleSheet(
-                f"QFrame#SnippetRow {{ border: 1px solid {CLR_BORDER}; background: rgba(255,255,255,0.02); border-radius: 12px; }}"
-                f"QFrame#SnippetRow:hover {{ border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.04); }}"
-            )
+            row.setStyleSheet(_ROW_QSS_DISABLED)
         else:
-            row.setStyleSheet(
-                f"QFrame#SnippetRow {{ border: 1px solid {CLR_BORDER}; background: {CLR_CARD}; border-radius: 12px; }}"
-                f"QFrame#SnippetRow:hover {{ border: 1px solid rgba(134, 239, 172, 0.35); background: rgba(255, 255, 255, 0.06); }}"
-            )
+            row.setStyleSheet(_ROW_QSS_NORMAL)
 
         h = QHBoxLayout(row)
         h.setContentsMargins(14, 12, 10, 12)
         h.setSpacing(10)
 
+        # Icon
         trig_lower = trigger.lower()
         if "mail" in trig_lower or "email" in trig_lower:
             icon_char = "✉"
-        elif (
-            "link" in trig_lower
-            or "url" in trig_lower
-            or "web" in trig_lower
-            or "http" in trig_lower
-        ):
+        elif "link" in trig_lower or "url" in trig_lower or "web" in trig_lower:
             icon_char = "🔗"
         elif "time" in trig_lower or "date" in trig_lower or "day" in trig_lower:
             icon_char = "🕒"
@@ -368,6 +426,7 @@ class SnippetsPage(QWidget):
             icon_lbl.setStyleSheet("opacity: 0.4;")
         h.addWidget(icon_lbl)
 
+        # Trigger + preview
         txt = QVBoxLayout()
         txt.setSpacing(3)
         trig_lbl = QLabel(trigger if trigger else "New Snippet")
@@ -385,12 +444,14 @@ class SnippetsPage(QWidget):
         txt.addWidget(exp_lbl)
         h.addLayout(txt, 1)
 
+        # Variable badge
         vars_found = re.findall(r"\{\{([^}]+)\}\}", expansion)
         if vars_found:
             var_badge = QLabel(f"{len(vars_found)} VAR" + ("S" if len(vars_found) > 1 else ""))
             var_badge.setObjectName("SnippetVarBadge")
             h.addWidget(var_badge)
 
+        # Toggle button
         tog = QPushButton("ON" if enabled else "OFF")
         tog.setCheckable(True)
         tog.setChecked(enabled)
@@ -410,15 +471,26 @@ class SnippetsPage(QWidget):
                 if self.snippets_manager:
                     self.snippets_manager.toggle(trig)
                     self._snippets_refresh()
-
             return _toggle_it
 
         tog.clicked.connect(make_toggler(trigger))
         h.addWidget(tog)
 
+        # Click to select
         row.setCursor(Qt.CursorShape.PointingHandCursor)
         row.mouseReleaseEvent = (lambda trig: lambda event: self._select_snippet(trig))(trigger)
         return row
+
+    def _show_snippet_in_editor(self, trigger: str, expansion: str):
+        """Load a snippet into the right-side editor."""
+        self._snippet_stack.setCurrentIndex(1)
+        self._snippet_trigger_input.setText(trigger)
+        self._snippet_expansion_input.setHtml("")
+        self._snippet_expansion_input.setPlainText(expansion)
+        self._snippet_delete_btn.setVisible(True)
+        self._snippet_dup_btn.setVisible(True)
+
+    # ── Actions ───────────────────────────────────────────────────
 
     def _select_snippet(self, key):
         self._selected_snippet_key = key
@@ -426,6 +498,9 @@ class SnippetsPage(QWidget):
 
     def _snippet_search_changed(self, text: str):
         self._snippet_search_text = text
+        self._snippets_refresh()
+
+    def _category_filter_changed(self, idx: int):
         self._snippets_refresh()
 
     def _duplicate_snippet_clicked(self):

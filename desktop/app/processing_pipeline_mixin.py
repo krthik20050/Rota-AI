@@ -8,10 +8,15 @@ import threading
 import time
 
 import structlog
-from PyQt6.QtCore import Qt, QTimer, pyqtSlot
+from PySide6.QtCore import Qt, QTimer, Slot
 
 from app.logging_config import log_event
-from app.processor_thread import ProcessorThread
+from app.processor_thread import (
+    FAILURE_MESSAGES,
+    FAIL_GROQ_AUTH,
+    FAIL_UNKNOWN,
+    ProcessorThread,
+)
 from app.signal_bridges import RecordingState
 from services.session_store import SessionRecord
 from ui.overlay.pill_state import PillState
@@ -44,6 +49,7 @@ class ProcessingPipelineMixin:
             self._processor_thread.completed.connect(
                 self.on_processing_finished, Qt.ConnectionType.QueuedConnection
             )
+            # error signal now includes failure_code as 4th argument
             self._processor_thread.error.connect(
                 self.on_processing_error, Qt.ConnectionType.QueuedConnection
             )
@@ -53,7 +59,7 @@ class ProcessingPipelineMixin:
             )
             self._processor_thread.start()
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def on_partial_transcription(self, partial_text: str, correlation_id: str):
         try:
             active_session_id = self._active_session.id if self._active_session else None
@@ -169,7 +175,7 @@ class ProcessingPipelineMixin:
         ):
             self.overlay.set_state(PillState.PROCESSING)
 
-    @pyqtSlot(str, str, bool, str, float, float, bool, str)
+    @Slot(str, str, bool, str, float, float, bool, str)
     def on_processing_finished(
         self,
         raw,
@@ -369,10 +375,20 @@ class ProcessingPipelineMixin:
             self.overlay.set_state(PillState.DONE)
             self._clear_processor_refs(correlation_id)
 
+            # --- Save history immediately on main thread so UI refresh is instant ---
+            try:
+                self.history.add_entry(raw, cleaned, is_prompt)
+            except Exception:
+                logger.warning("history_add_entry_failed", exc_info=True)
+            # Refresh history immediately — no background thread delay
+            try:
+                self.main_window.refresh_history(highlight_latest=True)
+            except Exception:
+                logger.warning("history_refresh_failed", exc_info=True)
+
             # --- Defer analytics to background thread (compute-heavy work off main thread) ---
             _recording_seconds = self._last_recording_seconds
             _main_window = self.main_window
-            _history = self.history
             _session_store = self.session_store
             _insights_service = self.insights_service
             _update_metrics = self._update_metrics
@@ -385,11 +401,6 @@ class ProcessingPipelineMixin:
                 _insight_clarity = 0
                 _insight_conciseness = 0
                 _analytics_ok = False
-
-                try:
-                    _history.add_entry(raw, cleaned, is_prompt)
-                except Exception:
-                    logger.warning("history_add_entry_failed", exc_info=True)
 
                 try:
                     text_metrics = calculate_text_metrics(raw)
@@ -453,7 +464,7 @@ class ProcessingPipelineMixin:
                 except Exception:
                     logger.warning("analytics_thread_failed", exc_info=True)
 
-                # Always schedule UI refresh — history must update even when analytics fails
+                # Schedule insight + metrics UI update after analytics completes
                 def _ui_updates():
                     try:
                         _update_metrics()
@@ -464,7 +475,6 @@ class ProcessingPipelineMixin:
                                 _insight_clarity,
                                 _insight_conciseness,
                             )
-                        _main_window.refresh_history(highlight_latest=True)
                         if hasattr(_main_window, "_dict_refresh"):
                             _main_window._dict_refresh()
                         _refresh_debug()
@@ -540,7 +550,19 @@ class ProcessingPipelineMixin:
     def _maybe_notify_backend_fallback(self):
         if self.transcriber is None:
             return
+        # Always consume both the failure code AND the backend event to keep
+        # transcriber state clean (both are set together in _mark_groq_failure).
+        failure_code = self.transcriber.consume_last_failure_code()
         backend, reason = self.transcriber.consume_backend_event()
+
+        # Prefer the classified failure code over raw text parsing
+        if failure_code:
+            message = FAILURE_MESSAGES.get(failure_code)
+            if message:
+                self.show_toast(message, warning=(failure_code == FAIL_GROQ_AUTH))
+                return
+
+        # Fall back to raw reason parsing (legacy path, or when failure_code not set)
         if backend != "local" or not reason:
             return
         reason_lower = reason.lower()
@@ -555,10 +577,23 @@ class ProcessingPipelineMixin:
                 "Groq rate limit reached. Switched to local transcription. Try again in a minute."
             )
             return
-        self.show_toast("Groq unavailable. Switched to local transcription.")
+        if "401" in reason_lower or "unauthorized" in reason_lower or "invalid" in reason_lower:
+            self.show_toast(
+                "Groq API key is invalid. Go to Settings → API Keys to update it.",
+                warning=True,
+            )
+            return
+        if "timeout" in reason_lower or "timed out" in reason_lower:
+            self.show_toast(
+                "Groq timed out. Switched to local transcription — try again."
+            )
+            return
+        self.show_toast(
+            "Groq unavailable. Switched to local transcription. Check your API key in Settings."
+        )
 
-    @pyqtSlot(str, str, str)
-    def on_processing_error(self, err_msg, correlation_id, traceback_text):
+    @Slot(str, str, str, str)
+    def on_processing_error(self, err_msg, correlation_id, traceback_text, failure_code=FAIL_UNKNOWN):
         if correlation_id != self._processing_session_id:
             log_event(
                 "processing_result", "ignored", correlation_id=correlation_id, reason="stale_error"
@@ -568,9 +603,13 @@ class ProcessingPipelineMixin:
         session = self._sessions.get(correlation_id)
         if session:
             session.mark_failed()
+
+        # Look up a human-readable message for this failure code
+        user_message = FAILURE_MESSAGES.get(failure_code, "Transcription failed — check the logs for details.")
         log_event(
             "processing_failed",
             status="failed",
+            failure_code=failure_code,
             correlation_id=correlation_id,
             error=err_msg,
             traceback=traceback_text,
@@ -579,12 +618,12 @@ class ProcessingPipelineMixin:
         self._last_session_id = correlation_id
         self._latest_timings = {
             "recording_ms": f"{round(self._last_recording_seconds * 1000, 2)} ms",
-            "error": err_msg,
+            "error": f"[{failure_code}] {err_msg[:80]}",
         }
         self.overlay.show_error("Could not process recording")
-        self.main_window.set_error_details(err_msg)
+        self.main_window.set_error_details(f"[{failure_code}] {err_msg}")
         self._refresh_debug_window()
-        self._maybe_notify_backend_fallback()
+        self.show_toast(user_message, warning=True)
         # Show error report dialog with "Send Report" button
         QTimer.singleShot(
             600,

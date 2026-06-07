@@ -14,8 +14,8 @@ from __future__ import annotations
 import os
 import threading
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtWidgets import (
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -38,8 +38,8 @@ from utils.window_effects import apply_blur
 class OnboardingDialog(QDialog):
     """Full onboarding wizard. Emits finished_signal when done or skipped."""
 
-    finished_signal = pyqtSignal()
-    _download_result = pyqtSignal(bool, str)  # success, error_msg — thread-safe
+    finished_signal = Signal()
+    _download_result = Signal(bool, str)  # success, error_msg — thread-safe
 
     # Step indices: 0=Welcome, 1=API Keys, 2=Model, 3=Hotkey, 4=Ready
     _WELCOME = 0

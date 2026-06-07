@@ -2,7 +2,7 @@ import threading
 import time as _time
 
 import numpy as np
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 from audio.recording_session import RecordingSession
 from utils.log import get_logger
@@ -54,8 +54,8 @@ class AudioRecorder(QObject):
     Provides real-time RMS amplitude for UI feedback and audio chunks for transcription.
     """
 
-    audio_level_signal = pyqtSignal(float)
-    auto_stop_signal = pyqtSignal()  # emitted when silence exceeds threshold
+    audio_level_signal = Signal(float)
+    auto_stop_signal = Signal()  # emitted when silence exceeds threshold
 
     def __init__(self, samplerate=16000, chunk_size=1024):
         super().__init__()

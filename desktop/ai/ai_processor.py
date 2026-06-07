@@ -196,6 +196,20 @@ class AIProcessor:
         if mode == "raw":
             return text
 
+        # ── PERFORMANCE: Skip LLM call for very short text (< 5 words) ──
+        # Short dictations like "yes", "no thanks", "send" don't need an LLM
+        # round-trip (~1-3s latency). Rule-based cleanup is instant and sufficient.
+        word_count = len(text.split())
+        if word_count < 5:
+            result = _rule_based_clean(text)
+            logger.debug(
+                "ai_cleanup_skipped_short",
+                words=word_count,
+                text_preview=text[:40],
+                cid=correlation_id,
+            )
+            return result
+
         # Pre-process spoken punctuation before LLM call
         text = _preprocess_spoken_punctuation(text)
 

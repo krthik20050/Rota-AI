@@ -1,0 +1,21 @@
+{
+  "name": "Rota AI",
+  "short_name": "Rota AI",
+  "description": "Free, open source voice dictation for Windows, Mac & Linux",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#e4f222",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

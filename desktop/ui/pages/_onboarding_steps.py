@@ -3,9 +3,9 @@ from __future__ import annotations
 import os
 import threading
 
-from PyQt6.QtCore import Qt, QTimer, QUrl
-from PyQt6.QtGui import QDesktopServices
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QHBoxLayout,

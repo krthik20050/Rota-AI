@@ -4,9 +4,9 @@ Wispr Flow design: warm dark context menu, no emojis (per UI/UX Pro Max rules),
 clean text labels, state-aware tooltip.
 """
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QIcon
-from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction, QIcon
+from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 
 class RotaTrayIcon(QSystemTrayIcon):

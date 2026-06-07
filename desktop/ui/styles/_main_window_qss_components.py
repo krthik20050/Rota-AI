@@ -165,6 +165,26 @@ QPushButton#IconBtn:pressed {{
     background: rgba(255, 255, 255, 0.12);
 }}
 
+/* ─── Sort Toggle Button ─── */
+QPushButton#SortToggleBtn {{
+    background: rgba(255, 255, 255, 0.04);
+    color: {CLR_TEXT_SECONDARY};
+    border: 1px solid {CLR_BORDER};
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: {FONT_FAMILY};
+    padding: 0px 12px;
+}}
+QPushButton#SortToggleBtn:hover {{
+    background: rgba(255, 255, 255, 0.08);
+    color: {CLR_TEXT_PRIMARY};
+    border-color: {CLR_BORDER_HOVER};
+}}
+QPushButton#SortToggleBtn:pressed {{
+    background: rgba(255, 255, 255, 0.12);
+}}
+
 /* ─── Dictionary ─── */
 QLineEdit#DictInput {{
     background: rgba(255, 255, 255, 0.05);
@@ -229,6 +249,18 @@ QFrame#WordChip:hover {{
 QPushButton#WordChipDeleteBtn:focus {{
     outline: none;
     border: none;
+}}
+QFrame#WordChip:focus {{
+    outline: none;
+    border: 1px solid rgba(134, 239, 172, 0.35);
+}}
+QFrame#DictContainer:focus {{
+    outline: none;
+    border: none;
+}}
+QFrame#PhoneticSuggestionPanel:focus {{
+    outline: none;
+    border: 1px solid rgba(134, 239, 172, 0.2);
 }}
 QLabel#WordChipIcon {{
     font-size: 11px;

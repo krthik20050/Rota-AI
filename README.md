@@ -635,7 +635,7 @@ Whisper base gives roughly 92-95% word accuracy on clear English speech. Small g
 
 ### What languages are supported?
 
-Whisper supports 99+ languages for transcription. The AI cleanup pass currently works best in English. Transcription in other languages works great. AI cleanup for other languages is something I want to add.
+Whisper supports 99+ languages for transcription. If you use **Groq** (free, recommended), language is auto-detected — speak any language and it transcribes correctly. The AI cleanup pass works across all languages. Local models (`.en` variants) are English-only.
 
 ---
 

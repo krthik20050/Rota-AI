@@ -6,8 +6,8 @@ Time on LEFT, content on RIGHT, vertical three-dot menu for actions.
 from datetime import UTC, datetime
 
 import pyperclip
-from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
+from PySide6.QtWidgets import (
     QDialog,
     QFrame,
     QGraphicsOpacityEffect,
@@ -64,13 +64,13 @@ class _TranscriptDialog(QDialog):
 class HistoryItemWidget(QFrame):
     """Timeline-style card — HH:MM on left, transcription on right."""
 
-    copy_requested = pyqtSignal(str)
-    copy_raw_requested = pyqtSignal(str)
-    delete_requested = pyqtSignal(int)
-    retry_requested = pyqtSignal(int)
-    transcript_requested = pyqtSignal(int)
-    undo_requested = pyqtSignal(int)
-    extract_audio_requested = pyqtSignal(int)
+    copy_requested = Signal(str)
+    copy_raw_requested = Signal(str)
+    delete_requested = Signal(int)
+    retry_requested = Signal(int)
+    transcript_requested = Signal(int)
+    undo_requested = Signal(int)
+    extract_audio_requested = Signal(int)
 
     def __init__(
         self,

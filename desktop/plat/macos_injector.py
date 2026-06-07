@@ -34,14 +34,6 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
-# Module-level state (mirrors the Windows and Linux injector globals)
-# ---------------------------------------------------------------------------
-_last_undo_content: str | None = None
-_last_injected_text: str | None = None
-_last_injected_field_info = None
-_last_injected_window = None
-_last_injected_correlation_id: str | None = None
-
 # SECURITY: Maximum injection length to prevent abuse
 _MAX_INJECT_LENGTH = 5000  # characters
 
@@ -435,6 +427,12 @@ class TextInjector:
 
     def __init__(self) -> None:
         self._ax_available = self._check_ax_available()
+        # Instance-level injection state (replaces module-level globals)
+        self._last_undo_content: str | None = None
+        self._last_injected_text: str | None = None
+        self._last_injected_field_info: dict | None = None
+        self._last_injected_window: str | None = None
+        self._last_injected_correlation_id: str | None = None
         logger.info(
             "macos_injector_initialised",
             ax_available=self._ax_available,
@@ -475,9 +473,6 @@ class TextInjector:
         Attempts to inject text into the currently focused window.
         Returns (success: bool, message: str).
         """
-        global _last_undo_content, _last_injected_text
-        global _last_injected_field_info, _last_injected_window, _last_injected_correlation_id
-
         if not text:
             return False, "No text to inject"
 
@@ -502,17 +497,17 @@ class TextInjector:
             _restore_focus(target_app)
             ok = _inject_type_chars(text)
             if ok:
-                _last_injected_text = text
-                _last_injected_field_info = field_info or {}
-                _last_injected_correlation_id = correlation_id
+                self._last_injected_text = text
+                self._last_injected_field_info = field_info or {}
+                self._last_injected_correlation_id = correlation_id
                 return True, "Text typed directly"
             return False, "Direct typing failed"
 
         # Save clipboard for undo
         try:
-            _last_undo_content = _clipboard_paste()
+            self._last_undo_content = _clipboard_paste()
         except Exception:
-            _last_undo_content = None
+            self._last_undo_content = None
 
         # Take a snapshot for restore
         _ClipboardSnapshot.save()
@@ -524,9 +519,9 @@ class TextInjector:
             # Tier 1: AXUIElement injection (no clipboard side effects)
             if ax_element is not None and self._ax_available:
                 if _inject_ax(text, ax_element):
-                    _last_injected_text = text
-                    _last_injected_field_info = field_info or {}
-                    _last_injected_correlation_id = correlation_id
+                    self._last_injected_text = text
+                    self._last_injected_field_info = field_info or {}
+                    self._last_injected_correlation_id = correlation_id
                     return True, "Text injected via AXUIElement"
 
             if not use_paste_shortcut:
@@ -535,23 +530,23 @@ class TextInjector:
 
             # Tier 2: AppleScript Cmd+V
             if _inject_apple_script(text):
-                _last_injected_text = text
-                _last_injected_field_info = field_info or {}
-                _last_injected_correlation_id = correlation_id
+                self._last_injected_text = text
+                self._last_injected_field_info = field_info or {}
+                self._last_injected_correlation_id = correlation_id
                 return True, "Text injected via AppleScript"
 
             # Tier 3: pynput Cmd+V
             if _inject_pynput_cmd_v(text):
-                _last_injected_text = text
-                _last_injected_field_info = field_info or {}
-                _last_injected_correlation_id = correlation_id
+                self._last_injected_text = text
+                self._last_injected_field_info = field_info or {}
+                self._last_injected_correlation_id = correlation_id
                 return True, "Text injected via pynput"
 
             # Tier 4: character-by-character typing
             if _inject_type_chars(text):
-                _last_injected_text = text
-                _last_injected_field_info = field_info or {}
-                _last_injected_correlation_id = correlation_id
+                self._last_injected_text = text
+                self._last_injected_field_info = field_info or {}
+                self._last_injected_correlation_id = correlation_id
                 return True, "Text typed character by character"
 
             return False, "All injection methods failed"
@@ -570,28 +565,26 @@ class TextInjector:
                     _ClipboardSnapshot.restore()
                 except Exception:
                     _ClipboardSnapshot._types_and_data = []
-            if _last_undo_content is not None and not had_rich_data:
+            if self._last_undo_content is not None and not had_rich_data:
                 try:
                     time.sleep(0.1)
-                    _clipboard_copy(_last_undo_content)
+                    _clipboard_copy(self._last_undo_content)
                 except Exception:
                     pass
 
     def undo_last_inject(self) -> tuple[bool, str]:
         """Undo the last injection by restoring the previous clipboard content."""
-        global _last_undo_content
-        if _last_undo_content is None:
+        if self._last_undo_content is None:
             return False, "No undo available"
         try:
-            _clipboard_copy(_last_undo_content)
-            _last_undo_content = None
+            _clipboard_copy(self._last_undo_content)
+            self._last_undo_content = None
             return True, "Previous clipboard restored. Paste to recover."
         except Exception as exc:
             return False, f"Undo failed: {exc}"
 
     def get_last_injected_text(self) -> str:
-        global _last_injected_text
-        return _last_injected_text or ""
+        return self._last_injected_text or ""
 
     def get_undo_available(self) -> bool:
-        return _last_undo_content is not None
+        return self._last_undo_content is not None

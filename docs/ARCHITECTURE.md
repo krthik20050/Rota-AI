@@ -19,7 +19,7 @@ Rota AI is a cross-platform desktop voice dictation app built with Python, PyQt6
 || Text Injection (Linux) | xdotool / wtype / dotool + clipboard |
 || Text Injection (macOS) | AXUIElement + NSPasteboard + AppleScript Cmd+V |
 || Hotkey Capture (Windows) | pynput |
-|| Hotkey Capture (Linux) | evdev |
+|| Hotkey Capture (Linux) | pynput (X11, primary) → XDG Desktop Portal (Wayland) → evdev (last resort) |
 || Hotkey Capture (macOS) | pynput + Quartz CGEventTap |
 || Config Storage | JSON file (encrypted at rest) |
 || Secret Storage (Windows) | DPAPI (win32crypt) |

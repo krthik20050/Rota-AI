@@ -2,7 +2,8 @@ import threading
 import time
 from types import SimpleNamespace
 
-from app import controller
+from PySide6.QtCore import QTimer
+
 from app.controller import RecordingState, RotaApp
 from audio.recording_session import RecordingSession
 
@@ -58,7 +59,7 @@ class FakeMainWindow:
 
 
 def test_completed_processing_is_not_dropped_if_thread_cleanup_runs_first(monkeypatch):
-    monkeypatch.setattr(controller.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(QTimer, "singleShot", lambda *_args, **_kwargs: None)
 
     app = RotaApp.__new__(RotaApp)
     session = RecordingSession(id="session-1")

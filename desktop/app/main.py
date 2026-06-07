@@ -41,12 +41,13 @@ from app.controller import (
     try_acquire_instance_listener,
     wake_existing_instance,
 )
+from app.version import __version__
 
 
 def _show_crash_dialog(title: str, exc_type, exc_value, tb_str: str) -> None:
     """Show a visible error dialog so users can report the exact error."""
     try:
-        from PyQt6.QtWidgets import QApplication, QMessageBox
+        from PySide6.QtWidgets import QApplication, QMessageBox
 
         app = QApplication.instance()
         if app is None:
@@ -113,6 +114,12 @@ def run() -> None:
 
     # ── CLI argument parsing ──────────────────────────────────────────────
     parser = argparse.ArgumentParser(prog="rota", description="Rota AI — voice dictation")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="Show the version number and exit",
+    )
     parser.add_argument(
         "--hotkey-backend",
         choices=["auto", "pynput", "portal", "evdev"],

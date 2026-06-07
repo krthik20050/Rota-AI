@@ -3,7 +3,7 @@
 # System deps: run setup-linux.sh (installs system packages + Python deps)
 
 # UI Framework
-PyQt6>=6.6.0,<7.0.0
+PySide6>=6.6.0,<7.0.0
 
 # Audio capture (requires PortAudio: sudo apt install libportaudio2 portaudio19-dev)
 sounddevice>=0.4.6,<1.0.0
@@ -22,7 +22,13 @@ audioop-lts>=0.2.0; python_version >= "3.13"
 # Clipboard access (Linux: needs wl-clipboard or xclip system packages)
 pyperclip>=1.8.2,<2.0.0
 
-# Global hotkeys via evdev (Linux only; requires user in 'input' group)
+# Global hotkeys — pynput (X11, uses XGrabKey, no freeze) is preferred over evdev
+pynput>=1.7.6,<2.0.0
+
+# Wayland hotkeys via XDG Desktop Portal GlobalShortcuts (DBus, no freeze)
+jeepney>=0.8.0,<1.0.0
+
+# evdev fallback (last resort; requires user in 'input' group, may freeze keyboard)
 evdev>=1.8.0,<2.0.0
 
 # Voice activity detection

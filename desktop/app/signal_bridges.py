@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from enum import Enum
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 
 class HotkeySignalBridge(QObject):
-    start_requested = pyqtSignal()
-    stop_requested = pyqtSignal()
+    start_requested = Signal()
+    stop_requested = Signal()
 
 
 class DebugLogBridge(QObject):
-    line_received = pyqtSignal(str)
+    line_received = Signal(str)
 
 
 class RecordingState(Enum):

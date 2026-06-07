@@ -6,9 +6,9 @@ soft corners, generous spacing, clear typography hierarchy.
 
 import os
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -22,7 +22,9 @@ from PyQt6.QtWidgets import (
 from ui.pages._settings_sections import (
     build_api_keys_section,
     build_appearance_section,
+    build_audio_section,
     build_formatting_section,
+    build_per_app_section,
     build_recording_section,
     build_shortcuts_section,
     build_text_formatting_section,
@@ -82,6 +84,8 @@ class SettingsWindow(QDialog):
         build_formatting_section(self, content_layout)
         build_shortcuts_section(self, content_layout)
         build_text_formatting_section(self, content_layout)
+        build_audio_section(self, content_layout)
+        build_per_app_section(self, content_layout)
         build_appearance_section(self, content_layout)
 
         content_layout.addStretch()
@@ -210,6 +214,7 @@ class SettingsWindow(QDialog):
         self.cpu_threads_combo.setCurrentIndex(t_idx if t_idx >= 0 else 0)
 
         self.live_feedback_check.setChecked(conf.get("live_transcription_enabled", True))
+        self.denoise_check.setChecked(conf.get("denoise_enabled", False))
 
         ai_prov = conf.get("ai_provider", "auto")
         ai_idx = self.ai_provider_combo.findData(ai_prov)
@@ -237,6 +242,70 @@ class SettingsWindow(QDialog):
         history_days = int(conf.get("history_days", 2))
         hd_idx = self.history_days_combo.findData(history_days)
         self.history_days_combo.setCurrentIndex(hd_idx if hd_idx >= 0 else 1)
+
+        self._rebuild_per_app_list()
+
+    def _rebuild_per_app_list(self):
+        """Rebuild the per-app override rows in the settings UI."""
+        if not hasattr(self, "per_app_layout"):
+            return
+        # Clear existing rows
+        while self.per_app_layout.count():
+            item = self.per_app_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
+        per_app = self.config.get("per_app_config", {})
+        if not per_app:
+            empty_lbl = QLabel("No app overrides configured yet. Click below to add one.")
+            empty_lbl.setStyleSheet("color: #5A5A60; font-size: 11px; padding: 8px;")
+            self.per_app_layout.addWidget(empty_lbl)
+            return
+
+        for app_name, settings in per_app.items():
+            row = QFrame()
+            row.setObjectName("PerAppRow")
+            row.setStyleSheet(
+                "QFrame#PerAppRow { background: rgba(255,255,255,0.04); border-radius: 6px; }"
+            )
+            row_lay = QHBoxLayout(row)
+            row_lay.setContentsMargins(12, 8, 12, 8)
+            row_lay.setSpacing(8)
+
+            app_label = QLabel(f"<b>{app_name}</b>")
+            app_label.setStyleSheet("color: #F0F0F2; font-size: 12px;")
+            row_lay.addWidget(app_label, 1)
+
+            mode = settings.get("writing_mode", "clean")
+            mode_lbl = QLabel(f"mode: {mode}")
+            mode_lbl.setStyleSheet("color: #86EFAC; font-size: 11px;")
+            row_lay.addWidget(mode_lbl)
+
+            provider = settings.get("ai_provider", "auto")
+            prov_lbl = QLabel(f"AI: {provider}")
+            prov_lbl.setStyleSheet("color: #A0A0A5; font-size: 11px;")
+            row_lay.addWidget(prov_lbl)
+
+            del_btn = QPushButton("✕")
+            del_btn.setFixedSize(22, 22)
+            del_btn.setStyleSheet(
+                "QPushButton { background: transparent; color: #5A5A60; border: none; }"
+                "QPushButton:hover { color: #F87171; }"
+            )
+            del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            del_btn.clicked.connect(lambda checked, a=app_name: self._remove_per_app(a))
+            row_lay.addWidget(del_btn)
+
+            self.per_app_layout.addWidget(row)
+
+    def _remove_per_app(self, app_name: str):
+        """Remove a per-app override entry."""
+        per_app = self.config.get("per_app_config", {}).copy()
+        if app_name in per_app:
+            del per_app[app_name]
+            self.config.set("per_app_config", per_app)
+            self._rebuild_per_app_list()
 
     def _save_and_close(self):
         gemini_key = self.gemini_key_input.text().strip()
@@ -277,6 +346,9 @@ class SettingsWindow(QDialog):
         self.config_manager.set("date_display", self.date_display_combo.currentData() or "relative")
         hd = self.history_days_combo.currentData()
         self.config_manager.set("history_days", hd if hd is not None else 2)
+
+        self.config_manager.set("denoise_enabled", self.denoise_check.isChecked())
+        self.config_manager.set("auto_backup_enabled", True)
 
         self.config_manager.save()
         self.accept()

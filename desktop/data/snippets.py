@@ -9,7 +9,9 @@ Enhancements over basic version:
   - Fuzzy matching for close-enough spoken triggers
   - Import/export for snippet sharing
 
-Storage: %APPDATA%/RotaAI/snippets.json
+Storage: %APPDATA%/RotaAI/snippets.json (Windows),
+%XDG_DATA_HOME%/rota-ai/snippets.json (Linux),
+~/Library/Application Support/RotaAI/snippets.json (macOS)
 Format: {"key_phrase": "expanded text with {{variables}}", ...}
 
 Key phrases are matched case-insensitively against transcribed text.
@@ -46,6 +48,13 @@ _BUILTIN_VARIABLES = {
 }
 
 
+# Special constants
+_DISABLED_META_KEY = "__disabled__"
+_CURSOR_MARKER = "__CURSOR_MARKER__"
+_MAX_NEST_DEPTH = 3
+
+
+
 def _get_clipboard_text() -> str:
     """Read current clipboard text content. Never raises."""
     try:
@@ -72,43 +81,6 @@ def _get_clipboard_text() -> str:
         return ""
 
 
-def _resolve_variables(text: str) -> str:
-    """
-    Replace {{variable}} placeholders with their actual values.
-
-    Built-in variables:
-      {{date}}      → 2026-05-20
-      {{time}}      → 17:43
-      {{datetime}}  → 2026-05-20 17:43
-      {{today}}     → Tuesday, May 20, 2026
-      {{day}}       → Tuesday
-      {{month}}     → May
-      {{year}}      → 2026
-      {{timestamp}} → ISO timestamp
-      {{clipboard}} → current clipboard content
-      {{cursor}}    → removed (cursor position marker for future use)
-    """
-
-    def _replace(match):
-        var_name = match.group(1).lower()
-
-        # Check built-in variables
-        if var_name in _BUILTIN_VARIABLES:
-            return _BUILTIN_VARIABLES[var_name]()
-
-        # Special: clipboard
-        if var_name == "clipboard":
-            return _get_clipboard_text()
-
-        # Special: cursor marker (remove — cursor stays at this position)
-        if var_name == "cursor":
-            return ""  # Placeholder for future cursor positioning
-
-        # Unknown variable — preserve as-is
-        return match.group(0)
-
-    return _VARIABLE_PATTERN.sub(_replace, text)
-
 
 def _levenshtein_distance(s1: str, s2: str) -> int:
     """Calculate the Levenshtein distance between two strings."""
@@ -128,6 +100,7 @@ def _levenshtein_distance(s1: str, s2: str) -> int:
         previous_row = current_row
 
     return previous_row[-1]
+
 
 
 def _fuzzy_match(spoken: str, trigger: str, threshold: float = 0.85) -> bool:
@@ -151,7 +124,52 @@ def _fuzzy_match(spoken: str, trigger: str, threshold: float = 0.85) -> bool:
     return similarity >= threshold
 
 
-_DISABLED_META_KEY = "__disabled__"
+
+def _resolve_variables(text: str, snippets_manager: "SnippetsManager | None" = None, _depth: int = 0) -> str:
+    """
+    Replace {{variable}} placeholders with their actual values.
+
+    Built-in variables:
+      {{date}}      → 2026-05-20
+      {{time}}      → 17:43
+      {{datetime}}  → 2026-05-20 17:43
+      {{today}}     → Tuesday, May 20, 2026
+      {{day}}       → Tuesday
+      {{month}}     → May
+      {{year}}      → 2026
+      {{timestamp}} → ISO timestamp
+      {{clipboard}} → current clipboard content
+      {{cursor}}    → __CURSOR_MARKER__ (injector splits here)
+
+    Nested expansion: if a snippet value contains {{other_snippet}}, it
+    recursively resolves up to _MAX_NEST_DEPTH levels deep.
+    """
+
+    def _replace(match):
+        var_name = match.group(1).lower()
+
+        # Check built-in variables
+        if var_name in _BUILTIN_VARIABLES:
+            return _BUILTIN_VARIABLES[var_name]()
+
+        # Special: clipboard
+        if var_name == "clipboard":
+            return _get_clipboard_text()
+
+        # Special: cursor marker — injector splits text here
+        if var_name == "cursor":
+            return _CURSOR_MARKER
+
+        # Nested snippet expansion (max depth 3)
+        if snippets_manager and _depth < _MAX_NEST_DEPTH:
+            nested = snippets_manager.all().get(var_name)
+            if nested is not None:
+                return _resolve_variables(nested, snippets_manager, _depth + 1)
+
+        # Unknown variable — preserve as-is
+        return match.group(0)
+
+    return _VARIABLE_PATTERN.sub(_replace, text)
 
 
 class SnippetsManager:
@@ -163,12 +181,16 @@ class SnippetsManager:
                 appdata_dir = os.path.join(
                     os.path.expanduser("~/Library/Application Support"), "RotaAI"
                 )
+            elif sys.platform.startswith("linux"):
+                xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+                appdata_dir = os.path.join(xdg_data, "rota-ai")
             else:
                 appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
             os.makedirs(appdata_dir, exist_ok=True)
             snippets_path = os.path.join(appdata_dir, "snippets.json")
         self._path = snippets_path
         self._snippets: dict[str, str] = {}
+        self._categories: dict[str, str] = {}  # trigger → category name
         self._disabled: set[str] = set()
         self._load()
 
@@ -178,6 +200,7 @@ class SnippetsManager:
                 with open(self._path, encoding="utf-8") as f:
                     data = json.load(f)
                 self._disabled = set(data.pop(_DISABLED_META_KEY, []))
+                self._categories = data.pop("__categories__", {})
                 self._snippets = data
             except Exception:
                 logger.exception("snippets_load_failed path=%s", self._path)
@@ -201,6 +224,8 @@ class SnippetsManager:
         try:
             with open(self._path, "w", encoding="utf-8") as f:
                 data = dict(self._snippets)
+                if self._categories:
+                    data["__categories__"] = dict(self._categories)
                 if self._disabled:
                     data[_DISABLED_META_KEY] = sorted(self._disabled)
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -217,6 +242,8 @@ class SnippetsManager:
         3. Inline expansion of spoken trigger phrases inside a larger sentence (Wispr Flow parity)
 
         Variables in the expansion are resolved at expansion time.
+        Supports nested snippets: {{other_trigger}} in expansion values.
+        Supports cursor placement: {{cursor}} marks where cursor lands after injection.
         """
         if not text:
             return None
@@ -229,7 +256,7 @@ class SnippetsManager:
                 continue
             if normalized == key.lower():
                 logger.info("snippet_expanded trigger=%s method=exact", key)
-                return _resolve_variables(value)
+                return _resolve_variables(value, self, _depth=0)
 
         # Strategy 2: Fuzzy match (handles speech recognition errors)
         for key, value in self._snippets.items():
@@ -237,7 +264,7 @@ class SnippetsManager:
                 continue
             if _fuzzy_match(normalized, key.lower()):
                 logger.info("snippet_expanded trigger=%s method=fuzzy", key)
-                return _resolve_variables(value)
+                return _resolve_variables(value, self, _depth=0)
 
         # Strategy 3: Inline expansion within a larger sentence (Wispr Flow parity)
         sorted_triggers = sorted(
@@ -254,7 +281,7 @@ class SnippetsManager:
             pattern = re.compile(rf"\b{escaped_key}\b", re.IGNORECASE)
 
             if pattern.search(expanded_text):
-                resolved_value = _resolve_variables(self._snippets[key])
+                resolved_value = _resolve_variables(self._snippets[key], self, _depth=0)
                 expanded_text = pattern.sub(resolved_value, expanded_text)
                 expanded_any = True
                 logger.info("snippet_expanded_inline trigger=%s", key)
@@ -264,7 +291,7 @@ class SnippetsManager:
 
         return None
 
-    def set(self, key: str, value: str) -> tuple[bool, str]:
+    def set(self, key: str, value: str, category: str = "") -> tuple[bool, str]:
         """
         Add or update a snippet.
 
@@ -284,8 +311,12 @@ class SnippetsManager:
             return False, f"Expansion text too long (max {_MAX_EXPANSION_LEN} chars)"
 
         self._snippets[key] = value
+        if category:
+            self._categories[key] = category
+        elif key in self._categories:
+            del self._categories[key]
         self._save()
-        logger.info("snippet_saved trigger=%s len=%d", key, len(value))
+        logger.info("snippet_saved trigger=%s len=%d category=%s", key, len(value), category or "none")
         return True, "Snippet saved"
 
     def delete(self, key: str) -> bool:
@@ -327,6 +358,44 @@ class SnippetsManager:
         """Return {trigger: (expansion, enabled)}."""
         return {k: (v, k not in self._disabled) for k, v in self._snippets.items()}
 
+    def all_categorized(self) -> dict[str, list[tuple[str, str, bool]]]:
+        """
+        Return snippets grouped by category.
+        Returns {category_name: [(trigger, expansion, enabled), ...]}.
+        Uncategorized snippets go under "Uncategorized".
+        """
+        result: dict[str, list[tuple[str, str, bool]]] = {}
+        for trigger, expansion in self._snippets.items():
+            cat = self._categories.get(trigger, "Uncategorized")
+            enabled = trigger not in self._disabled
+            result.setdefault(cat, []).append((trigger, expansion, enabled))
+        return result
+
+    def get_category(self, key: str) -> str:
+        """Get the category for a snippet trigger."""
+        return self._categories.get(key, "")
+
+    def set_category(self, key: str, category: str) -> None:
+        """Set the category for a snippet trigger."""
+        if category:
+            self._categories[key] = category
+        elif key in self._categories:
+            del self._categories[key]
+        self._save()
+
+    def all_categories(self) -> list[str]:
+        """Return all unique category names, sorted."""
+        cats = set(self._categories.values())
+        cats.discard("")
+        return sorted(cats)
+
+    def get_snippets_by_category(self, category: str) -> dict[str, str]:
+        """Return {trigger: expansion} for all snippets in a category."""
+        return {
+            k: v for k, v in self._snippets.items()
+            if self._categories.get(k, "Uncategorized") == category
+        }
+
     def count(self) -> int:
         """Return the number of snippets."""
         return len(self._snippets)
@@ -365,3 +434,8 @@ class SnippetsManager:
     def available_variables() -> list[str]:
         """Return list of built-in variable names for the UI."""
         return list(_BUILTIN_VARIABLES.keys()) + ["clipboard", "cursor"]
+
+    @staticmethod
+    def cursor_marker() -> str:
+        """Return the cursor marker string used for split injection."""
+        return _CURSOR_MARKER

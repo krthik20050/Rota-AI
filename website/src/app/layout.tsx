@@ -20,21 +20,30 @@ const geistMono = Geist_Mono({
   weight: ["400", "500"],
 });
 
-const SITE_URL = "https://website-omega-lemon-57.vercel.app";
+const SITE_URL = "https://rota.software";
 
 export const metadata: Metadata = {
-  title: "Rota AI - Voice Dictation for Windows, Mac & Linux",
-  description: "Free, open source voice dictation for Windows, macOS, and Linux. Speak in any app. AI cleans up your text. No subscriptions, no account, no cloud lock.",
   metadataBase: new URL(SITE_URL),
+  title: {
+    template: "%s | Rota AI",
+    default: "Rota AI — Free Voice Dictation for Windows, Mac & Linux",
+  },
+  description:
+    "Free, open source voice dictation that works in any app. AI-powered cleanup, offline mode, no subscriptions.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "Rota AI - Free Voice Dictation for Windows, Mac & Linux",
-    description: "Free, open source Wispr Flow alternative. Speak in any app. AI cleans up your text. No subscriptions, no account, no cloud lock.",
+    title: "Rota AI — Free Voice Dictation",
+    description:
+    "Free, open source Wispr Flow alternative. Speak in any app. AI cleans up your text. No subscriptions, no account, no cloud lock.",
     url: SITE_URL,
     siteName: "Rota AI",
     type: "website",
+    locale: "en_US",
     images: [
       {
-        url: "/og-image.png",
+        url: "/api/og",
         width: 1200,
         height: 630,
         alt: "Rota AI - Free Voice Dictation",
@@ -43,12 +52,19 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Rota AI - Free Voice Dictation for Windows, Mac & Linux",
-    description: "Free, open source Wispr Flow alternative. Speak in any app. No subscriptions ever.",
-    images: ["/og-image.png"],
+    title: "Rota AI — Free Voice Dictation",
+    description:
+    "Free, open source voice dictation for Windows, macOS & Linux — no subscriptions, no account needed.",
+    images: ["/api/og"],
   },
   icons: {
     icon: "/favicon.ico",
+    apple: "/logo.svg",
+  },
+  manifest: "/site.webmanifest",
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
@@ -63,16 +79,26 @@ export default function RootLayout({
       className={`${geist.variable} ${geistMono.variable} ${cormorant.variable} h-full`}
     >
       <head>
-        {/* Umami Analytics - replace data-website-id with your ID from umami.is */}
+        {/* Umami Analytics */}
         <script
           defer
           src="https://cloud.umami.is/script.js"
           data-website-id="2c1af14b-5f17-4bb1-bebd-550656ad9201"
         />
-        {/* Microsoft Clarity - replace with your Clarity project ID */}
+        {/* Microsoft Clarity */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","wwl8nuqt5p");`,
+          }}
+        />
+        {/* Google Analytics 4 - replace G-XXXXXXXXXX with your measurement ID */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-XXXXXXXXXX');`,
           }}
         />
       </head>

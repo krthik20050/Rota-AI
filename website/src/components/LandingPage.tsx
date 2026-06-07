@@ -29,9 +29,9 @@ function DownloadModal({ open, onClose }: { open: boolean; onClose: () => void }
         <button onClick={onClose} className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors">
           <X size={18} />
         </button>
-        <div className="p-8">
-          <h3 className="text-lg font-semibold text-white mb-1 tracking-tight">Download Rota AI</h3>
-          <p className="text-xs text-zinc-500 mb-6">Free &amp; open source. No account needed.</p>
+        <div className="p-5 sm:p-8">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-1 tracking-tight">Download Rota AI</h3>
+          <p className="text-[11px] sm:text-xs text-zinc-500 mb-4 sm:mb-6">Free &amp; open source. No account needed.</p>
           <a href="/api/download?platform=windows" download="RotaAI-Setup.exe"
             className="group flex items-center gap-4 w-full px-5 py-4 mb-3 rounded-sm transition-all hover:opacity-90"
             style={{ background: "#e4f222" }}>
@@ -600,7 +600,7 @@ const FEATURES = [
 const APPS_DATA: { name: string; domain: string; invert?: boolean }[] = [
   // Row 1 — Billions / hundreds of millions of users
   { name: "YouTube",           domain: "youtube.com" },
-  { name: "WhatsApp",          domain: "whatsapp.com" },
+  { name: "WhatsApp",          domain: "wa.me" },
   { name: "Facebook",          domain: "facebook.com" },
   { name: "Instagram",         domain: "instagram.com" },
   { name: "TikTok",            domain: "tiktok.com" },
@@ -624,7 +624,7 @@ const APPS_DATA: { name: string; domain: string; invert?: boolean }[] = [
   { name: "Perplexity",        domain: "perplexity.ai" },
   { name: "Claude",            domain: "claude.ai" },
   { name: "Gemini",            domain: "gemini.google.com" },
-  { name: "Copilot",           domain: "copilot.microsoft.com" },
+  { name: "Copilot",           domain: "bing.com" },
   { name: "Windsurf",          domain: "windsurf.com" },
   { name: "Replit",            domain: "replit.com" },
   { name: "Arc Browser",       domain: "arc.net" },
@@ -745,6 +745,26 @@ const FAQ_ITEMS = [
     q: "What are the system requirements?",
     a: "Windows 10/11, macOS 13+, or Linux (Ubuntu 20.04+, Fedora 36+, Arch). 4GB RAM minimum, 8GB recommended. For local GPU transcription: NVIDIA GPU with 4GB+ VRAM. CPU-only works on any modern quad-core.",
   },
+  {
+    q: "Which Whisper model should I use?",
+    a: "Base (140MB) for speed. Small (480MB) for best balance. Large v3 turbo (1.5GB) for best accuracy if you have 4GB+ VRAM. You can switch models anytime from settings.",
+  },
+  {
+    q: "How do I get a Groq API key?",
+    a: "Go to console.groq.com, sign up (free), and create an API key. Paste it into Rota during onboarding or in Settings. The free tier handles daily use for most people.",
+  },
+  {
+    q: "Does Rota AI work with VS Code?",
+    a: "Yes. Rota detects VS Code and preserves camelCase, snake_case, and code syntax. Your code comments come out clean without extra punctuation. It also works in terminals and IDEs.",
+  },
+  {
+    q: "Is my data private?",
+    a: "Rota AI has zero telemetry. The desktop app never phones home. Your voice data goes only to the transcription service you choose (Groq, Gemini, or local Ollama). API keys are encrypted at rest using your OS keychain.",
+  },
+  {
+    q: "Can I contribute to Rota AI?",
+    a: "Yes. The entire project is on GitHub under the MIT license. You can submit pull requests, report issues, suggest features, or fork the project. Contributions from students and developers are welcome.",
+  },
 ];
 
 /* ─── Share Row ─────────────────────────────────────────────────────────────── */
@@ -797,11 +817,11 @@ function ShareButton({ platform }: { platform: typeof SHARE_PLATFORMS[number] })
       title={`Share on ${platform.name}`}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      className="flex flex-col items-center gap-2.5"
+      className="flex flex-col items-center gap-2"
       style={{ transform: hov ? "scale(1.1)" : "scale(1)", transition: "transform 0.18s ease" }}
     >
       <div
-        className="flex items-center justify-center w-16 h-16 rounded-2xl"
+        className="flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl"
         style={{
           background: hov ? platform.hoverBg : "rgba(255,255,255,0.05)",
           border: `1px solid ${hov ? platform.borderHover : "rgba(255,255,255,0.09)"}`,
@@ -811,8 +831,7 @@ function ShareButton({ platform }: { platform: typeof SHARE_PLATFORMS[number] })
         }}
       >
         {platform.icon}
-      </div>
-      <span className="text-[10px] uppercase tracking-widest font-mono"
+      </div>          <span className="text-[8px] sm:text-[10px] uppercase tracking-widest font-mono"
         style={{ color: hov ? platform.color : "#3a3a3a", transition: "color 0.18s" }}>
         {platform.name}
       </span>
@@ -822,7 +841,7 @@ function ShareButton({ platform }: { platform: typeof SHARE_PLATFORMS[number] })
 
 function ShareRow() {
   return (
-    <div className="flex items-end justify-center gap-6 flex-wrap">
+    <div className="flex items-end justify-center gap-4 sm:gap-6 flex-wrap">
       {SHARE_PLATFORMS.map((p) => <ShareButton key={p.name} platform={p} />)}
     </div>
   );
@@ -837,7 +856,7 @@ function AppIcon({ app, floatName, dur, del }: {
   const [hov, setHov] = React.useState(false);
   return (
     <div
-      className="relative flex items-center justify-center w-12 h-12 rounded-xl cursor-default"
+      className="relative flex items-center justify-center w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl cursor-default"
       style={{
         animation: `${floatName} ${dur}s ease-in-out ${del}s infinite`,
         border: `1px solid ${hov ? "rgba(228,242,34,0.25)" : "transparent"}`,
@@ -848,11 +867,10 @@ function AppIcon({ app, floatName, dur, del }: {
       }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-    >
-      <img
-        src={`https://www.google.com/s2/favicons?domain=${app.domain}&sz=64`}
-        alt={app.name}
-        className="w-7 h-7"
+    >          <img
+            src={`https://www.google.com/s2/favicons?domain=${app.domain}&sz=64`}
+            alt={app.name}
+            className="w-5 h-5 sm:w-7 sm:h-7"
         style={{ imageRendering: "auto", filter: app.invert ? "brightness(0) invert(1) opacity(0.75)" : undefined }}
       />
       <AnimatePresence>
@@ -1015,11 +1033,12 @@ function Nav({ onDownloadClick }: { onDownloadClick: () => void }) {
       }}
     >
       <Link href="/" className="flex items-center">
-        <img src="/logo.svg" alt="Rota AI" className="h-14 sm:h-16 w-auto" />
+        <img src="/logo.svg" alt="Rota AI" className="h-10 sm:h-12 lg:h-16 w-auto" />
       </Link>
       <div className="hidden sm:flex items-center gap-8 text-xs tracking-[0.18em] uppercase text-[#71717a]">
         <a href="#features" className="hover:text-[#fafafa] transition-colors">Features</a>
         <a href="#comparison" className="hover:text-[#fafafa] transition-colors">Compare</a>
+        <Link href="/docs" className="hover:text-[#fafafa] transition-colors">Docs</Link>
         <Link href="/blog" className="hover:text-[#fafafa] transition-colors">Blog</Link>
         <button onClick={onDownloadClick} className="hover:text-[#fafafa] transition-colors"
           style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", color: "inherit" }}>
@@ -1042,10 +1061,11 @@ export function LandingPage() {
   const [preloaderDone, setPreloaderDone] = React.useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = React.useState(false);
   const [hoveredStep, setHoveredStep] = React.useState<number | null>(null);
+  const handlePreloaderComplete = React.useCallback(() => setPreloaderDone(true), []);
 
   return (
     <>
-      {!preloaderDone && <WordsPreloader onComplete={() => setPreloaderDone(true)} />}
+      {!preloaderDone && <WordsPreloader onComplete={handlePreloaderComplete} />}
       <DownloadModal open={downloadModalOpen} onClose={() => setDownloadModalOpen(false)} />
       <div className="min-h-screen bg-[#09090b]">
         <Nav onDownloadClick={() => setDownloadModalOpen(true)} />
@@ -1147,7 +1167,7 @@ export function LandingPage() {
                       onMouseLeave={() => setHoveredStep(null)}
                     >
                       {/* Text panel */}
-                      <div className={`p-10 lg:p-12 flex flex-col justify-center relative overflow-hidden ${isEven ? "lg:order-1" : "lg:order-2"}`}>
+                      <div className={`p-6 sm:p-10 lg:p-12 flex flex-col justify-center relative overflow-hidden ${isEven ? "lg:order-1" : "lg:order-2"}`}>
                         <div
                           className="absolute top-6 right-6 font-display uppercase leading-none select-none pointer-events-none transition-all duration-500"
                           style={{
@@ -1173,7 +1193,7 @@ export function LandingPage() {
 
                       {/* Illustration panel */}
                       <div
-                        className={`p-10 lg:p-12 flex items-center justify-center ${isEven ? "lg:order-2 border-t lg:border-t-0 lg:border-l" : "lg:order-1 border-t lg:border-t-0 lg:border-r"}`}
+                        className={`p-6 sm:p-10 lg:p-12 flex items-center justify-center ${isEven ? "lg:order-2 border-t lg:border-t-0 lg:border-l" : "lg:order-1 border-t lg:border-t-0 lg:border-r"}`}
                         style={{ borderColor: "rgba(255,255,255,0.04)", minHeight: 220 }}>
                         <IllustrationSlot />
                       </div>
@@ -1200,8 +1220,7 @@ export function LandingPage() {
             </FadeIn>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px" style={{ background: "rgba(255,255,255,0.04)" }}>
               {FEATURES.map((feat, i) => (
-                <FadeIn key={i} delay={0.05 * i} y={16} className="h-full">
-                  <div className="group p-8 bg-[#09090b] h-full relative overflow-hidden transition-all duration-300 hover:bg-[#0d0d10]">
+                <FadeIn key={i} delay={0.05 * i} y={16} className="h-full">                    <div className="group p-6 sm:p-8 bg-[#09090b] h-full relative overflow-hidden transition-all duration-300 hover:bg-[#0d0d10]">
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                       style={{ background: "radial-gradient(circle at 50% 0%, rgba(228,242,34,0.04) 0%, transparent 60%)" }} />
                     <div className="w-10 h-10 flex items-center justify-center mb-5 transition-all duration-300"
@@ -1251,7 +1270,7 @@ export function LandingPage() {
 
             {/* Floating icon grid — icons only, no names */}
             <FadeIn delay={0.15}>
-              <p className="text-[10px] uppercase tracking-[0.25em] text-[#50545a] font-mono mb-8">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-[#50545a] font-mono mb-4 sm:mb-8">
                 Compatible with 90+ apps
               </p>
               <style>{`
@@ -1260,7 +1279,7 @@ export function LandingPage() {
                 @keyframes float-c { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
                 @keyframes float-d { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
               `}</style>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-1.5 sm:gap-3">
                 {APPS_DATA.slice(0, 95).map((app, i) => {
                   const floatNames = ["float-a", "float-b", "float-c", "float-d"];
                   const floatName = floatNames[i % 4];
@@ -1271,7 +1290,7 @@ export function LandingPage() {
                   );
                 })}
               </div>
-              <p className="text-[11px] text-[#2a2a2a] mt-8 uppercase tracking-[0.2em]">+ any app with a text field</p>
+              <p className="text-[10px] sm:text-[11px] text-[#2a2a2a] mt-6 sm:mt-8 uppercase tracking-[0.2em]">+ any app with a text field</p>
             </FadeIn>
           </div>
         </section>
@@ -1287,14 +1306,14 @@ export function LandingPage() {
                 Why Rota AI?
               </h2>
             </FadeIn>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-6 sm:mx-0 px-6 sm:px-0">
+              <table className="w-full text-xs sm:text-sm">
                 <thead>
                   <tr className="border-b border-white/[.06]">
-                    <th className="text-left py-4 pr-6 text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">Feature</th>
-                    <th className="text-center py-4 px-4 text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">Wispr Flow</th>
-                    <th className="text-center py-4 px-4 text-xs uppercase tracking-[0.2em] text-[#e4f222] font-mono">Rota AI</th>
-                    <th className="text-center py-4 pl-4 text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">SuperWhisper</th>
+                    <th className="text-left py-3 sm:py-4 pr-3 sm:pr-6 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">Feature</th>
+                    <th className="text-center py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">Wispr Flow</th>
+                    <th className="text-center py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-[#e4f222] font-mono">Rota AI</th>
+                    <th className="text-center py-3 sm:py-4 pl-2 sm:pl-4 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-[#50545a] font-mono">SuperWhisper</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1307,10 +1326,10 @@ export function LandingPage() {
                       viewport={{ once: true }}
                       transition={{ duration: 0.35, delay: i * 0.04 }}
                     >
-                      <td className="py-4 pr-6 text-[#a1a1aa]">{row.feature}</td>
-                      <td className="py-4 px-4 text-center text-[#50545a]">{row.wispr}</td>
-                      <td className={`py-4 px-4 text-center ${row.rotaBold ? "text-[#e4f222] font-semibold" : "text-[#a1a1aa]"}`}>{row.rota}</td>
-                      <td className="py-4 pl-4 text-center text-[#50545a]">{row.superwhisper}</td>
+                      <td className="py-3 sm:py-4 pr-3 sm:pr-6 text-[10px] sm:text-sm text-[#a1a1aa]">{row.feature}</td>
+                      <td className="py-3 sm:py-4 px-2 sm:px-4 text-center text-[10px] sm:text-sm text-[#50545a]">{row.wispr}</td>
+                      <td className={`py-3 sm:py-4 px-2 sm:px-4 text-center text-[10px] sm:text-sm ${row.rotaBold ? "text-[#e4f222] font-semibold" : "text-[#a1a1aa]"}`}>{row.rota}</td>
+                      <td className="py-3 sm:py-4 pl-2 sm:pl-4 text-center text-[10px] sm:text-sm text-[#50545a]">{row.superwhisper}</td>
                     </motion.tr>
                   ))}
                 </tbody>
@@ -1383,24 +1402,275 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className="py-20 px-6 border-t border-white/5">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
-            <div className="flex items-center">
-              <img src="/logo.svg" alt="Rota AI" className="h-16 sm:h-20 w-auto" />
+        {/* ── Newsletter ── */}
+        <section id="newsletter" className="py-20 px-6 sm:px-10"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="max-w-lg mx-auto text-center">
+            <FadeIn><SectionLabel n="08" title="Newsletter" /></FadeIn>
+            <FadeIn className="mb-6">
+              <h2 className="font-display uppercase leading-[0.92] tracking-[0.02em]"
+                style={{ fontSize: "clamp(28px, 4vw, 48px)", color: "#fafafa" }}>
+                Stay in the
+                <br />
+                <span style={{ color: "#e4f222" }}>loop.</span>
+              </h2>
+            </FadeIn>
+            <FadeIn delay={0.1}>
+              <p className="text-sm text-[#71717a] mb-8 max-w-sm mx-auto">
+                New features, releases, and thoughts on voice dictation. No spam. Unsubscribe anytime.
+              </p>
+              <SubscribeForm />
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ── Community ── */}
+        <section className="py-20 px-6 sm:px-10"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="max-w-2xl mx-auto text-center">
+            <FadeIn><SectionLabel n="09" title="Community" /></FadeIn>
+            <FadeIn className="mb-12">
+              <h2 className="font-display uppercase leading-[0.92] tracking-[0.02em]"
+                style={{ fontSize: "clamp(28px, 4vw, 48px)", color: "#fafafa" }}>
+                Join the
+                <br />
+                <span style={{ color: "#e4f222" }}>conversation.</span>
+              </h2>
+            </FadeIn>
+            <FadeIn delay={0.1}>
+              <p className="text-sm text-[#71717a] mb-10 max-w-sm mx-auto">
+                Rota AI is built in the open. Star it on GitHub, join discussions, or contribute code.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noopener noreferrer"
+                  className="group flex items-center gap-2.5 px-6 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: "#e4f222", color: "#000", borderRadius: 2, border: "none", cursor: "pointer", font: "inherit" }}>
+                  <GitBranch className="w-3.5 h-3.5" />
+                  GitHub
+                </a>
+                <a href="https://github.com/krthik20050/Rota-AI/discussions" target="_blank" rel="noopener noreferrer"
+                  className="group flex items-center gap-2.5 px-6 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "#fafafa", borderRadius: 2, border: "none", cursor: "pointer", font: "inherit" }}>
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Discussions
+                </a>
+                <a href="https://github.com/krthik20050/Rota-AI/issues" target="_blank" rel="noopener noreferrer"
+                  className="group flex items-center gap-2.5 px-6 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "#fafafa", borderRadius: 2, border: "none", cursor: "pointer", font: "inherit" }}>
+                  Report Issues
+                </a>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ── Final CTA ── */}
+        <section className="py-24 px-6 sm:px-10 relative overflow-hidden"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: "radial-gradient(ellipse at center, rgba(228,242,34,0.03) 0%, transparent 60%)",
+          }} />
+          <div className="max-w-2xl mx-auto text-center relative z-10">
+            <FadeIn>
+              <h2 className="font-display uppercase leading-[0.92] tracking-[0.02em]"
+                style={{ fontSize: "clamp(36px, 5.5vw, 72px)", color: "#fafafa" }}>
+                Your time,
+                <br />
+                <span style={{ color: "#e4f222" }}>given back.</span>
+              </h2>
+            </FadeIn>
+            <FadeIn delay={0.1}>
+              <p className="mt-8 text-sm leading-relaxed max-w-md mx-auto">
+                <span className="text-[#a1a1aa]">Stop typing. Start living.</span>
+                <br />
+                <span className="text-[#71717a]">
+                  Free to download. Free forever for casual use. Less than two minutes from install to your first dictation.
+                </span>
+              </p>
+            </FadeIn>
+            <FadeIn delay={0.15} className="mt-10">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button onClick={() => setDownloadModalOpen(true)}
+                  className="group inline-flex items-center gap-2.5 px-7 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: "#e4f222", color: "#000", borderRadius: 2, boxShadow: "0 4px 20px rgba(228,242,34,0.2)", border: "none", cursor: "pointer", font: "inherit" }}>
+                  <Download className="w-3.5 h-3.5" />
+                  Download
+                </button>
+                <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2.5 px-7 py-3 text-xs font-semibold uppercase tracking-[0.15em] border transition-all hover:border-white/20"
+                  style={{ borderColor: "rgba(255,255,255,0.08)", color: "#a1a1aa", borderRadius: 2 }}>
+                  <GitBranch className="w-3.5 h-3.5" />
+                  View on GitHub
+                </a>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ── Footer ── */}
+        <footer style={{ background: "rgba(255,255,255,0.01)" }}
+          className="py-16 sm:py-20 px-6 border-t border-white/5">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-10">
+              {/* Brand column */}
+              <div className="col-span-2 sm:col-span-3 lg:col-span-2">
+                <img src="/logo.svg" alt="Rota AI" className="h-10 sm:h-14 w-auto mb-4" />
+                <p className="text-[11px] text-zinc-600 leading-relaxed max-w-[220px]">
+                  Voice dictation that actually works. AI-cleaned, context-aware text injected directly into any app with a single keypress.
+                </p>
+              </div>
+
+              {/* Product */}
+              <div>
+                <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-5">Product</h4>
+                <div className="flex flex-col gap-3">
+                  <a href="#features" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Features</a>
+                  <a href="/docs" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Docs</a>
+                  <a href="/pricing" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Pricing</a>
+                  <a href="#comparison" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Compare</a>
+                  <a href="/blog" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Blog</a>
+                </div>
+              </div>
+
+              {/* Company */}
+              <div>
+                <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-5">Company</h4>
+                <div className="flex flex-col gap-3">
+                  <a href="/about" className="text-[12px] text-zinc-600 hover:text-white transition-colors">About</a>
+                  <a href="/contact" target="_blank" rel="noopener noreferrer" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Contact</a>
+                  <a href="/support" target="_blank" rel="noopener noreferrer" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Support</a>
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Privacy</a>
+                </div>
+              </div>
+
+              {/* Community */}
+              <div>
+                <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-5">Community</h4>
+                <div className="flex flex-col gap-3">
+                  <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noopener noreferrer" className="text-[12px] text-zinc-600 hover:text-white transition-colors">GitHub</a>
+                  <a href="https://github.com/krthik20050/Rota-AI/discussions" target="_blank" rel="noopener noreferrer" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Discussions</a>
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Terms</a>
+                  <a href="https://github.com/krthik20050/Rota-AI/security" target="_blank" rel="noopener noreferrer" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Security</a>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-12 text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-600">
-              <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Github</a>
-              <a href="#" className="hover:text-white transition-colors">Documentation</a>
-              <a href="#" className="hover:text-white transition-colors">Security</a>
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-700">
-              © 2026 ROTA_STUDIO_LABS
+
+            {/* Bottom bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-14 pt-8 border-t border-white/5">
+              <p className="text-[10px] uppercase tracking-[0.2em] font-mono text-zinc-700">
+                &copy; {new Date().getFullYear()} Rota AI &middot; MIT License
+              </p>
+              <div className="flex items-center gap-6">
+                <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noopener noreferrer"
+                  className="text-[10px] uppercase tracking-[0.2em] font-mono text-zinc-700 hover:text-white transition-colors">
+                  GitHub
+                </a>
+                <a href="https://github.com/krthik20050/Rota-AI/discussions" target="_blank" rel="noopener noreferrer"
+                  className="text-[10px] uppercase tracking-[0.2em] font-mono text-zinc-700 hover:text-white transition-colors">
+                  Discussions
+                </a>
+              </div>
             </div>
           </div>
         </footer>
       </div>
     </>
+  );
+}
+
+/* ─── Subscribe Form ──────────────────────────────────────────────────────── */
+
+function SubscribeForm() {
+  const [email, setEmail] = React.useState("");
+  const [status, setStatus] = React.useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = React.useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setStatus("loading");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setStatus("success");
+        setMessage("You are on the list! Check your email for confirmation.");
+        setEmail("");
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Something went wrong. Try again.");
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Network error. Please try again.");
+    }
+  };
+
+  if (status === "success") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="inline-flex items-center gap-2 px-5 py-3 rounded-sm text-sm"
+        style={{ background: "rgba(228,242,34,0.06)", border: "1px solid rgba(228,242,34,0.2)", color: "#e4f222" }}
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+        {message}
+      </motion.div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-3 max-w-sm mx-auto">
+      <div className="flex-1 w-full">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          required
+          className="w-full h-11 px-4 text-sm rounded-sm outline-none transition-all"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#fafafa",
+            fontFamily: "inherit",
+          }}
+          onFocus={(e) => e.target.style.borderColor = "rgba(228,242,34,0.4)"}
+          onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={status === "loading"}
+        className="w-full sm:w-auto h-11 px-6 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+        style={{ background: "#e4f222", color: "#000", borderRadius: 2, border: "none", cursor: "pointer", font: "inherit" }}
+      >
+        {status === "loading" ? (
+          <span className="flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Sending
+          </span>
+        ) : (
+          "Subscribe"
+        )}
+      </button>
+      {status === "error" && (
+        <p className="text-xs text-red-500 mt-2">{message}</p>
+      )}
+    </form>
   );
 }
 

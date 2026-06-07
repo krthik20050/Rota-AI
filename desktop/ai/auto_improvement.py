@@ -33,6 +33,9 @@ class AutoImprovementSystem:
                 appdata_dir = os.path.join(
                     os.path.expanduser("~/Library/Application Support"), "RotaAI"
                 )
+            elif sys.platform.startswith("linux"):
+                xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+                appdata_dir = os.path.join(xdg_data, "rota-ai")
             else:
                 appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
             os.makedirs(appdata_dir, exist_ok=True)

@@ -22,6 +22,15 @@ _SAMPLERATE = 16000  # must match AudioRecorder.samplerate
 _MAX_CHUNK_S = 55.0  # split sessions longer than this (Groq 25 MB limit safe zone)
 _SILENCE_RMS = 0.015  # RMS below this = silence (matches recorder threshold)
 
+# ── Failure codes (same tokens used in processor_thread.py) ──────────────
+FAIL_GROQ_AUTH = "FAIL_GROQ_AUTH"
+FAIL_GROQ_RATE_LIMIT = "FAIL_GROQ_RATE_LIMIT"
+FAIL_GROQ_TIMEOUT = "FAIL_GROQ_TIMEOUT"
+FAIL_GROQ_ERROR = "FAIL_GROQ_ERROR"
+FAIL_LOCAL_MODEL = "FAIL_LOCAL_MODEL"
+FAIL_VAD_NO_SPEECH = "FAIL_VAD_NO_SPEECH"
+FAIL_VAD_ERROR = "FAIL_VAD_ERROR"
+
 # Whisper known end-of-clip hallucination artifacts
 _HALLUCINATION_RE = re.compile(
     r"^\s*(?:"
@@ -48,6 +57,18 @@ def _strip_hallucinations(text: str) -> str:
         logger.debug("hallucination_stripped_short text=%r", stripped)
         return ""
     return stripped
+
+
+def classify_groq_error(error_text: str) -> str:
+    """Map a Groq error string to a failure code."""
+    lower = error_text.lower()
+    if "401" in lower or "unauthorized" in lower or "invalid" in lower or "auth" in lower or "api key" in lower:
+        return FAIL_GROQ_AUTH
+    if "429" in lower or "rate limit" in lower or "quota" in lower or "too many requests" in lower:
+        return FAIL_GROQ_RATE_LIMIT
+    if "timeout" in lower or "timed out" in lower:
+        return FAIL_GROQ_TIMEOUT
+    return FAIL_GROQ_ERROR
 
 
 def _load_initial_prompt() -> str:
@@ -110,6 +131,7 @@ class AudioTranscriber:
         self._backend_event_lock = threading.Lock()
         self._last_backend_used: str = ""
         self._last_backend_reason: str = ""
+        self._last_failure_code: str = ""  # set by _mark_groq_failure, consumed by processor_thread
 
         # Vocabulary priming
         self._initial_prompt: str = _load_initial_prompt()
@@ -196,6 +218,7 @@ class AudioTranscriber:
             self._last_backend_reason = ""
 
     def _mark_groq_failure(self, reason: str):
+        failure_code = classify_groq_error(reason)
         with self._state_lock:
             self._groq_failure_count += 1
             self._use_groq = False
@@ -203,8 +226,10 @@ class AudioTranscriber:
         with self._backend_event_lock:
             self._last_backend_used = "local"
             self._last_backend_reason = reason
+            self._last_failure_code = failure_code
         logger.warning(
-            "transcriber_groq_disabled reason=%s total_failures=%d cooldown_s=%.0f",
+            "transcriber_groq_disabled failure_code=%s reason=%s total_failures=%d cooldown_s=%.0f",
+            failure_code,
             reason,
             self._groq_failure_count,
             _GROQ_RECOVERY_COOLDOWN,
@@ -257,7 +282,6 @@ class AudioTranscriber:
         kwargs: dict = {
             "file": ("audio.wav", wav_bytes, "audio/wav"),
             "model": _GROQ_MODEL,
-            "language": "en",
             "response_format": "text",
             "temperature": 0.0,
             "prompt": " ".join(prompt_parts),
@@ -547,6 +571,13 @@ class AudioTranscriber:
             self._last_backend_used = ""
             self._last_backend_reason = ""
         return backend, reason
+
+    def consume_last_failure_code(self) -> str:
+        """Return and clear the most recent failure code from Groq fallback."""
+        with self._backend_event_lock:
+            code = self._last_failure_code
+            self._last_failure_code = ""
+        return code
 
     @property
     def active_backend(self) -> str:

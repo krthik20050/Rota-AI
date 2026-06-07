@@ -4,18 +4,20 @@ from __future__ import annotations
 
 import sys
 
-from PyQt6.QtCore import (
+from PySide6.QtCore import (
     QAbstractAnimation,
     QEasingCurve,
+    QPointF,
     QRect,
+    QRectF,
     Qt,
     QTimer,
     QVariantAnimation,
-    pyqtSignal,
-    pyqtSlot,
+    Signal,
+    Slot,
 )
-from PyQt6.QtGui import QColor, QCursor, QFont, QPainter
-from PyQt6.QtWidgets import QApplication, QWidget
+from PySide6.QtGui import QColor, QCursor, QFont, QPainter
+from PySide6.QtWidgets import QApplication, QWidget
 
 from ui.overlay.animation_utils import (
     apply_dwm_transparency,
@@ -25,6 +27,7 @@ from ui.overlay.animation_utils import (
     draw_idle_dot,
     draw_recording_controls,
     play_haptic,
+    set_pill_window_region,
 )
 from ui.overlay.pill_state import PillState
 from ui.overlay.waveform_widget import WaveformWidget
@@ -33,9 +36,9 @@ from ui.overlay.waveform_widget import WaveformWidget
 class PillOverlay(QWidget):
     """Frameless, transparent, always-on-top overlay with explicit state transitions."""
 
-    hidden_after_exit = pyqtSignal()
-    cancel_requested = pyqtSignal()
-    stop_requested = pyqtSignal()
+    hidden_after_exit = Signal()
+    cancel_requested = Signal()
+    stop_requested = Signal()
 
     HEIGHT = 38
     RADIUS = 19
@@ -50,7 +53,8 @@ class PillOverlay(QWidget):
         PillState.ERROR: 124,
     }
 
-    BG_COLOR = QColor(18, 18, 20, 235)
+    BG_COLOR = QColor(18, 18, 20, 255)
+    BG_COLOR_ACTIVE = QColor(18, 18, 20, 250)
     TEXT_COLOR = QColor(255, 255, 255, 210)
     DONE_TEXT_COLOR = QColor(110, 210, 110, 230)
     ERROR_TEXT_COLOR = QColor(240, 100, 100, 230)
@@ -68,6 +72,7 @@ class PillOverlay(QWidget):
         self._ellipsis_frames = [" ", ". ", ".. ", "..."]
         self._active_animations: list[QAbstractAnimation] = []
 
+        self._glow_active = False
         self._setup_window()
         self._font = QFont("Segoe UI")
         self._font.setPointSizeF(10.5)
@@ -133,11 +138,29 @@ class PillOverlay(QWidget):
         y = int((self.height() - self._waveform.height()) / 2)
         self._waveform.move(x, y)
 
+    def _apply_pill_region(self) -> None:
+        """Clip OS window to pill shape, accounting for DPI scaling.
+
+        SetWindowRgn uses physical pixels; self.width()/height() are logical.
+        Multiply by devicePixelRatio() so the region matches the actual window
+        size on high-DPI displays.
+        """
+        if sys.platform != "win32":
+            return
+        dpr = self.devicePixelRatio()
+        set_pill_window_region(
+            int(self.winId()),
+            int(self.width() * dpr),
+            int(self.height() * dpr),
+            int(self.RADIUS * dpr + 0.5),
+        )
+
     def resizeEvent(self, event) -> None:
         self._sync_waveform_geometry()
         super().resizeEvent(event)
+        self._apply_pill_region()
 
-    @pyqtSlot(float)
+    @Slot(float)
     def on_audio_level(self, raw_rms: float) -> None:
         amplified = min(1.0, max(0.0, float(raw_rms)) * 18.0)
         self._audio_level = self._audio_level * 0.6 + amplified * 0.4
@@ -182,6 +205,7 @@ class PillOverlay(QWidget):
         play_haptic("start")
         # Enable mouse events for cancel/stop buttons
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        self._glow_active = True
         self.update()
 
     def _transition_recording_to_transcribing(self) -> None:
@@ -242,6 +266,7 @@ class PillOverlay(QWidget):
         self._waveform.hide()
         self._text_opacity = 0.0
         self._done_scale = 1.0
+        self._glow_active = False
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.hide_overlay()
 
@@ -409,6 +434,7 @@ class PillOverlay(QWidget):
         super().showEvent(event)
         if sys.platform == "win32":
             apply_dwm_transparency(int(self.winId()))
+            self._apply_pill_region()
         # macOS/Linux: transparency handled by the compositor/WM
 
     # ── Mouse events (active only in RECORDING state) ─────────────────────────
@@ -447,6 +473,19 @@ class PillOverlay(QWidget):
                 painter.scale(scale, scale)
                 painter.translate(-cx, -cy)
 
+            # Manual glow — replaces QGraphicsDropShadowEffect (avoids UpdateLayeredWindow spam)
+            if self._glow_active:
+                painter.setPen(Qt.PenStyle.NoPen)
+                for i in range(6, 0, -1):
+                    expand = i * 5
+                    alpha = int(55 * (i / 6.0))
+                    painter.setBrush(QColor(134, 239, 172, alpha))
+                    painter.drawRoundedRect(
+                        QRectF(-expand, -expand, self.width() + expand * 2, self.height() + expand * 2),
+                        self.RADIUS + expand,
+                        self.RADIUS + expand,
+                    )
+
             draw_background(painter, self.width(), self.height(), self.RADIUS, self.BG_COLOR)
             self._draw_content(painter)
             painter.restore()
@@ -456,6 +495,13 @@ class PillOverlay(QWidget):
     def _draw_content(self, painter: QPainter) -> None:
         w, h = self.width(), self.height()
         s = self._state
+
+        # Use slightly more transparent background when active
+        bg = self.BG_COLOR_ACTIVE if s in (PillState.RECORDING, PillState.TRANSCRIBING, PillState.PROCESSING) else self.BG_COLOR
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(bg)
+        painter.drawRoundedRect(0, 0, w, h, self.RADIUS, self.RADIUS)
+
         if s == PillState.IDLE:
             draw_idle_dot(painter, w, h)
         elif s == PillState.RECORDING:

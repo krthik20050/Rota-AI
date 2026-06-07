@@ -6,9 +6,9 @@ builds the widgets, attaches them to `dlg`, and adds them to `parent`.
 
 import threading
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFontDatabase
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFontDatabase
+from PySide6.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QFrame,
@@ -128,8 +128,38 @@ def build_recording_section(dlg, parent):
     dlg._add_form_section(parent, form)
 
 
+def _test_groq_key(key: str) -> tuple[bool, str]:
+    """Test a Groq API key by listing models. Returns (ok, message)."""
+    try:
+        from groq import Groq
+        client = Groq(api_key=key)
+        client.models.list()
+        return True, "Groq API key is valid ✓"
+    except Exception as e:
+        return False, f"Groq test failed: {str(e)[:80]}"
+
+
+def _test_gemini_key(key: str) -> tuple[bool, str]:
+    """Test a Gemini API key by listing models. Returns (ok, message)."""
+    try:
+        import json
+        import urllib.error
+        import urllib.request
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            data = json.loads(resp.read())
+            if "models" in data:
+                return True, "Gemini API key is valid ✓"
+            return False, "Unexpected response from Gemini API"
+    except urllib.error.HTTPError as e:
+        return False, f"Gemini test failed (HTTP {e.code})"
+    except Exception as e:
+        return False, f"Gemini test failed: {str(e)[:80]}"
+
+
 def build_api_keys_section(dlg, parent):
-    """API Keys section: Gemini + Groq."""
+    """API Keys section: Gemini + Groq + Test buttons."""
     dlg._add_section(parent, "API Keys", "Your cloud credentials: stored locally, never shared")
 
     key_form = QFormLayout()
@@ -137,29 +167,115 @@ def build_api_keys_section(dlg, parent):
     key_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
     key_form.setFormAlignment(Qt.AlignmentFlag.AlignTop)
 
+    # --- Gemini row: input + Test button ---
+    gem_row = QWidget()
+    gem_lay = QHBoxLayout(gem_row)
+    gem_lay.setContentsMargins(0, 0, 0, 0)
+    gem_lay.setSpacing(6)
+
     dlg.gemini_key_input = QLineEdit()
     dlg.gemini_key_input.setPlaceholderText("AIzaSy… (from aistudio.google.com)")
     dlg.gemini_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+    gem_lay.addWidget(dlg.gemini_key_input, 1)
+
+    dlg.gemini_test_btn = QPushButton("Test")
+    dlg.gemini_test_btn.setObjectName("TestKeyBtn")
+    dlg.gemini_test_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    dlg.gemini_test_btn.setFixedWidth(60)
+    dlg.gemini_test_btn.clicked.connect(lambda: _test_api_key_thread(dlg, "gemini"))
+    gem_lay.addWidget(dlg.gemini_test_btn)
+
     key_form.addRow(
         dlg._field_label(
             "Gemini API Key",
             "Used for Smart Formatting. Get a free key at aistudio.google.com/app/apikey",
         ),
-        dlg.gemini_key_input,
+        gem_row,
     )
+
+    dlg.gemini_key_status = QLabel("")
+    dlg.gemini_key_status.setObjectName("FieldHint")
+    dlg.gemini_key_status.setVisible(False)
+    key_form.addRow("", dlg.gemini_key_status)
+
+    # --- Groq row: input + Test button ---
+    groq_row = QWidget()
+    groq_lay = QHBoxLayout(groq_row)
+    groq_lay.setContentsMargins(0, 0, 0, 0)
+    groq_lay.setSpacing(6)
 
     dlg.groq_key_input = QLineEdit()
     dlg.groq_key_input.setPlaceholderText("gsk_… (from console.groq.com/keys)")
     dlg.groq_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+    groq_lay.addWidget(dlg.groq_key_input, 1)
+
+    dlg.groq_test_btn = QPushButton("Test")
+    dlg.groq_test_btn.setObjectName("TestKeyBtn")
+    dlg.groq_test_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    dlg.groq_test_btn.setFixedWidth(60)
+    dlg.groq_test_btn.clicked.connect(lambda: _test_api_key_thread(dlg, "groq"))
+    groq_lay.addWidget(dlg.groq_test_btn)
+
     key_form.addRow(
         dlg._field_label(
             "Groq API Key",
             "Used for cloud transcription (optional). Get a free key at console.groq.com",
         ),
-        dlg.groq_key_input,
+        groq_row,
     )
 
+    dlg.groq_key_status = QLabel("")
+    dlg.groq_key_status.setObjectName("FieldHint")
+    dlg.groq_key_status.setVisible(False)
+    key_form.addRow("", dlg.groq_key_status)
+
     dlg._add_form_section(parent, key_form)
+
+
+def _test_api_key_thread(dlg, provider: str):
+    """Test an API key in a background thread, updating the status label on completion."""
+    if provider == "gemini":
+        key = dlg.gemini_key_input.text().strip()
+        btn = dlg.gemini_test_btn
+        status_lbl = dlg.gemini_key_status
+    else:
+        key = dlg.groq_key_input.text().strip()
+        btn = dlg.groq_test_btn
+        status_lbl = dlg.groq_key_status
+
+    if not key:
+        status_lbl.setText("No API key entered")
+        status_lbl.setObjectName("FieldHint")
+        status_lbl.setVisible(True)
+        return
+
+    btn.setEnabled(False)
+    btn.setText("Testing…")
+    status_lbl.setText("Testing…")
+    status_lbl.setObjectName("FieldHint")
+    status_lbl.setVisible(True)
+
+    def _run():
+        from PySide6.QtCore import QTimer
+
+        if provider == "gemini":
+            ok, msg = _test_gemini_key(key)
+        else:
+            ok, msg = _test_groq_key(key)
+
+        def _done():
+            btn.setEnabled(True)
+            btn.setText("Test")
+            status_lbl.setText(msg)
+            status_lbl.setStyleSheet(
+                "color: #4ADE80;" if ok else "color: #F87171;"
+            )
+            status_lbl.setVisible(True)
+
+        QTimer.singleShot(0, _done)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
 
 
 def build_formatting_section(dlg, parent):

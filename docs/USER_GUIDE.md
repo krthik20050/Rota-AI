@@ -150,7 +150,7 @@ If text is not appearing in a specific app:
 |---------|---------|-------------|
 | Backend | Groq | Cloud (Groq/Gemini) or Local (Ollama) |
 | Model | whisper-large-v3-turbo | Cloud model or local model size |
-| Language | English | Primary language for transcription |
+| Language | Auto (Groq users: any language supported) | Primary language for transcription |
 
 ### Injection Settings
 

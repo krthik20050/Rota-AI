@@ -10,8 +10,8 @@ import math
 import threading
 import time
 
-from PyQt6.QtCore import QPointF, QRectF, Qt
-from PyQt6.QtGui import QColor, QFontMetricsF, QPainter, QPen
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QFontMetricsF, QPainter, QPen
 
 # ── Easing functions ─────────────────────────────────────────────────────────
 
@@ -127,6 +127,50 @@ def apply_dwm_transparency(win_id: int) -> None:
         ctypes.windll.dwmapi.DwmExtendFrameIntoClientArea(hwnd, ctypes.byref(margins))
     except Exception:
         pass  # Silently fall back — non-DWM systems still render correctly
+
+
+def set_pill_window_region(win_id: int, width: int, height: int, radius: int) -> None:
+    """
+    Clip the OS window to a rounded-rect pill shape using SetWindowRgn.
+
+    This eliminates the rectangular window frame artifact visible behind the
+    rounded pill — the window physically has no corners at the OS level.
+    """
+    if width <= 0 or height <= 0:
+        return
+    try:
+        import ctypes
+        import ctypes.wintypes
+
+        hwnd = ctypes.c_void_p(win_id)
+        # CreateRoundRectRgn(x1, y1, x2, y2, w_ellipse, h_ellipse)
+        # x1,y1 = top-left, x2,y2 = bottom-right (exclusive)
+        # CreateRoundRectRgn right/bottom are exclusive — pass exact dimensions
+        region = ctypes.windll.gdi32.CreateRoundRectRgn(
+            0, 0, width, height, radius * 2, radius * 2,
+        )
+        if region:
+            ctypes.windll.user32.SetWindowRgn(hwnd, region, True)
+            # SetWindowRgn takes ownership — do NOT delete the region
+    except Exception:
+        pass
+
+
+def clear_window_region(win_id: int) -> None:
+    """
+    Remove the SetWindowRgn clip, restoring the window to a full rectangle.
+
+    Used when the window is maximized — rounded corners would prevent it
+    from filling the screen edge-to-edge.
+    """
+    try:
+        import ctypes
+
+        hwnd = ctypes.c_void_p(win_id)
+        # Passing None (NULL) as the region removes the clip
+        ctypes.windll.user32.SetWindowRgn(hwnd, None, True)
+    except Exception:
+        pass
 
 
 # ── Paint helpers ────────────────────────────────────────────────────────────

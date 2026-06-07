@@ -36,7 +36,7 @@ _QSS_BASE: str = f"""
 QFrame#MainContainer {{
     background-color: {CLR_BASE};
     border-radius: {RADIUS_CONTAINER};
-    border: 1px solid {CLR_BORDER};
+    border: 1px solid rgba(255, 255, 255, 0.12);
 }}
 
 /* ─── Title Bar ─── */
@@ -67,12 +67,18 @@ QPushButton#CloseBtn:hover {{
     background: rgba(248, 113, 113, 0.63);
     color: #FFFFFF;
 }}
+QPushButton#CloseBtn:pressed {{
+    background: rgba(248, 113, 113, 0.80);
+}}
+QPushButton#WinBtn:pressed, QPushButton#MaxBtn:pressed {{
+    background: rgba(255, 255, 255, 0.12);
+}}
 
 /* ─── Sidebar ─── */
 QFrame#Sidebar {{
     background-color: {CLR_SIDEBAR};
     border-right: 1px solid {CLR_BORDER};
-    border-bottom-left-radius: {RADIUS_CONTAINER};
+    border-radius: {RADIUS_CONTAINER};
 }}
 QLabel#Brand {{
     font-size: {FONT_BRAND_SIZE};
@@ -118,6 +124,9 @@ QPushButton#NavBtn:hover {{
     background-color: rgba(255, 255, 255, 0.05);
     color: {CLR_TEXT_SECONDARY};
 }}
+QPushButton#NavBtn:pressed {{
+    background-color: rgba(255, 255, 255, 0.08);
+}}
 QPushButton#NavBtn:checked {{
     background-color: rgba(255, 255, 255, 0.08);
     color: {CLR_TEXT_PRIMARY};
@@ -139,12 +148,15 @@ QPushButton#SettingsNavBtn:hover {{
     color: {CLR_TEXT_PRIMARY};
     border-color: rgba(134, 239, 172, 0.35);
 }}
+QPushButton#SettingsNavBtn:pressed {{
+    background-color: rgba(134, 239, 172, 0.22);
+}}
 
 /* ─── Stats Panel (home right side) ─── */
 QFrame#StatsPanel {{
     background-color: #101513;
     border-left: 1px solid {CLR_BORDER};
-    border-bottom-right-radius: {RADIUS_CONTAINER};
+    border-radius: {RADIUS_CONTAINER};
 }}
 QLabel#PanelSection {{
     color: {CLR_TEXT_DIM};
@@ -152,6 +164,17 @@ QLabel#PanelSection {{
     font-weight: 700;
     letter-spacing: 1.4px;
     font-family: {FONT_FAMILY};
+}}
+/* ─── Home Page Stat Cards ─── */
+QFrame#HomeStatCard {{
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0px;
+}}
+QFrame#HomeStatCard:hover {{
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }}
 QLabel#HomeStatBig {{
     color: {CLR_TEXT_PRIMARY};

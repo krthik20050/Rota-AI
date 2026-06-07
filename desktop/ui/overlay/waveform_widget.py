@@ -5,9 +5,9 @@ from __future__ import annotations
 import time
 
 import numpy as np
-from PyQt6.QtCore import QRectF, Qt, QTimer
-from PyQt6.QtGui import QBrush, QColor, QPainter
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtCore import QRectF, Qt, QTimer
+from PySide6.QtGui import QBrush, QColor, QPainter
+from PySide6.QtWidgets import QWidget
 
 
 class WaveformWidget(QWidget):
