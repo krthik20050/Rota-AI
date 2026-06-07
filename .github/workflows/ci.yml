@@ -162,13 +162,13 @@ jobs:
         shell: cmd
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install PyQt6 structlog python-dotenv pyperclip pywin32 psutil groq numpy pytest
+          pip install PySide6 structlog python-dotenv pyperclip pywin32 psutil groq numpy pytest
 
       - name: Check imports (Windows)
         shell: cmd
         run: |
           cd desktop
-          python -c "import sys,os; sys.path.insert(0,'.'); os.environ['QT_QPA_PLATFORM']='offscreen'; from plat import get_hotkey_handler,get_injector,get_window_detector; print('plat: OK'); from PyQt6.QtWidgets import QApplication; print('PyQt6: OK'); from data.config import ConfigManager; print('ConfigManager: OK'); from injection.injector import TextInjector; print('Windows TextInjector: OK'); from data.snippets import SnippetsManager; print('SnippetsManager: OK'); print('All imports OK on Windows')"
+          python -c "import sys,os; sys.path.insert(0,'.'); os.environ['QT_QPA_PLATFORM']='offscreen'; from plat import get_hotkey_handler,get_injector,get_window_detector; print('plat: OK'); from PySide6.QtWidgets import QApplication; print('PySide6: OK'); from data.config import ConfigManager; print('ConfigManager: OK'); from injection.injector import TextInjector; print('Windows TextInjector: OK'); from data.snippets import SnippetsManager; print('SnippetsManager: OK'); print('All imports OK on Windows')"
 
       - name: Run unit tests
         shell: cmd
@@ -217,7 +217,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install PyQt6 structlog python-dotenv pyperclip evdev keyring psutil python-xlib groq numpy pytest pytest-cov
+          pip install PySide6 structlog python-dotenv pyperclip evdev keyring psutil python-xlib groq numpy pytest pytest-cov
 
       - name: Check imports (Linux)
         run: |
@@ -275,7 +275,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install PyQt6 structlog python-dotenv pyperclip pynput keyring psutil groq numpy pytest pytest-cov
+          pip install PySide6 structlog python-dotenv pyperclip pynput keyring psutil groq numpy pytest pytest-cov
           pip install pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-ApplicationServices pyobjc-framework-Quartz
 
       - name: Check imports (macOS)
