@@ -59,6 +59,38 @@ export function getAllPosts(): BlogPost[] {
     .sort((a, b) => (a.date > b.date ? -1 : 1));
 }
 
+export interface TocItem {
+  id: string;
+  text: string;
+  level: number;
+}
+
+/** Convert heading text to a URL-safe id that matches what the ReactMarkdown custom renderer generates */
+export function headingId(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+/**
+ * Extract headings (##, ###) from markdown content for table of contents.
+ * Returns an array of {id, text, level} sorted by appearance.
+ */
+export function extractTocHeadings(content: string): TocItem[] {
+  const headingRegex = /^(#{2,3})\s+(.+)$/gm;
+  const items: TocItem[] = [];
+  let match;
+  while ((match = headingRegex.exec(content)) !== null) {
+    const level = match[1].length; // 2 for ##, 3 for ###
+    const text = match[2].replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").trim();
+    if (text) {
+      items.push({ id: headingId(text), text, level });
+    }
+  }
+  return items;
+}
+
 export function getPostBySlug(slug: string): BlogPost | null {
   try {
     const raw = fs.readFileSync(path.join(BLOG_DIR, `${slug}.md`), "utf-8");
