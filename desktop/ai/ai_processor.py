@@ -330,7 +330,7 @@ class AIProcessor:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
                 candidates = body.get("candidates", [])
                 if candidates:
@@ -384,14 +384,14 @@ class AIProcessor:
         Ordering: respects ai_provider preference (groq-first or gemini-first),
         then round-robins within that order so no single model gets all the load.
         """
-        # Four Gemini models × free-tier quota = ~6 000 req/day combined capacity.
-        # Order: balanced first, fastest second, proven third, most-capable last.
+        # Three Gemini models × free-tier quota = ~4 500 req/day combined capacity.
+        # gemini-2.0-flash was removed (deprecated/shutdown). gemini-1.5-flash was removed (returns 404).
+        # Order: fastest first, most-capable last.
         gemini_slots = (
             [
-                ("gemini", "gemini-2.0-flash"),
-                ("gemini", "gemini-1.5-flash"),
                 ("gemini", "gemini-2.0-flash-lite"),
                 ("gemini", "gemini-2.5-flash"),
+                ("gemini", "gemini-2.5-pro"),
             ]
             if self._gemini_api_key
             else []
