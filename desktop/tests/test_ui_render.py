@@ -18,10 +18,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QCloseEvent, QFont
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtGui import QCloseEvent
 
 # ---------------------------------------------------------------------------
 # Prevent Qt from crashing on headless CI
@@ -55,8 +53,8 @@ class TestMacOSCheckRow:
 
     def test_constructs_with_result(self):
         _ensure_app()
-        from ui.macos_first_run import _CheckRow
         from plat.macos_setup import CheckResult
+        from ui.macos_first_run import _CheckRow
 
         result = CheckResult(
             key="portaudio",
@@ -76,8 +74,8 @@ class TestMacOSCheckRow:
 
     def test_update_state_ok_hides_button(self):
         _ensure_app()
-        from ui.macos_first_run import _CheckRow
         from plat.macos_setup import CheckResult
+        from ui.macos_first_run import _CheckRow
 
         row = _CheckRow(
             CheckResult(key="portaudio", label="P", detail="Ready", ok=True, critical=True, can_install=False, needs_user=False)
@@ -87,8 +85,8 @@ class TestMacOSCheckRow:
 
     def test_update_state_failed_shows_action(self):
         _ensure_app()
-        from ui.macos_first_run import _CheckRow
         from plat.macos_setup import CheckResult
+        from ui.macos_first_run import _CheckRow
 
         row = _CheckRow(
             CheckResult(key="pyobjc", label="PyObjC", detail="Missing", ok=False, critical=True, can_install=True, needs_user=False)
@@ -100,8 +98,8 @@ class TestMacOSCheckRow:
 
     def test_set_busy_and_error(self):
         _ensure_app()
-        from ui.macos_first_run import _CheckRow
         from plat.macos_setup import CheckResult
+        from ui.macos_first_run import _CheckRow
 
         row = _CheckRow(
             CheckResult(key="portaudio", label="P", detail="Not found", ok=False, critical=True, can_install=True, needs_user=False)
@@ -214,8 +212,9 @@ class TestOnboardingDialog:
 
     def test_skip_button(self):
         _ensure_app()
-        from ui.onboarding import OnboardingDialog
         from PySide6.QtWidgets import QApplication
+
+        from ui.onboarding import OnboardingDialog
 
         config = _make_onboarding_config()
         dialog = OnboardingDialog(config=config)
@@ -249,7 +248,7 @@ class TestOnboardingDialog:
         from ui.onboarding import OnboardingDialog
 
         dialog = OnboardingDialog(config=None)
-        from PySide6.QtCore import QPoint, QPointF
+        from PySide6.QtCore import QPoint
         # Simulate mouse press + move (should not crash)
         event_press = MagicMock()
         event_press.button.return_value = Qt.MouseButton.LeftButton
@@ -436,8 +435,9 @@ class TestToast:
 
     def test_timer_closes(self):
         _ensure_app()
-        from ui.toast import Toast
         from PySide6.QtWidgets import QApplication
+
+        from ui.toast import Toast
 
         toast = Toast("Auto close", duration_ms=100)
         toast.show()  # Toast must be shown before isVisible() returns True
@@ -479,6 +479,7 @@ class TestBackendFallbackToasts:
     def _bind_method(self, app):
         """Bind _maybe_notify_backend_fallback to the mock app."""
         import types
+
         from app.processing_pipeline_mixin import ProcessingPipelineMixin
 
         app._maybe_notify_backend_fallback = types.MethodType(

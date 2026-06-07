@@ -2,7 +2,7 @@
 Semi-circle speedometer widget for words-today visualization.
 """
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, Qt, Property
+from PySide6.QtCore import Property, QEasingCurve, QPropertyAnimation, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 

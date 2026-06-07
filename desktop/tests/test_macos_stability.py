@@ -20,8 +20,6 @@ from __future__ import annotations
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 # ===================================================================
 # 1 — macos_injector.py  — TextInjector 4-tier fallback
 # ===================================================================
@@ -155,7 +153,7 @@ class TestMacOSInjectorStability:
             assert "No text" in msg
 
     def test_inject_truncates_at_max_length(self):
-        from plat.macos_injector import TextInjector, _MAX_INJECT_LENGTH
+        from plat.macos_injector import _MAX_INJECT_LENGTH, TextInjector
 
         long_text = "x" * (_MAX_INJECT_LENGTH + 100)
         with patch("plat.macos_injector.TextInjector._check_ax_available", return_value=False):
@@ -193,7 +191,7 @@ class TestMacOSInjectorStability:
     def test_capture_target_does_not_crash(self, mock_run):
         """capture_target() should handle osascript failures gracefully."""
         mock_run.side_effect = Exception("osascript not found")
-        from plat.macos_injector import capture_target, _current_target
+        from plat.macos_injector import _current_target, capture_target
 
         _current_target.app_name = None
         capture_target()

@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
-import pytest
-
 from plat.compositor import CompositorInfo, detect_compositor
 
 

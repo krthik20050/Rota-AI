@@ -7,7 +7,6 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 from app.logging_config import log_event, logger
-from audio.transcriber import AudioTranscriber
 
 # ── Failure stage codes (exact strings logged & shown toasts) ──────────────
 # Shared codes from lower layers — imported so we don't re-define them.
@@ -17,9 +16,10 @@ from audio.transcriber import (
     FAIL_GROQ_RATE_LIMIT,
     FAIL_GROQ_TIMEOUT,
     FAIL_LOCAL_MODEL,
+    AudioTranscriber,
     classify_groq_error,
 )
-from audio.vad import FAIL_VAD_ERROR, FAIL_VAD_NO_SPEECH, strip_silence
+from audio.vad import FAIL_VAD_NO_SPEECH, strip_silence
 
 # Processor-thread-only codes (not shared with audio layer)
 FAIL_CANCELLED = "FAIL_CANCELLED"

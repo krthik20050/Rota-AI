@@ -7,7 +7,6 @@ import sys
 from PySide6.QtCore import (
     QAbstractAnimation,
     QEasingCurve,
-    QPointF,
     QRect,
     QRectF,
     Qt,

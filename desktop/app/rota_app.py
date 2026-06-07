@@ -5,8 +5,8 @@ import os
 import socket
 import sys
 import threading
-from datetime import datetime
 from collections.abc import Callable
+from datetime import datetime
 
 import structlog
 from PySide6.QtCore import QObject, QSocketNotifier, Qt, QTimer, Slot

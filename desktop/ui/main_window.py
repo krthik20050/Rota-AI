@@ -38,6 +38,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.overlay.animation_utils import (
+    apply_dwm_transparency,
+    clear_window_region,
+    set_pill_window_region,
+)
 from ui.pages.dictionary_page import DictionaryPage
 from ui.pages.home_page import HomePage
 from ui.pages.insights_page import InsightsPage
@@ -52,13 +57,7 @@ from ui.styles.main_window_qss import (
     SIDEBAR_W,
     WISPR_QSS,
 )
-from ui.overlay.animation_utils import (
-    apply_dwm_transparency,
-    clear_window_region,
-    set_pill_window_region,
-)
 from utils.window_effects import apply_blur, apply_win11_rounded_corners
-
 
 # ── Rounded corner radius (matches RADIUS_CONTAINER from QSS tokens) ──
 _VISUAL_MARGIN = 0  # px — zero gap between window edge and container

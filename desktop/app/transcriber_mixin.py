@@ -102,6 +102,7 @@ class TranscriberMixin:
         def _prewarm_vad():
             try:
                 import numpy as np
+
                 from audio.vad import strip_silence
 
                 strip_silence(np.zeros(1600, dtype=np.float32))

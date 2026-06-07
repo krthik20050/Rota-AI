@@ -12,9 +12,9 @@ from PySide6.QtCore import Qt, QTimer, Slot
 
 from app.logging_config import log_event
 from app.processor_thread import (
-    FAILURE_MESSAGES,
     FAIL_GROQ_AUTH,
     FAIL_UNKNOWN,
+    FAILURE_MESSAGES,
     ProcessorThread,
 )
 from app.signal_bridges import RecordingState
