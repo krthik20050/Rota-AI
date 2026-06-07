@@ -89,7 +89,7 @@ export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
         <motion.div
           key="preloader"
           exit={{
-            y: -window.innerHeight,
+            y: -(typeof window !== 'undefined' ? window.innerHeight : 0),
             transition: { duration: 0.9, ease: EXPO_OUT, delay: 0.05 },
           }}
           style={{
