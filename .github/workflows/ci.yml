@@ -94,6 +94,10 @@ jobs:
               'app.recording_state_mixin', 'app.transcriber_mixin',
               'app.service_wiring', 'app.signal_bridges',
               'app.thread_lifecycle_mixin',
+              'app.health_check',
+              'plat.linux_hotkey', 'plat.linux_injector',
+              'plat.macos_hotkey', 'plat.macos_injector',
+              'plat.compositor',
           }
           errors = []
           for root, dirs, files in os.walk('.'):
