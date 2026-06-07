@@ -384,7 +384,7 @@ class AIProcessor:
         Ordering: respects ai_provider preference (groq-first or gemini-first),
         then round-robins within that order so no single model gets all the load.
         """
-        # Three Gemini models × free-tier quota = ~4 500 req/day combined capacity.
+        # Four Gemini models × free-tier quota = ~6 000 req/day combined capacity.
         # gemini-1.5-flash removed (returns 404 — fully deprecated). gemini-2.0-flash kept (still
         # serving, sometimes rate-limited). Order: fastest first, most-capable last.
         gemini_slots = (
