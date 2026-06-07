@@ -1,0 +1,14 @@
+# Large directories to exclude from Vercel
+.git
+.claude
+.venv-linux
+.venv
+desktop
+linux
+macos
+tests
+docs
+app icons
+website/node_modules
+website/.next
+Hermes SEO strategy

@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rota AI — Distribution & Launch Strategy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-elevated: #111111;
+    --bg-card: #161616;
+    --bg-hover: #1a1a1a;
+    --border: #222222;
+    --border-light: #2a2a2a;
+    --text: #e5e5e5;
+    --text-secondary: #888888;
+    --text-muted: #555555;
+    --accent: #a855f7;
+    --accent-dim: #7c3aed;
+    --accent-glow: rgba(168, 85, 247, 0.15);
+    --green: #22c55e;
+    --green-dim: rgba(34, 197, 94, 0.1);
+    --red: #ef4444;
+    --red-dim: rgba(239, 68, 68, 0.1);
+    --yellow: #eab308;
+    --yellow-dim: rgba(234, 179, 8, 0.1);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59, 130, 246, 0.1);
+    --orange: #f97316;
+    --orange-dim: rgba(249, 115, 22, 0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+  /* Layout */
+  .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  .hero {
+    padding: 80px 0 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent-glow);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+  .hero-badge .dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .hero h1 {
+    font-size: clamp(36px, 6vw, 56px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, #a855f7 50%, #6366f1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero .subtitle {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto 32px;
+    line-height: 1.6;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .hero-stat {
+    text-align: center;
+  }
+  .hero-stat .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .hero-stat .label {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Navigation */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .nav-logo {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-logo .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .nav-links a:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+  }
+
+  /* Sections */
+  section {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+  }
+  .section-header {
+    margin-bottom: 40px;
+  }
+  .section-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  .section-header h2 {
+    font-size: clamp(28px, 4vw, 36px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .section-header p {
+    color: var(--text-secondary);
+    font-size: 16px;
+    max-width: 640px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border-light); }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .card-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .card-icon.purple { background: var(--accent-glow); }
+  .card-icon.green { background: var(--green-dim); }
+  .card-icon.red { background: var(--red-dim); }
+  .card-icon.yellow { background: var(--yellow-dim); }
+  .card-icon.blue { background: var(--blue-dim); }
+  .card-icon.orange { background: var(--orange-dim); }
+  .card h3 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .card p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Priority Cards */
+  .priority-grid {
+    display: grid;
+    gap: 16px;
+  }
+  .priority-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .priority-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .priority-card.critical::before { background: var(--red); }
+  .priority-card.high::before { background: var(--orange); }
+  .priority-card.medium::before { background: var(--yellow); }
+  .priority-card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .priority-card .tag {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+  .tag.critical { background: var(--red-dim); color: var(--red); }
+  .tag.high { background: var(--orange-dim); color: var(--orange); }
+  .tag.medium { background: var(--yellow-dim); color: var(--yellow); }
+  .priority-card ol {
+    padding-left: 20px;
+    margin-top: 16px;
+  }
+  .priority-card li {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 10px;
+    line-height: 1.6;
+  }
+  .priority-card li strong { color: var(--text); }
+  .priority-card li:last-child { margin-bottom: 0; }
+
+  /* Competitor Table */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  thead th {
+    background: var(--bg-elevated);
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--bg-hover); }
+  tbody td:first-child { font-weight: 600; color: var(--text); }
+  .threat-high { color: var(--red); font-weight: 600; }
+  .threat-medium { color: var(--yellow); font-weight: 600; }
+  .threat-low { color: var(--green); font-weight: 600; }
+
+  /* Commandments */
+  .commandments {
+    display: grid;
+    gap: 12px;
+  }
+  .commandment {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    transition: all 0.2s;
+  }
+  .commandment:hover {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .commandment-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+    width: 32px;
+  }
+  .commandment-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .commandment-text strong { color: var(--text); }
+
+  /* Phase Timeline */
+  .phases {
+    display: grid;
+    gap: 24px;
+  }
+  .phase {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .phase-header {
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .phase-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .phase-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .phase-badge.phase1 { background: var(--blue-dim); color: var(--blue); }
+  .phase-badge.phase2 { background: var(--accent-glow); color: var(--accent); }
+  .phase-badge.phase3 { background: var(--green-dim); color: var(--green); }
+  .phase-badge.phase4 { background: var(--orange-dim); color: var(--orange); }
+  .phase-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .phase-header .weeks {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .phase-body {
+    padding: 24px;
+  }
+  .phase-section {
+    margin-bottom: 20px;
+  }
+  .phase-section:last-child { margin-bottom: 0; }
+  .phase-section h4 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .phase-section ul {
+    list-style: none;
+    padding: 0;
+  }
+  .phase-section li {
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 4px 0;
+    padding-left: 20px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .phase-section li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--text-muted);
+  }
+  .phase-section li strong { color: var(--text); }
+
+  /* Checklist */
+  .checklist {
+    list-style: none;
+    padding: 0;
+  }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .checklist li .check {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border-light);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* Keyword Tags */
+  .keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .keyword {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .keyword.primary { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+  /* Mistakes */
+  .mistakes {
+    display: grid;
+    gap: 12px;
+  }
+  .mistake {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+  }
+  .mistake-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--red);
+    flex-shrink: 0;
+    width: 24px;
+  }
+  .mistake-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .mistake-text strong { color: var(--red); }
+
+  /* Content Calendar */
+  .calendar-table {
+    width: 100%;
+  }
+  .calendar-table thead th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+  .calendar-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .calendar-table tbody tr:hover { background: var(--bg-hover); }
+  .calendar-table .week-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 13px;
+  }
+
+  /* Metrics */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+  }
+  .metric-card .metric-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  .metric-card .metric-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* CTA Box */
+  .cta-box {
+    background: linear-gradient(135deg, var(--accent-glow), rgba(99, 102, 241, 0.1));
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    text-align: center;
+    margin: 40px 0;
+  }
+  .cta-box h3 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .cta-box p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    max-width: 500px;
+    margin: 0 auto 24px;
+    line-height: 1.6;
+  }
+  .priority-list {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .priority-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .priority-list .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    width: 24px; height: 24px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Footer */
+  footer {
+    padding: 40px 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .hero { padding: 48px 0 40px; }
+    .hero-stats { gap: 24px; }
+    section { padding: 40px 0; }
+    .nav-links { display: none; }
+    .cta-box { padding: 24px; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* Smooth scroll */
+  html { scroll-behavior: smooth; }
+
+  /* Selection */
+  ::selection { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Research Complete — June 2026
+    </div>
+    <h1>Distribution &<br>Launch Strategy</h1>
+    <p class="subtitle">Zero-budget marketing plan to take Rota AI from 0 to 1,000 users. Based on deep research across Indie Hackers, Reddit, Hacker News, competitor analysis, and real founder case studies.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="value">$0</div>
+        <div class="label">Budget</div>
+      </div>
+      <div class="hero-stat">
+        <div class="value">1,000</div>
+        <div class="label">Target Users</div>
+      </div>
+      <div class="hero-stat">
+        <div class="value">90</div>
+        <div class="label">Day Plan</div>
+      </div>
+      <div class="hero-stat">
+        <div class="value">5</div>
+        <div class="label">Competitors Analyzed</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="logo-icon">R</div>
+      Rota AI
+    </a>
+    <div class="nav-links">
+      <a href="#fix">Fix First</a>
+      <a href="#competitors">Competitors</a>
+      <a href="#marketing">Marketing</a>
+      <a href="#seo">SEO</a>
+      <a href="#design">Design</a>
+      <a href="#community">Community</a>
+      <a href="#mistakes">Mistakes</a>
+      <a href="#checklist">Checklist</a>
+      <a href="#calendar">Calendar</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Part 1: Fix Before Scaling -->
+<section id="fix">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 01</div>
+      <h2>What to Fix Before Scaling</h2>
+      <p>Don't market a product people can't install. These are the blockers that will kill growth before it starts.</p>
+    </div>
+
+    <div class="priority-grid">
+      <div class="priority-card critical">
+        <h3>
+          Critical — Do These Before Any Marketing
+          <span class="tag critical">Blocker</span>
+        </h3>
+        <ol>
+          <li><strong>Package the app for Windows</strong> — Use PyInstaller or Nuitka to create a standalone .exe. Test on a clean Windows VM (no Python installed). Without this, 95% of your target market can't use it.</li>
+          <li><strong>Create a GitHub Release</strong> — Clear release notes, SHA256 checksums, one-click download.</li>
+          <li><strong>Fix the README</strong> — Banner/logo at top, GIF demo of the app in action, badges (stars, license, platform), clear install instructions, screenshots.</li>
+          <li><strong>Add error handling</strong> — No raw tracebacks to users. User-friendly error messages. Log everything to a file.</li>
+          <li><strong>GitHub Issue Templates</strong> — Bug report template (OS, mic model, steps to reproduce), feature request template.</li>
+          <li><strong>Add a "Known Issues" section</strong> to README.</li>
+        </ol>
+      </div>
+
+      <div class="priority-card high">
+        <h3>
+          High Priority — Fix Within 30 Days
+          <span class="tag high">Important</span>
+        </h3>
+        <ol>
+          <li><strong>Onboarding under 60 seconds</strong> — First-run must show voice dictation working in under a minute. No account creation. Clear mic permission handling.</li>
+          <li><strong>Visual feedback</strong> — Show audio levels, processing state, confidence. Users need to SEE it's working.</li>
+          <li><strong>Auto-updater</strong> — Without it, you'll have users on dozens of versions. Simple "check for updates" linking to GitHub releases is enough.</li>
+          <li><strong>Privacy promise on landing page</strong> — "Your voice data never leaves your computer." Show what you DON'T collect. Massive differentiator vs Wispr Flow.</li>
+        </ol>
+      </div>
+
+      <div class="priority-card medium">
+        <h3>
+          Medium Priority — Fix Before 500 Users
+          <span class="tag medium">Nice to Have</span>
+        </h3>
+        <ol>
+          <li><strong>System tray / background mode</strong> — app feels lightweight</li>
+          <li><strong>Keyboard shortcuts</strong> — power users need these</li>
+          <li><strong>Custom vocabulary</strong> — technical terms, names</li>
+          <li><strong>Export options</strong> — clipboard, txt, docx</li>
+          <li><strong>Punctuation auto-insertion</strong> — critical for real work</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Part 2: Competitive Landscape -->
+<section id="competitors">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 02</div>
+      <h2>Competitive Landscape</h2>
+      <p>The voice dictation market is heating up. Here's where Rota AI stands.</p>
+    </div>
+
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <div class="card-icon purple">M</div>
+        <h3>Rota AI's Unique Position</h3>
+      </div>
+      <p><strong style="color: var(--text);">No competitor offers:</strong> Free + Open-Source + Windows-First + Cloud+Local Hybrid + Python/PyQt6</p>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom: 24px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Competitor</th>
+            <th>Price</th>
+            <th>Platform</th>
+            <th>Open Source</th>
+            <th>Threat</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Wispr Flow</td>
+            <td>$12-15/mo</td>
+            <td>Mac, Win, iOS, Android</td>
+            <td>No</td>
+            <td class="threat-high">HIGH</td>
+          </tr>
+          <tr>
+            <td>Superwhisper</td>
+            <td>$8/mo or $249 lifetime</td>
+            <td>Mac, Win, iOS</td>
+            <td>No</td>
+            <td class="threat-high">HIGH</td>
+          </tr>
+          <tr>
+            <td>TypeWhisper</td>
+            <td>Free / 5 EUR commercial</td>
+            <td>Mac (Win beta)</td>
+            <td>Yes</td>
+            <td class="threat-medium">MEDIUM</td>
+          </tr>
+          <tr>
+            <td>Fluid/FluidVoice</td>
+            <td>Free</td>
+            <td>Mac only</td>
+            <td>Yes</td>
+            <td class="threat-medium">MEDIUM</td>
+          </tr>
+          <tr>
+            <td>Talon</td>
+            <td>Free (Patreon)</td>
+            <td>Mac, Linux, Win</td>
+            <td>Yes</td>
+            <td class="threat-low">LOW</td>
+          </tr>
+          <tr>
+            <td>Whisper Desktop</td>
+            <td>Free</td>
+            <td>Win, Mac</td>
+            <td>Yes</td>
+            <td class="threat-low">LOW</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">How Competitors Got Their Users</h3>
+    <div style="display: grid; gap: 12px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon red">W</div>
+          <h3>Wispr Flow</h3>
+        </div>
+        <p>VC-backed PR blitz (WSJ, Bloomberg), celebrity endorsements (Reid Hoffman), web demo, affiliate program. $81M raised.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">S</div>
+        <h3>Superwhisper</h3>
+        </div>
+        <p>Influencer seeding (Karpathy, Pieter Levels, Guillermo Rauch), Discord community, developer integrations. Backed by API Capital.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon green">T</div>
+        <h3>TypeWhisper</h3>
+        <p>Reddit launch (r/macapps, 133 upvotes), German media coverage, GitHub presence (1.5k stars).</p>
+      </div>
+      <div class="card">
+        <div class="card-icon blue">F</div>
+        <h3>Fluid/FluidVoice</h3>
+        <p>Reddit launch (r/macapps, 352 upvotes), "free forever" messaging, extreme lightweight (6MB app).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Part 3: Marketing Strategy -->
+<section id="marketing">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 03</div>
+      <h2>Zero-Budget Marketing Strategy</h2>
+      <p>The first 1,000 users come from manual outreach, not scale. Distribution is part of the product.</p>
+    </div>
+
+    <!-- Commandments -->
+    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">The 10 Commandments</h3>
+    <div class="commandments" style="margin-bottom: 40px;">
+      <div class="commandment">
+        <div class="commandment-num">01</div>
+        <div class="commandment-text"><strong>Ship before you're ready</strong> — perfect is the enemy of users</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">02</div>
+        <div class="commandment-text"><strong>Content before promotion</strong> — educate first, sell second</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">03</div>
+        <div class="commandment-text"><strong>Depth over breadth</strong> — master one channel before adding another</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">04</div>
+        <div class="commandment-text"><strong>Talk to users, not builders</strong> — your IH audience is not your market</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">05</div>
+        <div class="commandment-text"><strong>Comparison pages are your SEO shortcut</strong> — target competitor branded searches</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">06</div>
+        <div class="commandment-text"><strong>Trust is a feature</strong> — especially for privacy-sensitive tools</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">07</div>
+        <div class="commandment-text"><strong>Build in public</strong> — but track users, not followers</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">08</div>
+        <div class="commandment-text"><strong>The first 100 users are manual</strong> — DM people, answer questions, be helpful</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">09</div>
+        <div class="commandment-text"><strong>Every piece of content is a backlink</strong> — PH, HN, Reddit, guest posts</div>
+      </div>
+      <div class="commandment">
+        <div class="commandment-num">10</div>
+        <div class="commandment-text"><strong>Distribution is part of the product</strong> — allocate 50% of your time to it</div>
+      </div>
+    </div>
+
+    <!-- Phases -->
+    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">The 4-Phase Launch Plan</h3>
+    <div class="phases">
+      <!-- Phase 1 -->
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <span class="phase-badge phase1">Phase 1</span>
+            <h3>Foundation</h3>
+          </div>
+          <span class="weeks">Weeks 1-2</span>
+        </div>
+        <div class="phase-body">
+          <div class="phase-section">
+            <h4>GitHub</h4>
+            <ul>
+              <li>Polish README with banner, <strong>GIF demo</strong>, badges</li>
+              <li>Add LICENSE (MIT), CONTRIBUTING.md, CODE_OF_CONDUCT.md</li>
+              <li>Create issue templates (bug report, feature request)</li>
+              <li>Add <strong>"good first issue"</strong> labels</li>
+              <li>Create GitHub Discussions</li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>Website (rota.software)</h4>
+            <ul>
+              <li>Clear value proposition <strong>above the fold</strong></li>
+              <li>Download button linking to GitHub releases</li>
+              <li>Screenshots/GIF of app in action</li>
+              <li><strong>Privacy promise</strong> prominently displayed</li>
+              <li>FAQ section + Google Search Console</li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>Social</h4>
+            <ul>
+              <li>Create Twitter/X + Indie Hackers accounts</li>
+              <li>Join relevant subreddits (observe first, don't post yet)</li>
+              <li>Write <strong>"Why I'm building Rota AI"</strong> post</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 2 -->
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <span class="phase-badge phase2">Phase 2</span>
+            <h3>First 100 Users</h3>
+          </div>
+          <span class="weeks">Weeks 3-6</span>
+        </div>
+        <div class="phase-body">
+          <div class="phase-section">
+            <h4>Reddit (Highest ROI)</h4>
+            <ul>
+              <li>Post on <strong>r/Python, r/windows, r/selfhosted, r/productivity</strong></li>
+              <li>Search for "Wispr Flow alternative" posts — answer genuinely</li>
+              <li>Build karma first by being helpful for 2-4 weeks</li>
+              <li>Target: r/voicecoding, r/accessibility</li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>Hacker News</h4>
+            <ul>
+              <li>Post <strong>"Show HN: Rota AI — Free open-source voice dictation"</strong></li>
+              <li>Best time: 8-10 AM US Pacific, Tuesday-Thursday</li>
+              <li>Engage with every comment</li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>Twitter/X</h4>
+            <ul>
+              <li><strong>Build in public:</strong> share journey, screenshots, metrics</li>
+              <li>Hashtags: #buildinpublic #indiedev #python #opensource</li>
+              <li>Tag <strong>Groq</strong> (free API usage story is compelling)</li>
+              <li>Engage with "vibe coding" community</li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>SEO Content</h4>
+            <ul>
+              <li>"Rota AI vs Wispr Flow: Feature Comparison"</li>
+              <li>"Free Alternatives to Wispr Flow in 2026"</li>
+              <li>"Best Open-Source Voice Dictation Apps"</li>
+              <li>"How Voice Dictation Can Help Developers with RSI"</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 3 -->
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <span class="phase-badge phase3">Phase 3</span>
+            <h3>100-500 Users</h3>
+          </div>
+          <span class="weeks">Weeks 7-10</span>
+        </div>
+        <div class="phase-body">
+          <div class="phase-section">
+            <h4>Product Hunt</h4>
+            <ul>
+              <li>Launch on <strong>Tuesday/Wednesday</strong></li>
+              <li>Prepare page days in advance</li>
+              <li>Line up 10-20 friends to upvote in first hour</li>
+              <li>Respond to every comment within minutes</li>
+              <li><strong>The story matters more than the product</strong></li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>Guest Posts</h4>
+            <ul>
+              <li>Write for Python blogs, productivity blogs, accessibility blogs</li>
+              <li>"How I Built a Voice Dictation App with Python/PyQt6"</li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>Community</h4>
+            <ul>
+              <li>Create Discord server (#general, #help, #feature-requests)</li>
+              <li>Seed with 10-20 friendly users before announcing</li>
+              <li>Reach out to 10 Python/programming influencers on Twitter</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 4 -->
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-header-left">
+            <span class="phase-badge phase4">Phase 4</span>
+            <h3>500-1,000 Users</h3>
+          </div>
+          <span class="weeks">Weeks 11-14</span>
+        </div>
+        <div class="phase-body">
+          <div class="phase-section">
+            <h4>Content Flywheel</h4>
+            <ul>
+              <li><strong>"How I Got 500 Users with $0 Marketing"</strong> — this drives traffic itself</li>
+              <li>More comparison/SEO content targeting long-tail keywords</li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>TikTok</h4>
+            <ul>
+              <li>Short demo videos with voiceover</li>
+              <li>"I stopped typing and started talking to my computer"</li>
+              <li>Speed comparison: typing vs voice dictation</li>
+            </ul>
+          </div>
+          <div class="phase-section">
+            <h4>Awesome Lists</h4>
+            <ul>
+              <li>Submit to <strong>awesome-python, awesome-selfhosted, awesome-voice</strong></li>
+              <li>Each listing = backlink + targeted exposure</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Part 4: SEO -->
+<section id="seo">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 04</div>
+      <h2>SEO Strategy</h2>
+      <p>Comparison pages are your fastest SEO wins. Target competitor branded searches.</p>
+    </div>
+
+    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Primary Keywords</h3>
+    <div class="keywords" style="margin-bottom: 20px;">
+      <span class="keyword primary">free voice dictation app</span>
+      <span class="keyword primary">open source speech to text desktop</span>
+      <span class="keyword primary">Wispr Flow free alternative</span>
+      <span class="keyword primary">voice typing app for developers</span>
+      <span class="keyword primary">offline speech recognition python</span>
+    </div>
+
+    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Long-tail Keywords</h3>
+    <div class="keywords" style="margin-bottom: 24px;">
+      <span class="keyword">free voice dictation app for windows</span>
+      <span class="keyword">open source Wispr Flow alternative</span>
+      <span class="keyword">voice dictation for students</span>
+      <span class="keyword">voice typing for coding</span>
+      <span class="keyword">offline voice recognition app</span>
+      <span class="keyword">voice dictation for people with RSI</span>
+    </div>
+
+    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Comparison Pages (Fastest SEO Wins)</h3>
+    <div class="card" style="margin-bottom: 24px;">
+      <ol style="padding-left: 20px; color: var(--text-secondary); font-size: 14px; line-height: 2;">
+        <li>"Rota AI vs Wispr Flow"</li>
+        <li>"Rota AI vs Superwhisper"</li>
+        <li>"Free Alternatives to Wispr Flow"</li>
+        <li>"Best Open-Source Voice Dictation Apps 2026"</li>
+        <li>"Rota AI vs TypeWhisper"</li>
+      </ol>
+    </div>
+
+    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Link Building (Zero Budget)</h3>
+    <div class="card">
+      <ul style="padding-left: 20px; color: var(--text-secondary); font-size: 14px; line-height: 2;">
+        <li>Product Hunt launch = backlink</li>
+        <li>Hacker News front page = high-quality backlink</li>
+        <li>GitHub repo = backlink from high-DA domain</li>
+        <li>Guest posts on Python/productivity blogs</li>
+        <li>Dev.to / Hashnode posts with links back to site</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Part 5: Design -->
+<section id="design">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 05</div>
+      <h2>Design & UX</h2>
+      <p>What makes a desktop app feel premium vs amateur. Actionable recommendations you can implement for free.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon purple">1</div>
+          <h3>Consistent Spacing</h3>
+        </div>
+        <p>Use a 4px or 8px grid system. Every margin, padding, and gap should be a multiple.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">2</div>
+        <h3>Subtle Shadows</h3>
+        <p>Not flat, not skeuomorphic. Use subtle elevation with 1-2px borders and soft shadows.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">3</div>
+        <h3>Smooth Transitions</h3>
+        <p>150-300ms animations for state changes. Feels responsive without being flashy.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">4</div>
+        <h3>System Fonts</h3>
+        <p>Segoe UI on Windows, SF Pro on macOS. Don't overthink typography.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">5</div>
+        <h3>Dark Theme Right</h3>
+        <p>Pure black (#0a0a0a) with subtle gray layers. Not dark gray everywhere.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">6</div>
+        <h3>Minimal Chrome</h3>
+        <p>Hide complexity. Show only what's needed. Progressive disclosure.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Onboarding Flow</h3>
+    <div class="card" style="margin-bottom: 24px;">
+      <ol style="padding-left: 20px; color: var(--text-secondary); font-size: 14px; line-height: 2;">
+        <li><strong>First launch:</strong> Show "Press F9 to start dictating" overlay</li>
+        <li><strong>Mic check:</strong> Visual feedback showing mic is working</li>
+        <li><strong>First transcription:</strong> Show a sample phrase, let user try</li>
+        <li><strong>Success state:</strong> "You're all set! Press F9 anytime."</li>
+      </ol>
+    </div>
+
+    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Free Design Resources</h3>
+    <div class="keywords">
+      <span class="keyword">Lucide Icons</span>
+      <span class="keyword">Heroicons</span>
+      <span class="keyword">Phosphor</span>
+      <span class="keyword">Inter Font</span>
+      <span class="keyword">Geist Font</span>
+      <span class="keyword">Tailwind Colors</span>
+      <span class="keyword">Radix UI</span>
+      <span class="keyword">Raycast (inspiration)</span>
+      <span class="keyword">Linear (inspiration)</span>
+      <span class="keyword">Obsidian (inspiration)</span>
+    </div>
+  </div>
+</section>
+
+<!-- Part 6: Community -->
+<section id="community">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 06</div>
+      <h2>Community Building</h2>
+      <p>GitHub is your community hub. Discord comes later. Start with Discussions, not a server.</p>
+    </div>
+
+    <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon green">G</div>
+          <h3>GitHub as Community Hub</h3>
+        </div>
+        <p>README is your landing page. Use GitHub Discussions for Q&A. Respond to every issue within 24 hours. Pin important issues (roadmap, good first issue). Create a ROADMAP.md.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon blue">D</div>
+        <h3>Discord Server (After 50+ Users)</h3>
+        <p>Channels: #general, #help, #feature-requests, #show-and-tell, #development. Seed with friendly users before announcing. Let the community help each other.</p>
+      </div>
+    </div>
+
+    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">The "3 Cs" Framework for Scaling Contributions</h3>
+    <div style="display: grid; gap: 12px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon yellow">C1</div>
+          <h3>Comprehension</h3>
+        </div>
+        <p>Do they understand the problem? Require issue discussion before PR submission.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon yellow">C2</div>
+          <h3>Context</h3>
+        </div>
+        <p>Do they give you what you need to review? Add AI disclosure policy. AGENTS.md file.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon yellow">C3</div>
+          <h3>Continuity</h3>
+        </div>
+        <p>Do they keep coming back? Invest mentorship energy only in returning contributors.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Part 7: Mistakes -->
+<section id="mistakes">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 07</div>
+      <h2>What NOT to Do</h2>
+      <p>Common mistakes that kill growth. Learn from others' failures.</p>
+    </div>
+
+    <div class="mistakes">
+      <div class="mistake">
+        <div class="mistake-num">01</div>
+        <div class="mistake-text"><strong>"Hiding behind the code"</strong> — building for months without talking to users</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">02</div>
+        <div class="mistake-text"><strong>"Build in public audience is not your market"</strong> — Twitter followers are other builders, not your users</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">03</div>
+        <div class="mistake-text"><strong>"Most founders have a visibility problem, not a product problem"</strong> — don't add features when nobody knows you exist</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">04</div>
+        <div class="mistake-text"><strong>"Testing three channels before knowing the pain point"</strong> — go deep on one channel first</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">05</div>
+        <div class="mistake-text"><strong>"Optimizing outreach volume before pressure-testing the message"</strong> — test 5 different messages before scaling</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">06</div>
+        <div class="mistake-text"><strong>"Treating privacy as compliance instead of a product feature"</strong> — put privacy promises on the landing page</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">07</div>
+        <div class="mistake-text"><strong>"Waiting until you're ready"</strong> — ship when it's good enough</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">08</div>
+        <div class="mistake-text"><strong>"Not talking to users before building"</strong> — get 5 real user conversations first</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">09</div>
+        <div class="mistake-text"><strong>"Measuring vanity metrics"</strong> — track daily active users, not GitHub stars</div>
+      </div>
+      <div class="mistake">
+        <div class="mistake-num">10</div>
+        <div class="mistake-text"><strong>"Burning out"</strong> — 5-10 hours/week consistently beats 40 hours one week</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Part 8: Checklist -->
+<section id="checklist">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 08</div>
+      <h2>Scaling Readiness Checklist</h2>
+      <p>Only scale marketing when you've checked every box below.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Only Scale Marketing When You Have:</h3>
+      <ul class="checklist">
+        <li><span class="check"></span> Less than 5 open critical bugs</li>
+        <li><span class="check"></span> At least 10 people using it weekly without prompting</li>
+        <li><span class="check"></span> A one-paragraph description of who your user is and why they use it</li>
+        <li><span class="check"></span> Packaged .exe that works on clean Windows</li>
+        <li><span class="check"></span> README that a stranger can follow</li>
+        <li><span class="check"></span> Basic error handling (no raw tracebacks)</li>
+        <li><span class="check"></span> GitHub issue templates</li>
+        <li><span class="check"></span> Privacy policy (even if you collect nothing)</li>
+      </ul>
+    </div>
+
+    <h3 style="font-size: 16px; font-weight: 600; margin: 24px 0 12px;">Scaling Triggers</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Threshold</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Daily active users</td>
+            <td>10+</td>
+            <td>Start Reddit/HN outreach</td>
+          </tr>
+          <tr>
+            <td>GitHub stars</td>
+            <td>50+</td>
+            <td>Launch Product Hunt</td>
+          </tr>
+          <tr>
+            <td>Discord members</td>
+            <td>20+</td>
+            <td>Create Discord server</td>
+          </tr>
+          <tr>
+            <td>Weekly downloads</td>
+            <td>100+</td>
+            <td>Start SEO content</td>
+          </tr>
+          <tr>
+            <td>Backlinks</td>
+            <td>10+</td>
+            <td>Guest post outreach</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Part 9: Content Calendar -->
+<section id="calendar">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 09</div>
+      <h2>90-Day Content Calendar</h2>
+      <p>One piece of content per week. Each one builds on the last.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table class="calendar-table">
+        <thead>
+          <tr>
+            <th style="width: 60px;">Week</th>
+            <th>Content</th>
+            <th>Channel</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="week-num">01</td><td>"I'm building a free open-source Wispr Flow alternative"</td><td>Twitter, IH, Reddit</td></tr>
+          <tr><td class="week-num">02</td><td>Demo video: First working prototype</td><td>YouTube, Twitter</td></tr>
+          <tr><td class="week-num">03</td><td>"How I built a voice dictation app with Python/PyQt6"</td><td>Blog, Dev.to</td></tr>
+          <tr><td class="week-num">04</td><td>"Rota AI vs Wispr Flow: Feature comparison"</td><td>Blog (SEO)</td></tr>
+          <tr><td class="week-num">05</td><td>"How voice dictation can help developers with RSI"</td><td>Blog, Reddit</td></tr>
+          <tr><td class="week-num">06</td><td>"Building in public: 100 users milestone"</td><td>Twitter, IH</td></tr>
+          <tr><td class="week-num">07</td><td>Tutorial: "Setting up Rota AI for coding"</td><td>YouTube, Blog</td></tr>
+          <tr><td class="week-num">08</td><td>"The state of open-source speech recognition"</td><td>Blog, Hacker News</td></tr>
+          <tr><td class="week-num">09</td><td>"How I got my first 500 users with $0 marketing"</td><td>IH, Twitter</td></tr>
+          <tr><td class="week-num">10</td><td>Comparison: "Best free voice dictation apps 2026"</td><td>Blog (SEO)</td></tr>
+          <tr><td class="week-num">11</td><td>"How students use Rota AI for note-taking"</td><td>Blog, Reddit</td></tr>
+          <tr><td class="week-num">12</td><td>"500 users to 1,000: What's next for Rota AI"</td><td>Twitter, IH</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Part 10: Metrics -->
+<section>
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">Part 10</div>
+      <h2>Key Metrics to Track Weekly</h2>
+      <p>Track what matters. Ignore vanity metrics.</p>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon">*</div>
+        <div class="metric-name">GitHub Stars</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">W</div>
+        <div class="metric-name">Website Visitors</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">D</div>
+        <div class="metric-name">Downloads</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">M</div>
+        <div class="metric-name">Discord Members</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">T</div>
+        <div class="metric-name">Twitter Followers</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">B</div>
+        <div class="metric-name">Backlinks</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">S</div>
+        <div class="metric-name">SEO Rankings</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">A</div>
+        <div class="metric-name">Daily Active Users</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Final CTA -->
+<section>
+  <div class="container">
+    <div class="cta-box">
+      <h3>Don't Scale Yet.</h3>
+      <p>Fix the packaging and README first. Get 10 people using it without prompting. Then start the marketing engine.</p>
+      <ul class="priority-list">
+        <li><span class="num">1</span> Package for Windows (.exe)</li>
+        <li><span class="num">2</span> Polish README + GitHub</li>
+        <li><span class="num">3</span> Post on Reddit (r/Python, r/windows)</li>
+        <li><span class="num">4</span> Post on Hacker News (Show HN)</li>
+        <li><span class="num">5</span> Build in public on Twitter</li>
+        <li><span class="num">6</span> Create comparison/SEO content</li>
+        <li><span class="num">7</span> Launch Product Hunt</li>
+        <li><span class="num">8</span> Scale from there</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <p>Rota AI Distribution Strategy — Research compiled from Indie Hackers, Reddit, Hacker News, GitHub blogs, and competitor analysis. All examples from real founder experiences.</p>
+  </div>
+</footer>
+
+</body>
+</html>

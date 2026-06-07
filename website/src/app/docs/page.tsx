@@ -70,8 +70,8 @@ export default function DocsPage() {
         <div className="flex items-center gap-6 text-xs uppercase tracking-[0.15em] text-[#71717a]">
           <Link href="/" className="hover:text-[#fafafa] transition-colors">Home</Link>
           <Link href="/blog" className="hover:text-[#fafafa] transition-colors">Blog</Link>
-          <a href="/#download" className="px-4 py-2 text-xs font-semibold tracking-[0.15em] uppercase transition-all hover:opacity-90 rounded-sm"
-            style={{ background: "#e4f222", color: "#000" }}>Download</a>
+          <Link href="/#download" className="px-4 py-2 text-xs font-semibold tracking-[0.15em] uppercase transition-all hover:opacity-90 rounded-sm"
+            style={{ background: "#e4f222", color: "#000" }}>Download</Link>
         </div>
       </nav>
 
