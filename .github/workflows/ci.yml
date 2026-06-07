@@ -11,8 +11,9 @@ on:
     branches: [main]
     paths:
       - 'desktop/**'
+      - 'website/**'
       - 'requirements.txt'
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/*.yml'
   schedule:
     # Full matrix + CVE audit every Monday at 08:00 UTC
     - cron: '0 8 * * 1'
