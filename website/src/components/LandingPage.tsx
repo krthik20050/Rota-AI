@@ -1528,7 +1528,7 @@ export function LandingPage() {
                   <a href="/docs" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Docs</a>
                   <a href="/pricing" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Pricing</a>
                   <a href="#comparison" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Compare</a>
-                  <a href="/blog" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Blog</a>
+                  <Link href="/blog" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Blog</Link>
                 </div>
               </div>
 

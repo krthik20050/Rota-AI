@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <h1 className="font-display uppercase tracking-[0.02em] leading-[0.92] mb-4" style={{ fontSize: "clamp(40px, 6vw, 64px)", color: "#fafafa" }}>Privacy Policy</h1>
         <p className="text-sm text-[#71717a] mb-4">Last updated: June 7, 2026</p>
         <p className="text-sm text-[#71717a] mb-12 leading-relaxed">
-          This Privacy Policy describes how Rota AI ("we", "our", or "the app") handles your information when you use our voice dictation software. Rota AI is built with a privacy-first architecture. This policy complies with the Digital Personal Data Protection Act, 2023 (DPDP Act) of India.
+          This Privacy Policy describes how Rota AI (&quot;we&quot;, &quot;our&quot;, or &quot;the app&quot;) handles your information when you use our voice dictation software. Rota AI is built with a privacy-first architecture. This policy complies with the Digital Personal Data Protection Act, 2023 (DPDP Act) of India.
         </p>
 
         <div className="space-y-8 text-sm text-[#a1a1aa] leading-relaxed">
@@ -62,8 +62,8 @@ export default function PrivacyPage() {
             <h2 className="text-base font-semibold text-[#fafafa] mb-3">4. Third-Party Data Processors</h2>
             <p className="mb-3">If you choose cloud transcription, your voice recordings are processed by:</p>
             <ul className="space-y-2 pl-5 list-disc">
-              <li><strong className="text-[#fafafa]">Groq Inc.</strong>: Whisper transcription API. Voice data sent to Groq's servers for processing. See <a href="https://groq.com/privacy" className="text-[#e4f222] hover:underline">Groq's Privacy Policy</a>.</li>
-              <li><strong className="text-[#fafafa]">Google (Gemini API)</strong>: Gemini transcription and AI cleanup. Voice data sent to Google's servers. See <a href="https://policies.google.com/privacy" className="text-[#e4f222] hover:underline">Google's Privacy Policy</a>.</li>
+              <li><strong className="text-[#fafafa]">Groq Inc.</strong>: Whisper transcription API. Voice data sent to Groq&apos;s servers for processing. See <a href="https://groq.com/privacy" className="text-[#e4f222] hover:underline">Groq&apos;s Privacy Policy</a>.</li>
+              <li><strong className="text-[#fafafa]">Google (Gemini API)</strong>: Gemini transcription and AI cleanup. Voice data sent to Google&apos;s servers. See <a href="https://policies.google.com/privacy" className="text-[#e4f222] hover:underline">Google&apos;s Privacy Policy</a>.</li>
               <li><strong className="text-[#fafafa]">Ollama (local)</strong>: When using local transcription, no data leaves your machine. No third-party processing.</li>
             </ul>
             <p className="mt-3">You choose which processor to use. You can switch at any time. You can use Rota AI entirely offline with Ollama, eliminating all third-party data processing.</p>
@@ -121,7 +121,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-base font-semibold text-[#fafafa] mb-3">10. Changes to This Policy</h2>
-            <p>We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated "Last updated" date. Material changes will be notified through the app or on our website.</p>
+            <p>We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated &ldquo;Last updated&rdquo; date. Material changes will be notified through the app or on our website.</p>
           </section>
 
           <section>

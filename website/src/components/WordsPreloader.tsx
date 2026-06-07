@@ -23,7 +23,7 @@ const SESSION_KEY = "rota_preloader_seen";
 export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
   const [show, setShow]   = useState(true);
   const [index, setIndex] = useState(0);
-  const hRef = useRef(0);
+
   const completedRef = useRef(false);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
       // sessionStorage may not be available (private browsing, etc.)
     }
 
-    hRef.current = window.innerHeight;
+
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
@@ -89,7 +89,7 @@ export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
         <motion.div
           key="preloader"
           exit={{
-            y: -hRef.current,
+            y: -window.innerHeight,
             transition: { duration: 0.9, ease: EXPO_OUT, delay: 0.05 },
           }}
           style={{

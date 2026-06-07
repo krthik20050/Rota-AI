@@ -210,7 +210,7 @@ export default function DocsPage() {
             <section id="snippets" className="mb-16 scroll-mt-24">
               <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Voice Snippets</h2>
               <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Voice snippets let you insert frequently used text with a spoken shortcut. Instead of typing a full sentence, say a short trigger word and Rota expands it. For example, set "sig" to expand to your full email signature.</p>
+                <p>Voice snippets let you insert frequently used text with a spoken shortcut. Instead of typing a full sentence, say a short trigger word and Rota expands it. For example, set &ldquo;sig&rdquo; to expand to your full email signature.</p>
                 <p>Manage your snippets from Settings {'>'} Snippets. You can add, edit, or delete snippets at any time. Snippets are stored locally and synced across sessions.</p>
               </div>
             </section>
