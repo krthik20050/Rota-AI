@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import structlog
-from PyQt6.QtCore import pyqtSlot
+from PySide6.QtCore import Slot
 
 from app.processor_thread import TranscriberLoadThread
 
@@ -64,7 +64,7 @@ class TranscriberMixin:
         self._transcriber_thread = thread
         thread.start()
 
-    @pyqtSlot(object, str, str, float)
+    @Slot(object, str, str, float)
     def _on_transcriber_loaded(
         self, transcriber, requested_model_size, actual_model_size, load_seconds
     ):
@@ -96,8 +96,23 @@ class TranscriberMixin:
             duration_ms=round(load_seconds * 1000, 2),
         )
         self._update_readiness_status()
+        # Pre-warm Silero VAD so first transcription has no model-load delay
+        import threading
 
-    @pyqtSlot(str, str)
+        def _prewarm_vad():
+            try:
+                import numpy as np
+
+                from audio.vad import strip_silence
+
+                strip_silence(np.zeros(1600, dtype=np.float32))
+                logger.debug("vad_prewarm_complete")
+            except Exception:
+                pass
+
+        threading.Thread(target=_prewarm_vad, daemon=True).start()
+
+    @Slot(str, str)
     def _on_transcriber_load_error(self, model_size, error_message):
         with self._transcriber_state_lock:
             self._retire_qthread(self._transcriber_thread, self._retired_transcriber_threads)

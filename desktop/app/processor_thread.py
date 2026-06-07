@@ -4,18 +4,53 @@ import time
 import traceback
 
 import numpy as np
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 from app.logging_config import log_event, logger
-from audio.transcriber import AudioTranscriber
+
+# ── Failure stage codes (exact strings logged & shown toasts) ──────────────
+# Shared codes from lower layers — imported so we don't re-define them.
+from audio.transcriber import (
+    FAIL_GROQ_AUTH,
+    FAIL_GROQ_ERROR,
+    FAIL_GROQ_RATE_LIMIT,
+    FAIL_GROQ_TIMEOUT,
+    FAIL_LOCAL_MODEL,
+    AudioTranscriber,
+    classify_groq_error,
+)
+from audio.vad import FAIL_VAD_NO_SPEECH, strip_silence
+
+# Processor-thread-only codes (not shared with audio layer)
+FAIL_CANCELLED = "FAIL_CANCELLED"
+FAIL_TIMEOUT = "FAIL_TIMEOUT"
+FAIL_UNKNOWN = "FAIL_UNKNOWN"
+
+
+# ── User-facing messages keyed by failure code ────────────────────────────
+FAILURE_MESSAGES: dict[str, str] = {
+    FAIL_VAD_NO_SPEECH: "No speech detected — your mic may be off, too quiet, or muted",
+    FAIL_GROQ_ERROR: "Groq transcription failed (unknown error). Falling back to local Whisper.",
+    FAIL_GROQ_AUTH: "Groq API key is invalid. Go to Settings → API Keys to update it.",
+    FAIL_GROQ_RATE_LIMIT: "Groq rate limit reached. Switched to local transcription. Try again in a minute.",
+    FAIL_GROQ_TIMEOUT: "Groq timed out. Switched to local transcription — try again.",
+    FAIL_LOCAL_MODEL: "Local Whisper model unavailable — restart the app or check Settings → Model",
+    FAIL_CANCELLED: "Recording cancelled.",
+    FAIL_TIMEOUT: "Transcription timed out — try a shorter recording or a smaller model",
+    FAIL_UNKNOWN: "An unexpected error occurred during transcription. Check the log file for details.",
+}
 
 
 class ProcessorThread(QThread):
-    """Background thread for chunked transcription and AI cleanup."""
+    """Background thread for chunked transcription and AI cleanup.
 
-    partial = pyqtSignal(str, str)
-    completed = pyqtSignal(str, str, bool, str, float, float, bool, str)
-    error = pyqtSignal(str, str, str)
+    Every failure path emits ``error`` with a human-readable failure_code
+    so the UI can show a specific toast instead of a generic message.
+    """
+
+    partial = Signal(str, str)
+    completed = Signal(str, str, bool, str, float, float, bool, str)
+    error = Signal(str, str, str, str)  # (err_msg, correlation_id, traceback, failure_code)
 
     _SPEECH_RMS = 0.015
     _SILENCE_CHUNKS = 6
@@ -100,8 +135,6 @@ class ProcessorThread(QThread):
             )
 
             # Strip silence from full audio using Silero VAD before transcribing
-            from audio.vad import strip_silence
-
             raw_text = ""
             backend_used = ""
             if all_chunks:
@@ -112,8 +145,9 @@ class ProcessorThread(QThread):
 
                 if cleaned_audio is None or cleaned_audio.size == 0:
                     # User only captured silence/noise: skip Whisper completely and return immediately!
-                    thread_logger.info("silence_only_detected_skipping_whisper")
+                    thread_logger.info("%s silence_only_detected_skipping_whisper", FAIL_VAD_NO_SPEECH)
                     raw_text = ""
+                    backend_used = FAIL_VAD_NO_SPEECH
                 else:
                     if self.isInterruptionRequested():
                         raise RuntimeError("processing cancelled before full-audio decode")
@@ -122,12 +156,15 @@ class ProcessorThread(QThread):
                             cleaned_audio, app_context=app_ctx
                         )
                         raw_text = (raw_text or "").strip()
-                    except Exception:
+                    except Exception as inner_exc:
+                        failure_code = classify_groq_error(str(inner_exc))
                         thread_logger.error(
-                            "transcription_failed falling back to partials", exc_info=True
+                            "transcription_failed",
+                            failure_code=failure_code,
+                            exc_info=True,
                         )
                         raw_text = ""
-                        backend_used = "error"
+                        backend_used = failure_code  # stores failure code for analytics/diagnostics
 
             # Safety fallback if final decode returns empty.
             if not raw_text and self.live_transcription_enabled:
@@ -192,20 +229,34 @@ class ProcessorThread(QThread):
             )
         except Exception as exc:
             tb = traceback.format_exc()
-            thread_logger.error("processing_failed", exc_info=True)
+            err_text = str(exc)
+            failure_code = FAIL_UNKNOWN
+            if "cancelled" in err_text.lower():
+                failure_code = FAIL_CANCELLED
+            thread_logger.error(
+                "processing_failed",
+                failure_code=failure_code,
+                exc_info=True,
+            )
             log_event(
                 "processing_failed",
                 status="failed",
+                failure_code=failure_code,
                 duration_ms=(time.perf_counter() - processing_start) * 1000.0,
                 correlation_id=self.correlation_id,
-                error=str(exc),
+                error=err_text,
             )
-            self.error.emit(str(exc), str(self.correlation_id or ""), str(tb or ""))
+            self.error.emit(
+                str(err_text),
+                str(self.correlation_id or ""),
+                str(tb or ""),
+                str(failure_code),
+            )
 
 
 class TranscriberLoadThread(QThread):
-    loaded = pyqtSignal(object, str, str, float)
-    error = pyqtSignal(str, str)
+    loaded = Signal(object, str, str, float)
+    error = Signal(str, str)
 
     def __init__(self, model_size, cpu_threads=0, transcription_quality="balanced"):
         super().__init__()

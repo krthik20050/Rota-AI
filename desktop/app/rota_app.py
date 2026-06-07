@@ -6,10 +6,11 @@ import socket
 import sys
 import threading
 from collections.abc import Callable
+from datetime import datetime
 
 import structlog
-from PyQt6.QtCore import QObject, QSocketNotifier, Qt, QTimer, pyqtSlot
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import QObject, QSocketNotifier, Qt, QTimer, Slot
+from PySide6.QtWidgets import QApplication
 
 from ai.auto_improvement import AutoImprovementSystem
 from app.health_check import HealthCheckReport, StartupHealthChecker
@@ -29,12 +30,63 @@ from plat import get_hotkey_handler as _get_hotkey_handler
 from ui.history_window import HistoryWindow
 from ui.main_window import MainWindow
 from ui.overlay.pill_overlay import PillOverlay
-from ui.settings_window import SettingsWindow
 from ui.toast import Toast
 from ui.tray import RotaTrayIcon
 from utils.error_reporter import build_error_body, open_github_report
 
 logger = structlog.get_logger(__name__)
+
+# ── Crash detection flag ─────────────────────────────────────────────────
+# Written on graceful exit, checked on startup. If the file still exists
+# at startup, the previous session crashed or was killed.
+_CRASH_FLAG_FILENAME = ".last_run_crashed"
+
+
+def _crash_flag_path() -> str:
+    """Store the crash flag in the platform-specific app data directory."""
+    if sys.platform == "darwin":
+        _dir = os.path.join(os.path.expanduser("~/Library/Application Support"), "RotaAI")
+    elif sys.platform.startswith("linux"):
+        _xdg_state = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+        _dir = os.path.join(_xdg_state, "rota-ai")
+    else:
+        _dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
+    os.makedirs(_dir, exist_ok=True)
+    return os.path.join(_dir, _CRASH_FLAG_FILENAME)
+
+
+def _write_crash_flag():
+    """Write a flag file that proves the session started."""
+    try:
+        path = _crash_flag_path()
+        with open(path, "w") as f:
+            f.write(f"crashed_at={datetime.now().isoformat()}\n")
+    except Exception:
+        pass
+
+
+def _clear_crash_flag():
+    """Remove the crash flag — called only on graceful shutdown."""
+    try:
+        path = _crash_flag_path()
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
+
+
+def _check_crash_flag() -> str:
+    """Return the contents of the crash flag if it exists, else empty string."""
+    try:
+        path = _crash_flag_path()
+        if os.path.exists(path):
+            with open(path) as f:
+                return f.read().strip()
+    except Exception:
+        pass
+    return ""
+
+
 
 
 class RotaApp(
@@ -161,9 +213,23 @@ class RotaApp(
         if not self._onboarding_pending and not self._macos_setup_pending:
             QTimer.singleShot(0, self._deferred_startup)
 
+        # ── Crash detection ─────────────────────────────────────────────
+        crashed_data = _check_crash_flag()
+        if crashed_data:
+            logger.warning("previous_run_crashed", data=crashed_data)
+            # On next deferred startup, show a toast about the previous crash
+            self._previous_run_crashed = True
+            self._crash_flag_data = crashed_data
+        else:
+            self._previous_run_crashed = False
+            self._crash_flag_data = ""
+        # Write the flag NOW — if we crash before exit, it stays on disk
+        _write_crash_flag()
+
         self.tray = self._create_tray()
         self.hotkey_handler = None
         self._pipeline_runner: Callable[[str], None] | None = None
+        self._backup_manager = None
         self._refresh_debug_window()
 
     def _show_macos_setup(self):
@@ -284,8 +350,30 @@ class RotaApp(
                 )
         except Exception as e:
             logger.warning("undo_hotkey_register_failed", error=str(e))
+        # Notify about previous crash
+        if getattr(self, "_previous_run_crashed", False):
+            logger.warning("showing_crash_notification", data=self._crash_flag_data)
+            self.show_toast(
+                "Rota closed unexpectedly last time. If this keeps happening, open Settings and report the issue.",
+                warning=True,
+            )
+            self._previous_run_crashed = False
+
         logger.info("deferred_startup_done")
+        self._start_auto_backup()
         self._schedule_update_check()
+
+    def _start_auto_backup(self):
+        """Start the auto-backup daemon thread."""
+        try:
+            from services.backup import AutoBackupManager
+
+            enabled = self.config.get("auto_backup_enabled", True)
+            self._backup_manager = AutoBackupManager(enabled=enabled)
+            self._backup_manager.start()
+        except Exception:
+            logger.warning("auto_backup_start_failed", exc_info=True)
+            self._backup_manager = None
 
     def _run_startup_health_checks(self, hotkey_ok):
         if sys.platform == "win32":
@@ -340,11 +428,11 @@ class RotaApp(
             win_id=int(self.main_window.winId()),
         )
 
-    @pyqtSlot()
+    @Slot()
     def _handle_manual_start(self):
         self._dispatch_pipeline_action("start")
 
-    @pyqtSlot()
+    @Slot()
     def _handle_manual_stop(self):
         self._dispatch_pipeline_action("stop")
 
@@ -413,6 +501,13 @@ class RotaApp(
             return False
 
     def show_toast(self, message, warning=False):
+        # Close any existing toast before showing a new one to prevent zombie windows
+        existing = getattr(self, "_active_toast", None)
+        if existing is not None:
+            try:
+                existing.close()
+            except RuntimeError:
+                pass  # already destroyed by Qt
         self._active_toast = Toast(message, warning=warning)
         self._active_toast.show()
 
@@ -426,54 +521,72 @@ class RotaApp(
             logger.debug("undo_unavailable", reason=msg)
 
     def show_settings(self):
-        win = SettingsWindow(self.config)
-        if win.exec():
-            if self.hotkey_handler is not None:
-                self.hotkey_handler.stop_listening()
-            hotkey = str(self.config.get("hotkey") or "f9")
-            mode = str(self.config.get("hotkey_mode") or "toggle")
-            HotkeyHandler = _get_hotkey_handler()
-            self.hotkey_handler = HotkeyHandler(
-                hotkey=hotkey,
-                mode=mode,
-                start_callback=self.hotkey_bridge.start_requested.emit,
-                stop_callback=self.hotkey_bridge.stop_requested.emit,
+        """Open settings in-app (inside the main window) instead of a separate dialog."""
+        self.main_window.show()
+        self.main_window.raise_()
+        self.main_window.activateWindow()
+        self.main_window.navigate_to_settings(save_callback=self._apply_settings)
+
+    def _apply_settings(self):
+        """Post-save logic — reload hotkeys, transcriber, AI processor, and UI."""
+        if self.hotkey_handler is not None:
+            self.hotkey_handler.stop_listening()
+        hotkey = str(self.config.get("hotkey") or "f9")
+        mode = str(self.config.get("hotkey_mode") or "toggle")
+        HotkeyHandler = _get_hotkey_handler()
+        self.hotkey_handler = HotkeyHandler(
+            hotkey=hotkey,
+            mode=mode,
+            start_callback=self.hotkey_bridge.start_requested.emit,
+            stop_callback=self.hotkey_bridge.stop_requested.emit,
+        )
+        self._start_hotkey_listener()
+
+        # Re-register undo hotkey on the new handler instance.
+        try:
+            if self.hotkey_handler is not None and self.hotkey_handler.backend == "pynput":
+                self.hotkey_handler.add_hotkey(
+                    "ctrl+shift+z",
+                    lambda: QTimer.singleShot(0, self._do_undo_injection),
+                )
+                logger.info("undo_hotkey_re_registered")
+        except Exception as e:
+            logger.warning("undo_hotkey_re_register_failed", error=str(e))
+
+        if self.transcriber is not None:
+            self.transcriber.transcription_quality = str(
+                self.config.get("transcription_quality", "balanced")
             )
-            self._start_hotkey_listener()
+            self.transcriber.denoise_enabled = bool(self.config.get("denoise_enabled", False))
 
-            if self.transcriber is not None:
-                self.transcriber.transcription_quality = str(
-                    self.config.get("transcription_quality", "balanced")
-                )
+        if self.ai_processor is not None:
+            self.ai_processor.writing_mode = self.config.get("writing_mode", "clean")
+            self.ai_processor.ai_provider = self.config.get("ai_provider", "gemini")
+            self.ai_processor.ollama_model = self.config.get("ollama_model", "llama3.2:1b")
+            self.ai_processor.ollama_url = self.config.get(
+                "ollama_url", "http://localhost:11434"
+            ).rstrip("/")
+            self.ai_processor.update_api_keys(
+                groq_key=os.environ.get("GROQ_API_KEY", ""),
+                gemini_key=os.environ.get("GEMINI_API_KEY", ""),
+            )
 
-            if self.ai_processor is not None:
-                self.ai_processor.writing_mode = self.config.get("writing_mode", "clean")
-                self.ai_processor.ai_provider = self.config.get("ai_provider", "gemini")
-                self.ai_processor.ollama_model = self.config.get("ollama_model", "llama3.2:1b")
-                self.ai_processor.ollama_url = self.config.get(
-                    "ollama_url", "http://localhost:11434"
-                ).rstrip("/")
-                self.ai_processor.update_api_keys(
-                    groq_key=os.environ.get("GROQ_API_KEY", ""),
-                    gemini_key=os.environ.get("GEMINI_API_KEY", ""),
-                )
+        new_model_size = str(self.config.get("model_size") or "base")
+        new_cpu_threads = int(self.config.get("cpu_threads", 0))
+        if (
+            self._current_model_size != new_model_size
+            or self._current_cpu_threads != new_cpu_threads
+        ):
+            self._current_model_size = new_model_size
+            self._current_cpu_threads = new_cpu_threads
+            self._load_transcriber_async(new_model_size)
 
-            new_model_size = str(self.config.get("model_size") or "base")
-            new_cpu_threads = int(self.config.get("cpu_threads", 0))
-            if (
-                self._current_model_size != new_model_size
-                or self._current_cpu_threads != new_cpu_threads
-            ):
-                self._current_model_size = new_model_size
-                self._current_cpu_threads = new_cpu_threads
-                self._load_transcriber_async(new_model_size)
+        self.tray.update_status(self.config.get("hotkey_mode"), self.config.get("ai_enabled"))
 
-            self.tray.update_status(self.config.get("hotkey_mode"), self.config.get("ai_enabled"))
-
-            if hasattr(self.main_window, "apply_font_settings"):
-                self.main_window.apply_font_settings()
-            self.main_window._history_signature = None
-            self.main_window.refresh_history()
+        if hasattr(self.main_window, "apply_font_settings"):
+            self.main_window.apply_font_settings()
+        self.main_window._history_signature = None
+        self.main_window.refresh_history()
 
     def show_history(self):
         ai_proc = self.ai_processor if self.config.get("ai_enabled") else None
@@ -525,6 +638,17 @@ class RotaApp(
         if self._transcriber_thread is not None and self._transcriber_thread.isRunning():
             self._transcriber_thread.quit()
             self._transcriber_thread.wait(1000)
+
+        # Auto-backup on exit
+        if hasattr(self, "_backup_manager") and self._backup_manager is not None:
+            try:
+                self._backup_manager.backup_now()
+                self._backup_manager.stop()
+            except Exception:
+                pass
+
+        # Clear crash flag — this was a graceful exit
+        _clear_crash_flag()
         self.app.quit()
 
     def _schedule_update_check(self):
@@ -553,7 +677,7 @@ class RotaApp(
 
     def _report_processing_error(self, err_msg: str, traceback_text: str = "") -> None:
         """Show a dialog letting the user send a processing error to GitHub."""
-        from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+        from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
         dlg = QDialog(self.main_window)
         dlg.setWindowTitle("Rota — Processing Error")

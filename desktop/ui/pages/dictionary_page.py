@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -47,6 +47,28 @@ class DictionaryPage(QWidget):
         subtitle.setObjectName("Subtitle")
         lay.addWidget(subtitle)
 
+        # ── Controls row: search, sort toggle, add ──
+        self._sort_newest = True  # default: newest first
+        controls_row = QHBoxLayout()
+        controls_row.setSpacing(8)
+
+        self._dict_search_input = QLineEdit()
+        self._dict_search_input.setObjectName("DictSearchInput")
+        self._dict_search_input.setPlaceholderText("Search dictionary...")
+        self._dict_search_input.textChanged.connect(self._dict_refresh)
+        controls_row.addWidget(self._dict_search_input, 1)
+
+        self._sort_btn = QPushButton("⬇ Newest")
+        self._sort_btn.setObjectName("SortToggleBtn")
+        self._sort_btn.setFixedHeight(34)
+        self._sort_btn.setFixedWidth(90)
+        self._sort_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._sort_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._sort_btn.clicked.connect(self._toggle_sort)
+        controls_row.addWidget(self._sort_btn)
+
+        lay.addLayout(controls_row)
+
         inputs_row = QHBoxLayout()
         inputs_row.setSpacing(12)
         self._dict_search_input = QLineEdit()
@@ -66,6 +88,51 @@ class DictionaryPage(QWidget):
         inputs_row.addWidget(add_btn)
         lay.addLayout(inputs_row)
 
+        # Phonetic correction suggestion panel
+        self._suggestion_panel = QFrame()
+        self._suggestion_panel.setObjectName("PhoneticSuggestionPanel")
+        self._suggestion_panel.setVisible(False)
+        self._suggestion_panel.setStyleSheet(
+            "QFrame#PhoneticSuggestionPanel {"
+            "  background: rgba(134, 239, 172, 0.08);"
+            "  border: 1px solid rgba(134, 239, 172, 0.2);"
+            "  border-radius: 8px; padding: 10px;"
+            "}"
+        )
+        suggestion_lay = QHBoxLayout(self._suggestion_panel)
+        suggestion_lay.setContentsMargins(12, 8, 12, 8)
+        suggestion_lay.setSpacing(8)
+        self._suggestion_icon = QLabel("💡")
+        self._suggestion_icon.setFixedWidth(24)
+        suggestion_lay.addWidget(self._suggestion_icon)
+        self._suggestion_text = QLabel("")
+        self._suggestion_text.setWordWrap(True)
+        self._suggestion_text.setStyleSheet("color: #86EFAC; font-size: 12px; background: transparent;")
+        suggestion_lay.addWidget(self._suggestion_text, 1)
+        self._suggestion_add_btn = QPushButton("Add to Dictionary")
+        self._suggestion_add_btn.setObjectName("SuggestionAddBtn")
+        self._suggestion_add_btn.setStyleSheet(
+            "QPushButton {"
+            "  background: rgba(134, 239, 172, 0.15);"
+            "  color: #86EFAC; border: 1px solid rgba(134, 239, 172, 0.3);"
+            "  border-radius: 6px; padding: 6px 14px; font-size: 11px;"
+            "}"
+            "QPushButton:hover { background: rgba(134, 239, 172, 0.25); }"
+        )
+        self._suggestion_add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._suggestion_add_btn.setVisible(False)
+        suggestion_lay.addWidget(self._suggestion_add_btn)
+        self._suggestion_dismiss_btn = QPushButton("✕")
+        self._suggestion_dismiss_btn.setFixedSize(20, 20)
+        self._suggestion_dismiss_btn.setStyleSheet(
+            "QPushButton { background: transparent; color: #5A5A60; border: none; font-size: 12px; }"
+            "QPushButton:hover { color: #F87171; }"
+        )
+        self._suggestion_dismiss_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._suggestion_dismiss_btn.clicked.connect(lambda: self._suggestion_panel.setVisible(False))
+        suggestion_lay.addWidget(self._suggestion_dismiss_btn)
+        lay.addWidget(self._suggestion_panel)
+
         self._dict_scroll = QScrollArea()
         self._dict_scroll.setWidgetResizable(True)
         self._dict_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -73,6 +140,7 @@ class DictionaryPage(QWidget):
         self._dict_container = QWidget()
         self._dict_container.setObjectName("DictContainer")
         self._dict_container.setStyleSheet("background: transparent;")
+        self._dict_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._dict_flow_layout = FlowLayout(self._dict_container, hspacing=8, vspacing=8)
         self._dict_scroll.setWidget(self._dict_container)
         lay.addWidget(self._dict_scroll, 1)
@@ -124,13 +192,23 @@ class DictionaryPage(QWidget):
         lay.addWidget(del_btn)
         return chip
 
+    def _toggle_sort(self):
+        """Toggle between newest-first and oldest-first ordering."""
+        self._sort_newest = not self._sort_newest
+        self._sort_btn.setText("⬇ Newest" if self._sort_newest else "⬆ Oldest")
+        self._dict_refresh()
+
     def _dict_refresh(self):
         data = self._dict_load()
         words = data.get("vocabulary", [])
         search_term = ""
         if hasattr(self, "_dict_search_input"):
             search_term = self._dict_search_input.text().strip().lower()
-        filtered_words = [w for w in words if search_term in w.lower()] if search_term else words
+        # Filter
+        filtered_words = [w for w in words if search_term in w.lower()] if search_term else list(words)
+        # Sort: newest first = reverse insertion order (last added = most recent)
+        if self._sort_newest:
+            filtered_words.reverse()
         if hasattr(self, "_dict_count_lbl"):
             self._dict_count_lbl.setText(
                 f"{len(filtered_words)} word{'s' if len(filtered_words) != 1 else ''}"
@@ -182,4 +260,32 @@ class DictionaryPage(QWidget):
         self._dict_refresh()
 
     def refresh(self):
+        self._dict_refresh()
+
+    def show_phonetic_suggestion(self, spoken: str, suggested: str):
+        """Show a suggestion to add a word to the dictionary after Whisper mishears it."""
+        self._suggestion_text.setText(
+            f"Did you mean <b>{suggested}</b>? Rota heard "
+            f"\"{spoken}\" — adding '{suggested}' to the dictionary improves accuracy."
+        )
+        self._suggestion_add_btn.setVisible(True)
+        self._suggestion_add_btn.clicked.disconnect()
+        self._suggestion_add_btn.clicked.connect(
+            lambda: self._add_suggestion_word(suggested)
+        )
+        self._suggestion_panel.setVisible(True)
+
+    def _add_suggestion_word(self, word: str):
+        """Add a suggested word to the dictionary."""
+        if self.personal_dict is not None:
+            self.personal_dict.add_term(word)
+        else:
+            data = self._dict_load()
+            vocab = data.get("vocabulary", [])
+            if word not in vocab:
+                vocab.append(word)
+                data["vocabulary"] = vocab
+                self._dict_save(data)
+        self._suggestion_text.setText(f"✅ Added <b>\"{word}\"</b> to dictionary!")
+        self._suggestion_add_btn.setVisible(False)
         self._dict_refresh()

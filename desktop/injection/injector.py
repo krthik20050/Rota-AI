@@ -8,13 +8,6 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-_last_undo_content: str | None = None
-_last_injected_text: str | None = None
-_last_injected_field_info = None
-_last_injected_hwnd = None
-_last_injected_correlation_id: str | None = None
-
-
 # SECURITY: Maximum injection length to prevent abuse
 _MAX_INJECT_LENGTH = 5000  # characters
 
@@ -87,6 +80,13 @@ class TextInjector:
     Instead we just paste. If nothing is focused, Ctrl+V is a no-op.
     """
 
+    def __init__(self) -> None:
+        self._last_undo_content: str | None = None
+        self._last_injected_text: str | None = None
+        self._last_injected_field_info: dict | None = None
+        self._last_injected_hwnd: int | None = None
+        self._last_injected_correlation_id: str | None = None
+
     def _has_active_window(self):
         try:
             return bool(ctypes.windll.user32.GetForegroundWindow())
@@ -127,20 +127,13 @@ class TextInjector:
         previous_clipboard = None
         hwnd_before = None
         try:
-            global \
-                _last_undo_content, \
-                _last_injected_text, \
-                _last_injected_field_info, \
-                _last_injected_hwnd, \
-                _last_injected_correlation_id
-
             # Save current clipboard for undo capability.
             try:
                 previous_clipboard = pyperclip.paste()
-                _last_undo_content = previous_clipboard
+                self._last_undo_content = previous_clipboard
             except Exception:
                 previous_clipboard = None
-                _last_undo_content = None
+                self._last_undo_content = None
 
             try:
                 hwnd_before = ctypes.windll.user32.GetForegroundWindow()
@@ -168,9 +161,9 @@ class TextInjector:
                 except Exception:
                     logger.exception("focus_restore_failed", correlation_id=correlation_id)
 
-            time.sleep(0.01)
+            time.sleep(0.05)  # Increased from 10ms — gives slow apps time to register focus
 
-            for attempt in range(2):
+            for attempt in range(3):  # Increased from 2 — one more retry for reliability
                 try:
                     # Send Ctrl+V using native Windows keybd_event.
                     # WHY: Avoids importing/using python-keyboard package which initializes
@@ -179,21 +172,23 @@ class TextInjector:
                     VK_V = 0x56
                     KEYEVENTF_KEYUP = 0x0002
                     ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 0, 0)
+                    time.sleep(0.005)  # Small delay between key down for reliability
                     ctypes.windll.user32.keybd_event(VK_V, 0, 0, 0)
-                    time.sleep(0.01)
+                    time.sleep(0.02)  # Increased from 10ms — hold keys longer for slow apps
                     ctypes.windll.user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
+                    time.sleep(0.005)
                     ctypes.windll.user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
-                    time.sleep(0.05)
+                    time.sleep(0.08)  # Increased from 50ms — more time for paste to register
                     logger.info(
                         "text_injected",
                         correlation_id=correlation_id,
                         attempt=attempt + 1,
                         chars=len(text),
                     )
-                    _last_injected_text = text
-                    _last_injected_field_info = field_info or {}
-                    _last_injected_hwnd = hwnd_before
-                    _last_injected_correlation_id = correlation_id
+                    self._last_injected_text = text
+                    self._last_injected_field_info = field_info or {}
+                    self._last_injected_hwnd = hwnd_before
+                    self._last_injected_correlation_id = correlation_id
                     return True, "Text injected successfully."
                 except Exception:
                     logger.error(
@@ -202,8 +197,8 @@ class TextInjector:
                         attempt=attempt + 1,
                         exc_info=True,
                     )
-                    if attempt == 0:
-                        time.sleep(0.1)
+                    if attempt < 2:
+                        time.sleep(0.15)  # Increased from 100ms — longer wait before retry
                         pyperclip.copy(text)
 
             pyperclip.copy(text)
@@ -215,10 +210,12 @@ class TextInjector:
             return False, "Injection failed"
 
         finally:
-            # Restore previous clipboard. We already waited 150 ms inside the
-            # loop, so this runs after the paste event has been processed.
+            # Restore previous clipboard. Wait an additional 100 ms here so
+            # slow apps (Electron, browsers) have time to process the Ctrl+V
+            # message before we overwrite the clipboard contents.
             if previous_clipboard is not None:
                 try:
+                    time.sleep(0.1)
                     pyperclip.copy(previous_clipboard)
                 except Exception:
                     pass
@@ -228,13 +225,12 @@ class TextInjector:
         Undo the last injection by restoring the previous clipboard content.
         Returns (success, message).
         """
-        global _last_undo_content
-        if _last_undo_content is None:
+        if self._last_undo_content is None:
             return False, "No undo available - nothing was copied before last injection"
 
         try:
-            pyperclip.copy(_last_undo_content)
-            _last_undo_content = None  # Clear after use
+            pyperclip.copy(self._last_undo_content)
+            self._last_undo_content = None  # Clear after use
             logger.info("undo_inject_success")
             return True, "Previous clipboard restored. Paste to recover."
         except Exception as e:
@@ -242,8 +238,7 @@ class TextInjector:
             return False, f"Undo failed: {e}"
 
     def get_last_injected_text(self) -> str:
-        global _last_injected_text
-        return _last_injected_text or ""
+        return self._last_injected_text or ""
 
     def _send_backspaces(self, count: int) -> tuple[bool, str]:
         if count <= 0:
@@ -267,25 +262,24 @@ class TextInjector:
 
     def scratch_that(self, correlation_id: str | None = None) -> tuple[bool, str]:
         """Delete the last injected text by sending backspace N times."""
-        global _last_injected_text, _last_injected_hwnd, _last_injected_correlation_id
-        text = (_last_injected_text or "").strip()
+        text = (self._last_injected_text or "").strip()
         if not text:
             return False, "No previous injection to scratch"
-        if correlation_id is not None and _last_injected_correlation_id != correlation_id:
+        if correlation_id is not None and self._last_injected_correlation_id != correlation_id:
             return False, "Scratch that is only allowed for the active recording session"
 
         try:
             current_hwnd = ctypes.windll.user32.GetForegroundWindow()
         except Exception:
             current_hwnd = None
-        if _last_injected_hwnd is not None and current_hwnd != _last_injected_hwnd:
+        if self._last_injected_hwnd is not None and current_hwnd != self._last_injected_hwnd:
             return False, "Scratch that is only allowed in the original target window"
 
         ok, msg = self._send_backspaces(len(text))
         if ok:
-            _last_injected_text = None
-            _last_injected_hwnd = None
-            _last_injected_correlation_id = None
+            self._last_injected_text = None
+            self._last_injected_hwnd = None
+            self._last_injected_correlation_id = None
         return ok, msg
 
     def replace_last_injected(
@@ -295,13 +289,12 @@ class TextInjector:
         Apply voice edit command: change X to Y on the last injected text.
         Replaces first case-insensitive match, rewrites text in-place.
         """
-        global _last_injected_text, _last_injected_correlation_id
-        current = (_last_injected_text or "").strip()
+        current = (self._last_injected_text or "").strip()
         if not current:
             return False, "No previous injection to edit"
         if not old.strip():
             return False, "Missing source text for change command"
-        if correlation_id is not None and _last_injected_correlation_id != correlation_id:
+        if correlation_id is not None and self._last_injected_correlation_id != correlation_id:
             return False, "Edit is only allowed for the active recording session"
 
         pattern = re.compile(re.escape(old.strip()), re.IGNORECASE)
@@ -313,8 +306,8 @@ class TextInjector:
         # SECURITY: only perform destructive replace if we can restore focus
         # to the same window the last injection targeted. This prevents
         # cross-window data loss when focus has moved.
-        last_hwnd = _last_injected_hwnd
-        last_field = _last_injected_field_info
+        last_hwnd = self._last_injected_hwnd
+        last_field = self._last_injected_field_info
 
         if last_hwnd is None:
             return False, "No reliable context for edit — please edit manually"
@@ -368,5 +361,4 @@ class TextInjector:
 
     def get_undo_available(self) -> bool:
         """Check if undo is available."""
-        global _last_undo_content
-        return _last_undo_content is not None
+        return self._last_undo_content is not None

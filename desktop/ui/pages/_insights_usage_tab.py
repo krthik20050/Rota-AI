@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -69,14 +69,14 @@ def build_usage_tab(page) -> QScrollArea:
     speedo_text.setSpacing(6)
     speedo_title = QLabel("Daily Voice Output")
     speedo_title.setObjectName("SectionTitle")
-    speedo_sub = QLabel("Words dictated today vs. your 3,000-word daily target")
+    speedo_sub = QLabel("Words dictated today vs. your 10,000-word daily target")
     speedo_sub.setObjectName("Subtitle")
     speedo_sub.setWordWrap(True)
     speedo_text.addWidget(speedo_title)
     speedo_text.addWidget(speedo_sub)
     speedo_text.addStretch()
     speedo_lay.addLayout(speedo_text, 1)
-    page._insights_speedometer = SpeedometerWidget(max_value=3000)
+    page._insights_speedometer = SpeedometerWidget(max_value=10000)
     page._insights_speedometer.setFixedSize(260, 156)
     speedo_lay.addWidget(page._insights_speedometer, 0, Qt.AlignmentFlag.AlignVCenter)
     lay.addWidget(speedo_card)

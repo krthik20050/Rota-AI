@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import threading
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
@@ -44,8 +44,8 @@ from plat.macos_setup import (
 class _CheckRow(QWidget):
     """One row: status icon | label + detail | action button."""
 
-    install_clicked = pyqtSignal(str)  # emits key
-    open_settings_clicked = pyqtSignal(str)  # emits key
+    install_clicked = Signal(str)  # emits key
+    open_settings_clicked = Signal(str)  # emits key
 
     def __init__(self, result: CheckResult, parent: QWidget | None = None):
         super().__init__(parent)
@@ -138,7 +138,7 @@ class MacOSSetupWizard(QDialog):
     Emits setup_done when the user clicks Continue or Skip.
     """
 
-    setup_done = pyqtSignal()
+    setup_done = Signal()
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)

@@ -4,9 +4,9 @@ GitHub-style contribution heatmap — enlarged, dynamic sizing.
 
 from datetime import datetime, timedelta
 
-from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QFont, QPainter
-from PyQt6.QtWidgets import QSizePolicy, QWidget
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter
+from PySide6.QtWidgets import QSizePolicy, QWidget
 
 
 class HeatmapGrid(QWidget):

@@ -35,6 +35,30 @@ try:
 except ImportError:
     _pynput_available = None  # type: ignore[assignment]
 
+try:
+    from plat.linux_portal import PortalShortcutHandler as _PortalHandler
+except ImportError:
+    _PortalHandler = None  # type: ignore[assignment]
+
+
+# ---------------------------------------------------------------------------
+# Detect session type (X11 vs Wayland vs unknown)
+# ---------------------------------------------------------------------------
+
+
+def _detect_session_type() -> str:
+    """Return 'x11', 'wayland', or 'unknown'."""
+    if os.environ.get("DISPLAY"):
+        return "x11"
+    if os.environ.get("WAYLAND_DISPLAY"):
+        return "wayland"
+    xdg = os.environ.get("XDG_SESSION_TYPE", "").lower()
+    if xdg == "wayland":
+        return "wayland"
+    if xdg == "x11":
+        return "x11"
+    return "unknown"
+
 
 # ---------------------------------------------------------------------------
 # pynput key → canonical name mapping
@@ -526,6 +550,9 @@ class HotkeyHandler:
         # pynput listener (used as fallback when evdev is unavailable)
         self._pynput_listener = None
 
+        # Portal handler (Wayland via XDG Desktop Portal)
+        self._portal_handler = None
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -557,15 +584,141 @@ class HotkeyHandler:
             action()
 
     def start_listening(self) -> bool:
-        """Start the evdev listener thread, with pynput fallback on X11.
+        """Start the hotkey listener with the best available backend.
 
-        Returns True on success.  If evdev cannot open any keyboard device
-        (user not in the 'input' group) AND we are on an X11 session,
-        automatically falls back to pynput which works without extra setup.
+        Priority order (avoids keyboard freeze):
+          1. pynput  — X11 only, uses XGrabKey (only grabs hotkey, not all keys)
+          2. Portal  — Wayland, uses XDG Desktop Portal GlobalShortcuts (no grab)
+          3. evdev   — last resort, grabs /dev/input devices (may freeze keyboard)
+
+        The backend can be overridden via the ROTA_HOTKEY_BACKEND env var
+        (set by the --hotkey-backend CLI flag).
+
+        Returns True if any backend started successfully.
         """
         self.stop_listening()
 
-        # --- Try evdev first ---
+        # ── Check for forced backend override ─────────────────────────────
+        forced_backend = os.environ.get("ROTA_HOTKEY_BACKEND", "auto").lower().strip()
+        if forced_backend not in ("auto", "pynput", "portal", "evdev"):
+            logger.warning("invalid_hotkey_backend_override,falling_back_to_auto", value=forced_backend)
+            forced_backend = "auto"
+
+        # ── If a specific backend is forced, try only that one ────────────
+        if forced_backend == "pynput":
+            logger.info("forced_backend_pynput")
+            ok = self._start_pynput_listener()
+            if ok:
+                return True
+            logger.error("forced_pynput_failed_no_fallback_for_forced_backend")
+            if self.error_callback:
+                try:
+                    self.error_callback(
+                        RuntimeError(
+                            "Forced hotkey backend 'pynput' failed. "
+                            "pynput requires X11 and the python3-pynput package. "
+                            "Check: pip install pynput  and ensure you're on X11."
+                        )
+                    )
+                except Exception:
+                    pass
+            return False
+
+        if forced_backend == "portal":
+            logger.info("forced_backend_portal")
+            ok = self._start_portal_listener()
+            if ok:
+                return True
+            logger.error("forced_portal_failed_no_fallback_for_forced_backend")
+            if self.error_callback:
+                try:
+                    self.error_callback(
+                        RuntimeError(
+                            "Forced hotkey backend 'portal' failed. "
+                            "The portal backend requires Wayland with jeepney and "
+                            "a compositor that supports XDG Desktop Portal GlobalShortcuts "
+                            "(GNOME 42+, KDE Plasma 5.25+, Sway 1.8+, Hyprland). "
+                            "Check: pip install jeepney  and ensure you're on Wayland."
+                        )
+                    )
+                except Exception:
+                    pass
+            return False
+
+        if forced_backend == "evdev":
+            logger.info("forced_backend_evdev")
+            # Jump straight to evdev (no pynput/portal attempt)
+            ok = self._try_evdev_backend()
+            if ok:
+                return True
+            logger.error("forced_evdev_failed_no_fallback_for_forced_backend")
+            if self.error_callback:
+                try:
+                    self.error_callback(
+                        RuntimeError(
+                            "Forced hotkey backend 'evdev' failed. "
+                            "evdev requires read access to /dev/input/event*. "
+                            "Fix: sudo usermod -aG input $USER  then log out and back in.\n"
+                            "Or run: pip install evdev"
+                        )
+                    )
+                except Exception:
+                    pass
+            return False
+
+        # ── Auto mode: pick best available ───────────────────────────────
+        on_x11 = bool(os.environ.get("DISPLAY"))
+        on_wayland = (
+            os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+            or bool(os.environ.get("WAYLAND_DISPLAY"))
+        )
+
+        # ------------------------------------------------------------------
+        # 1. X11 → pynput (non-invasive, only consumes the hotkey combo)
+        # ------------------------------------------------------------------
+        if on_x11 and _pynput_available is not None:
+            logger.info(
+                "X11_detected_trying_pynput_first",
+                hint=(
+                    "pynput uses XGrabKey — only captures the hotkey, "
+                    "no keyboard freeze."
+                ),
+            )
+            if self._start_pynput_listener():
+                return True
+            logger.warning("pynput_failed_falling_back")
+
+        # ------------------------------------------------------------------
+        # 2. Wayland → XDG Desktop Portal GlobalShortcuts
+        # ------------------------------------------------------------------
+        if on_wayland:
+            logger.info("Wayland_detected_trying_portal_first")
+            if self._start_portal_listener():
+                return True
+            logger.warning("portal_failed_falling_back_to_evdev")
+
+        # ------------------------------------------------------------------
+        # 3. evdev fallback (grabs /dev/input — may freeze keyboard)
+        # ------------------------------------------------------------------
+        ok = self._try_evdev_backend()
+        if ok:
+            return True
+
+        logger.error(
+            "no_hotkey_backend_available",
+            hint=(
+                "All backends failed. Install pynput (pip install pynput) for X11, "
+                "jeepney (pip install jeepney) for Wayland, or evdev (pip install evdev) "
+                "as last resort. Run with --hotkey-backend=<name> to target a specific backend."
+            ),
+        )
+        return False
+
+    def _try_evdev_backend(self) -> bool:
+        """Try to start the evdev backend (grabs /dev/input devices).
+
+        Separate helper so it can be called from both auto-mode and forced-backend mode.
+        """
         evdev_ok = False
         if evdev is not None:
             try:
@@ -576,18 +729,6 @@ class HotkeyHandler:
             evdev_ok = bool(self._devices)
 
         if not evdev_ok:
-            # --- pynput fallback (X11 only) ---
-            if os.environ.get("DISPLAY") and _pynput_available is not None:
-                logger.info(
-                    "evdev_unavailable_falling_back_to_pynput",
-                    hint=(
-                        "Hotkey running via pynput (X11). Works without input-group membership. "
-                        "Wayland users: add yourself to the 'input' group for evdev support."
-                    ),
-                )
-                return self._start_pynput_listener()
-
-            # No backend available — surface a clear error
             logger.error(
                 "no_keyboard_devices_found",
                 hint=(
@@ -597,17 +738,6 @@ class HotkeyHandler:
                     "If not: sudo usermod -aG input $USER  then log out and back in."
                 ),
             )
-            if self.error_callback:
-                try:
-                    self.error_callback(
-                        PermissionError(
-                            "Cannot access keyboard devices (/dev/input/event*).\n"
-                            "Fix: sudo usermod -aG input $USER  then log out and back in.\n"
-                            "Quick fix without logout: run Rota AI via:  newgrp input"
-                        )
-                    )
-                except Exception:
-                    pass
             return False
 
         # Grab exclusive access on all discovered keyboard devices so events
@@ -624,7 +754,6 @@ class HotkeyHandler:
                     logger.warning("hotkey_device_grab_failed", path=dev.path, name=dev.name)
         except Exception:
             logger.exception("hotkey_device_grab_unexpected")
-            # Release any we already grabbed
             for dev in grabbed:
                 try:
                     dev.ungrab()
@@ -645,15 +774,64 @@ class HotkeyHandler:
         )
         self._listener_thread.start()
         self.backend = "evdev"
-        logger.info(
-            "global_hotkey_started",
+        logger.warning(
+            "global_hotkey_started_evdev_grab",
             extra={"backend": self.backend, "hotkey": self.hotkey},
             devices=[d.path for d in grabbed],
+            hint=(
+                "evdev grab is active — keyboard input is consumed exclusively "
+                "by Rota AI. This may cause keyboard to appear frozen to other apps. "
+                "Install pynput (X11) or run under Wayland with jeepney for a "
+                "non-invasive hotkey backend."
+            ),
         )
         return True
 
+    def _start_portal_listener(self) -> bool:
+        """Start a portal-based global shortcut listener (Wayland, no grab).
+
+        Uses XDG Desktop Portal GlobalShortcuts via DBus (jeepney).
+        Returns True if the shortcut was registered successfully.
+        """
+        if _PortalHandler is None:
+            logger.warning("portal_unavailable_jeepney_not_installed")
+            return False
+
+        try:
+            handler = _PortalHandler(
+                hotkey_str=self.hotkey,
+                start_callback=lambda: self._portal_callback("start"),
+                stop_callback=lambda: self._portal_callback("stop"),
+                error_callback=self.error_callback,
+                mode=self.mode,
+            )
+            if not handler.start():
+                logger.warning("portal_handler_start_failed")
+                return False
+            self._portal_handler = handler
+            self.backend = "portal"
+            logger.info(
+                "global_hotkey_started",
+                extra={"backend": "portal", "hotkey": self.hotkey},
+            )
+            return True
+        except Exception:
+            logger.exception("portal_listener_start_error")
+            return False
+
+    def _portal_callback(self, action: str) -> None:
+        """Bridge portal activation to our internal press/release handlers.
+
+        The portal Activated signal fires once per shortcut press (no
+        separate key-down/key-up), so we route to the appropriate handler.
+        """
+        if action == "start":
+            self._handle_press()
+        elif action == "stop":
+            self._handle_release()
+
     def _start_pynput_listener(self) -> bool:
-        """Start a pynput keyboard listener (X11 fallback, no input-group needed)."""
+        """Start a pynput keyboard listener (X11, no keyboard freeze)."""
         if _pynput_available is None:
             logger.error("pynput_not_installed")
             return False
@@ -733,6 +911,14 @@ class HotkeyHandler:
         """Stop the listener and ungrab devices."""
         self._listener_stop.set()
 
+        # Stop portal handler (Wayland)
+        if self._portal_handler is not None:
+            try:
+                self._portal_handler.stop()
+            except Exception:
+                logger.exception("portal_handler_stop_failed")
+            self._portal_handler = None
+
         if self._pynput_listener is not None:
             try:
                 self._pynput_listener.stop()
@@ -773,6 +959,8 @@ class HotkeyHandler:
     def is_healthy(self) -> bool:
         if self.backend == "pynput":
             return self._pynput_listener is not None and self._pynput_listener.is_alive()
+        if self.backend == "portal":
+            return self._portal_handler is not None and self._portal_handler.is_running
         if self.backend == "evdev":
             return self._listener_thread is not None and self._listener_thread.is_alive()
         return False

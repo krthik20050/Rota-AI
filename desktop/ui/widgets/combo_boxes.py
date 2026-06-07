@@ -1,6 +1,6 @@
 """Reusable combo box widgets shared between settings_window and _settings_sections."""
 
-from PyQt6.QtWidgets import QComboBox
+from PySide6.QtWidgets import QComboBox
 
 
 class SmartComboBox(QComboBox):

@@ -1,0 +1,408 @@
+- generic [active] [ref=e1]:
+  - paragraph [ref=e3]: ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ ਜੀ
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - link "Rota AI" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "Rota AI" [ref=e7]
+      - generic [ref=e8]:
+        - link "Features" [ref=e9] [cursor=pointer]:
+          - /url: "#features"
+        - link "Compare" [ref=e10] [cursor=pointer]:
+          - /url: "#comparison"
+        - link "Blog" [ref=e11] [cursor=pointer]:
+          - /url: /blog
+        - button "Download" [ref=e12] [cursor=pointer]
+      - button "Download" [ref=e13] [cursor=pointer]:
+        - img [ref=e14]
+        - text: Download
+    - generic [ref=e17]:
+      - generic [ref=e18]: "Now available: Windows, Mac & Linux"
+      - heading "Type at the speed of light." [level=1] [ref=e20]:
+        - text: Type at the
+        - text: speed of light.
+      - paragraph [ref=e21]: Voice dictation that actually works. AI-cleaned, context-aware text injected directly into any app with a single keypress.
+      - generic [ref=e22]:
+        - button "Download" [ref=e23] [cursor=pointer]:
+          - text: Download
+          - img [ref=e24]
+        - link "See how it works" [ref=e27] [cursor=pointer]:
+          - /url: "#how-it-works"
+      - generic [ref=e28]:
+        - paragraph [ref=e29]: Hover to demo
+        - generic [ref=e30]:
+          - img [ref=e32]
+          - generic [ref=e62]: F9
+    - generic [ref=e206]:
+      - generic [ref=e208]:
+        - generic [ref=e209]: §01
+        - generic [ref=e211]: How it works
+      - heading "Three steps. Zero friction." [level=2] [ref=e213]:
+        - text: Three steps.
+        - text: Zero friction.
+      - generic [ref=e214]:
+        - generic [ref=e216]:
+          - generic [ref=e217]:
+            - generic: "01"
+            - img [ref=e219]
+            - heading "Press F9" [level=3] [ref=e221]
+            - paragraph [ref=e222]: A floating recording pill appears anywhere on screen. No setup, no switching apps. Just press and speak.
+          - generic [ref=e224]:
+            - generic [ref=e226]:
+              - generic [ref=e227]: F7
+              - generic [ref=e228]: F8
+              - generic [ref=e229]: F9
+              - generic [ref=e230]: F10
+              - generic [ref=e231]: F11
+            - paragraph [ref=e232]: Hover any key to interact
+        - generic [ref=e234]:
+          - generic [ref=e235]:
+            - generic: "02"
+            - img [ref=e237]
+            - heading "Speak naturally" [level=3] [ref=e240]
+            - paragraph [ref=e241]: Say exactly what you want to type. Rota transcribes in real time and understands which app you are in, adapting tone automatically.
+          - generic [ref=e244]:
+            - img [ref=e246]
+            - generic [ref=e276]: F9
+        - generic [ref=e278]:
+          - generic [ref=e279]:
+            - generic: "03"
+            - img [ref=e281]
+            - heading "Text injected" [level=3] [ref=e284]
+            - paragraph [ref=e285]: Release F9. Polished, context-aware text appears exactly where your cursor is. Gmail, Slack, VS Code, Notion, anywhere.
+          - generic [ref=e287]:
+            - generic [ref=e288]:
+              - generic [ref=e289]:
+                - img "Gmail" [ref=e290]
+                - generic [ref=e291]: Gmail
+              - generic [ref=e292]: I wanted to follow up regarding the project d
+            - generic [ref=e294]:
+              - generic [ref=e295]:
+                - img "Slack" [ref=e296]
+                - generic [ref=e297]: Slack
+              - generic [ref=e298]: Hey team! Quick updat
+            - generic [ref=e301]:
+              - img "VS Code" [ref=e302]
+              - generic [ref=e303]: VS Code
+    - generic [ref=e307]:
+      - generic [ref=e309]:
+        - generic [ref=e310]: §02
+        - generic [ref=e312]: Features
+      - heading "Built for how you actually think." [level=2] [ref=e314]:
+        - text: Built for how
+        - text: you actually think.
+      - generic [ref=e315]:
+        - generic [ref=e317]:
+          - img [ref=e319]
+          - generic [ref=e322]:
+            - heading "AI-powered cleanup" [level=3] [ref=e323]
+            - generic [ref=e324]: Smart
+          - paragraph [ref=e325]: "Rota automatically detects what app you are in and removes all filler words, fixes your punctuation, and matches your writing style: formal in Gmail, casual in Slack, technical in VS Code."
+        - generic [ref=e327]:
+          - img [ref=e329]
+          - heading "Sub-second latency" [level=3] [ref=e332]
+          - paragraph [ref=e333]: Powered by Groq Whisper with smart caching. Text appears in under a second, faster than you can reach for the keyboard.
+        - generic [ref=e335]:
+          - img [ref=e337]
+          - heading "Works everywhere" [level=3] [ref=e341]
+          - paragraph [ref=e342]: Gmail, Slack, Discord, VS Code, Notion, Figma, Linear, Chrome, any browser tab, any native app. If it has a text field, Rota works.
+        - generic [ref=e344]:
+          - img [ref=e346]
+          - generic [ref=e348]:
+            - heading "Voice commands" [level=3] [ref=e349]
+            - generic [ref=e350]: Hands-free
+          - paragraph [ref=e351]: "Edit by speaking: \"Scratch that\" removes the last sentence. \"Make it more formal\" shifts the tone. \"Change deadline to Friday\" edits in-place. \"Translate to Spanish\" converts on the fly."
+        - generic [ref=e353]:
+          - img [ref=e355]
+          - heading "Context-aware tone" [level=3] [ref=e359]
+          - paragraph [ref=e360]: Rota reads which app is in focus before transcribing. Email becomes professional. Slack messages get casual. Code comments stay concise. Zero configuration.
+        - generic [ref=e362]:
+          - img [ref=e364]
+          - heading "Personal dictionary" [level=3] [ref=e369]
+          - paragraph [ref=e370]: Learns your vocabulary, project names, and technical terms over time. Say 'Kubernetes' and it won't come out as 'Cube net ease'.
+    - generic [ref=e372]:
+      - generic [ref=e374]:
+        - generic [ref=e375]: §03
+        - generic [ref=e377]: Works everywhere
+      - img "Rota AI" [ref=e379]
+      - paragraph [ref=e381]: One voice. Every surface. Rota detects which app you are typing in and adapts the tone, punctuation, and vocabulary to match. Automatically.
+      - generic [ref=e383]:
+        - generic [ref=e385]:
+          - generic [ref=e386]:
+            - img [ref=e387]
+            - generic [ref=e390]: voice_input
+            - generic [ref=e391]: raw
+          - paragraph [ref=e392]: "\"uh so I wanted to follow up about the deadline and um maybe we can push it by like a week\""
+        - img "Rota AI" [ref=e396]
+        - img [ref=e398]
+        - generic [ref=e403]:
+          - generic [ref=e404]:
+            - generic [ref=e405]:
+              - img "Gmail" [ref=e406]
+              - generic [ref=e407]: Gmail
+            - generic [ref=e408]: // formal
+            - paragraph [ref=e409]: Professional, clear, no fillers.
+          - generic [ref=e410]:
+            - generic [ref=e411]:
+              - img "Slack" [ref=e412]
+              - generic [ref=e413]: Slack
+            - generic [ref=e414]: // casual
+            - paragraph [ref=e415]: Friendly, direct, emoji-ready.
+          - generic [ref=e416]:
+            - generic [ref=e417]:
+              - img "Discord" [ref=e418]
+              - generic [ref=e419]: Discord
+            - generic [ref=e420]: // conversational
+            - paragraph [ref=e421]: Chill, informal, relatable.
+          - generic [ref=e422]:
+            - generic [ref=e423]:
+              - img "VS Code" [ref=e424]
+              - generic [ref=e425]: VS Code
+            - generic [ref=e426]: // technical
+            - paragraph [ref=e427]: Concise, code-friendly.
+          - generic [ref=e428]:
+            - generic [ref=e429]:
+              - img "Notion" [ref=e430]
+              - generic [ref=e431]: Notion
+            - generic [ref=e432]: // structured
+            - paragraph [ref=e433]: Formatted, action-oriented.
+        - paragraph [ref=e434]: hover any app to see output
+      - generic [ref=e435]:
+        - paragraph [ref=e436]: Compatible with 90+ apps
+        - generic [ref=e437]:
+          - img "YouTube" [ref=e439]
+          - img "WhatsApp" [ref=e441]
+          - img "Facebook" [ref=e443]
+          - img "Instagram" [ref=e445]
+          - img "TikTok" [ref=e447]
+          - img "Gmail" [ref=e449]
+          - img "Telegram" [ref=e451]
+          - img "Snapchat" [ref=e453]
+          - img "X / Twitter" [ref=e455]
+          - img "Spotify" [ref=e457]
+          - img "Netflix" [ref=e459]
+          - img "LinkedIn" [ref=e461]
+          - img "Reddit" [ref=e463]
+          - img "Amazon" [ref=e465]
+          - img "Outlook" [ref=e467]
+          - img "Zoom" [ref=e469]
+          - img "Slack" [ref=e471]
+          - img "Discord" [ref=e473]
+          - img "Microsoft Teams" [ref=e475]
+          - img "Google Docs" [ref=e477]
+          - img "ChatGPT" [ref=e479]
+          - img "Perplexity" [ref=e481]
+          - img "Claude" [ref=e483]
+          - img "Gemini" [ref=e485]
+          - img "Copilot" [ref=e487]
+          - img "Windsurf" [ref=e489]
+          - img "Replit" [ref=e491]
+          - img "Arc Browser" [ref=e493]
+          - img "Raycast" [ref=e495]
+          - img "VS Code" [ref=e497]
+          - img "Notion" [ref=e499]
+          - img "Figma" [ref=e501]
+          - img "GitHub" [ref=e503]
+          - img "Canva" [ref=e505]
+          - img "Dropbox" [ref=e507]
+          - img "OneDrive" [ref=e509]
+          - img "Threads" [ref=e511]
+          - img "Cursor" [ref=e513]
+          - img "Jira" [ref=e515]
+          - img "Trello" [ref=e517]
+          - img "Asana" [ref=e519]
+          - img "Monday.com" [ref=e521]
+          - img "Linear" [ref=e523]
+          - img "Airtable" [ref=e525]
+          - img "Miro" [ref=e527]
+          - img "ClickUp" [ref=e529]
+          - img "HubSpot" [ref=e531]
+          - img "Salesforce" [ref=e533]
+          - img "Intercom" [ref=e535]
+          - img "Zendesk" [ref=e537]
+          - img "Loom" [ref=e539]
+          - img "Grammarly" [ref=e541]
+          - img "Confluence" [ref=e543]
+          - img "Obsidian" [ref=e545]
+          - img "Warp" [ref=e547]
+          - img "Webflow" [ref=e549]
+          - img "Shopify" [ref=e551]
+          - img "Stripe" [ref=e553]
+          - img "Substack" [ref=e555]
+          - img "Medium" [ref=e557]
+          - img "Todoist" [ref=e559]
+          - img "Coda" [ref=e561]
+          - img "Proton Mail" [ref=e563]
+          - img "Calendly" [ref=e565]
+          - img "Typeform" [ref=e567]
+          - img "Basecamp" [ref=e569]
+          - img "Superhuman" [ref=e571]
+          - img "Vercel" [ref=e573]
+          - img "Supabase" [ref=e575]
+          - img "Craft" [ref=e577]
+          - img "Feedly" [ref=e579]
+          - img "Bear" [ref=e581]
+          - img "Instapaper" [ref=e583]
+          - img "Skype" [ref=e585]
+          - img "Pinterest" [ref=e587]
+          - img "Stack Overflow" [ref=e589]
+          - img "Quora" [ref=e591]
+          - img "Hey" [ref=e593]
+          - img "Fastmail" [ref=e595]
+          - img "Pitch" [ref=e597]
+          - img "Nuclino" [ref=e599]
+          - img "Google Meet" [ref=e601]
+          - img "Google Drive" [ref=e603]
+          - img "Google Calendar" [ref=e605]
+          - img "Signal" [ref=e607]
+          - img "Twitch" [ref=e609]
+          - img "Framer" [ref=e611]
+          - img "Penpot" [ref=e613]
+          - img "GitLab" [ref=e615]
+          - img "Postman" [ref=e617]
+          - img "Docker" [ref=e619]
+          - img "Bluesky" [ref=e621]
+          - img "Zed" [ref=e623]
+          - img "JetBrains" [ref=e625]
+          - img "1Password" [ref=e627]
+        - paragraph [ref=e628]: + any app with a text field
+    - generic [ref=e630]:
+      - generic [ref=e632]:
+        - generic [ref=e633]: §04
+        - generic [ref=e635]: Comparison
+      - heading "Why Rota AI?" [level=2] [ref=e637]
+      - table [ref=e639]:
+        - rowgroup [ref=e640]:
+          - row "Feature Wispr Flow Rota AI SuperWhisper" [ref=e641]:
+            - columnheader "Feature" [ref=e642]
+            - columnheader "Wispr Flow" [ref=e643]
+            - columnheader "Rota AI" [ref=e644]
+            - columnheader "SuperWhisper" [ref=e645]
+        - rowgroup [ref=e646]:
+          - row "Price $15/mo Free $8.49/mo" [ref=e647]:
+            - cell "Price" [ref=e648]
+            - cell "$15/mo" [ref=e649]
+            - cell "Free" [ref=e650]
+            - cell "$8.49/mo" [ref=e651]
+          - row "Open source No Yes, MIT No" [ref=e652]:
+            - cell "Open source" [ref=e653]
+            - cell "No" [ref=e654]
+            - cell "Yes, MIT" [ref=e655]
+            - cell "No" [ref=e656]
+          - row "Offline mode No Yes Yes" [ref=e657]:
+            - cell "Offline mode" [ref=e658]
+            - cell "No" [ref=e659]
+            - cell "Yes" [ref=e660]
+            - cell "Yes" [ref=e661]
+          - row "Account required Yes No Yes" [ref=e662]:
+            - cell "Account required" [ref=e663]
+            - cell "Yes" [ref=e664]
+            - cell "No" [ref=e665]
+            - cell "Yes" [ref=e666]
+          - row "AI cleanup Yes Yes Yes, multiple modes" [ref=e667]:
+            - cell "AI cleanup" [ref=e668]
+            - cell "Yes" [ref=e669]
+            - cell "Yes" [ref=e670]
+            - cell "Yes, multiple modes" [ref=e671]
+          - row "Context awareness Yes Detects app Reads screen" [ref=e672]:
+            - cell "Context awareness" [ref=e673]
+            - cell "Yes" [ref=e674]
+            - cell "Detects app" [ref=e675]
+            - cell "Reads screen" [ref=e676]
+          - row "Encrypted key storage Not disclosed OS keychain Not disclosed" [ref=e677]:
+            - cell "Encrypted key storage" [ref=e678]
+            - cell "Not disclosed" [ref=e679]
+            - cell "OS keychain" [ref=e680]
+            - cell "Not disclosed" [ref=e681]
+          - row "Telemetry Cloud based None Not fully disclosed" [ref=e682]:
+            - cell "Telemetry" [ref=e683]
+            - cell "Cloud based" [ref=e684]
+            - cell "None" [ref=e685]
+            - cell "Not fully disclosed" [ref=e686]
+          - row "File transcription No Not yet Audio + video" [ref=e687]:
+            - cell "File transcription" [ref=e688]
+            - cell "No" [ref=e689]
+            - cell "Not yet" [ref=e690]
+            - cell "Audio + video" [ref=e691]
+          - row "Cross-device sync Yes Not yet Yes" [ref=e692]:
+            - cell "Cross-device sync" [ref=e693]
+            - cell "Yes" [ref=e694]
+            - cell "Not yet" [ref=e695]
+            - cell "Yes" [ref=e696]
+          - row "Mac / Linux / iOS All Win, Mac, Linux Mac, Win, iOS" [ref=e697]:
+            - cell "Mac / Linux / iOS" [ref=e698]
+            - cell "All" [ref=e699]
+            - cell "Win, Mac, Linux" [ref=e700]
+            - cell "Mac, Win, iOS" [ref=e701]
+    - generic [ref=e703]:
+      - generic [ref=e705]:
+        - generic [ref=e706]: §05
+        - generic [ref=e708]: FAQ
+      - generic [ref=e709]:
+        - button "Is this really free?" [ref=e712] [cursor=pointer]:
+          - generic [ref=e713]: Is this really free?
+          - img [ref=e714]
+        - button "How does the download work?" [ref=e718] [cursor=pointer]:
+          - generic [ref=e719]: How does the download work?
+          - img [ref=e720]
+        - button "Can I use it without internet?" [ref=e724] [cursor=pointer]:
+          - generic [ref=e725]: Can I use it without internet?
+          - img [ref=e726]
+        - button "What about Mac or Linux?" [ref=e730] [cursor=pointer]:
+          - generic [ref=e731]: What about Mac or Linux?
+          - img [ref=e732]
+        - button "What are the system requirements?" [ref=e736] [cursor=pointer]:
+          - generic [ref=e737]: What are the system requirements?
+          - img [ref=e738]
+    - generic [ref=e741]:
+      - generic [ref=e743]:
+        - generic [ref=e744]: §06
+        - generic [ref=e746]: Download
+      - heading "Download & start speaking." [level=2] [ref=e748]:
+        - text: Download &
+        - text: start speaking.
+      - generic [ref=e749]:
+        - paragraph [ref=e750]: Windows, Mac & Linux · Free & open source · No account needed
+        - button "Download Rota AI" [ref=e751] [cursor=pointer]:
+          - img [ref=e752]
+          - text: Download Rota AI
+    - generic [ref=e756]:
+      - generic [ref=e758]:
+        - generic [ref=e759]: §07
+        - generic [ref=e761]: Share
+      - heading "Share with your friends & family." [level=2] [ref=e763]:
+        - text: Share with your
+        - text: friends & family.
+      - generic [ref=e764]:
+        - paragraph [ref=e765]: Love Rota AI? Help spread the word.
+        - generic [ref=e766]:
+          - link "Twitter" [ref=e767] [cursor=pointer]:
+            - /url: https://twitter.com/intent/tweet?text=Found%20a%20free%20open-source%20alternative%20to%20Wispr%20Flow.%20%40RotaAI%20speaks%20into%20any%20app%20(Gmail%2C%20Slack%2C%20VS%20Code)%20and%20AI%20cleans%20it%20up%20perfectly.%20No%20subscription.%20No%20account.%20Just%20your%20voice.%20Crazy%20that%20this%20is%20free%3A&url=https%3A%2F%2Frotaai.app
+            - img [ref=e769]
+            - generic [ref=e771]: Twitter
+          - link "WhatsApp" [ref=e772] [cursor=pointer]:
+            - /url: https://wa.me/?text=Found%20a%20free%20open-source%20alternative%20to%20Wispr%20Flow.%20Rota%20AI%20speaks%20into%20any%20app%20and%20AI%20cleans%20it%20up.%20No%20subscription%20needed.%20https%3A%2F%2Frotaai.app
+            - img [ref=e774]
+            - generic [ref=e776]: WhatsApp
+          - link "LinkedIn" [ref=e777] [cursor=pointer]:
+            - /url: https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Frotaai.app
+            - img [ref=e779]
+            - generic [ref=e781]: LinkedIn
+          - link "Instagram" [ref=e782] [cursor=pointer]:
+            - /url: https://www.instagram.com/create/story
+            - img [ref=e784]
+            - generic [ref=e786]: Instagram
+    - contentinfo [ref=e787]:
+      - generic [ref=e788]:
+        - img "Rota AI" [ref=e790]
+        - generic [ref=e791]:
+          - link "Github" [ref=e792] [cursor=pointer]:
+            - /url: https://github.com/krthik20050/Rota-AI
+          - link "Documentation" [ref=e793] [cursor=pointer]:
+            - /url: "#"
+          - link "Security" [ref=e794] [cursor=pointer]:
+            - /url: "#"
+        - generic [ref=e795]: © 2026 ROTA_STUDIO_LABS
+  - button "Open Next.js Dev Tools" [ref=e801] [cursor=pointer]:
+    - img [ref=e802]
+  - alert [ref=e805]

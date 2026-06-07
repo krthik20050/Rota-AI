@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 import structlog
-from PyQt6.QtCore import QTimer
+from PySide6.QtCore import QTimer
 
 from app.logging_config import log_event
 from app.signal_bridges import RecordingState

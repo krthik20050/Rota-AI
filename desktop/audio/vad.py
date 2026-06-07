@@ -6,6 +6,10 @@ from utils.log import get_logger
 
 logger = get_logger(__name__)
 
+# ── Failure codes ──────────────────────────────────────────────────────────
+FAIL_VAD_NO_SPEECH = "FAIL_VAD_NO_SPEECH"
+FAIL_VAD_ERROR = "FAIL_VAD_ERROR"
+
 _model = None
 _lock = threading.Lock()
 
@@ -51,6 +55,7 @@ def strip_silence(
         from silero_vad import collect_chunks, get_speech_timestamps
 
         if audio is None or audio.size == 0:
+            logger.debug("vad_empty_input")
             return np.array([], dtype=np.float32)
 
         model = _load_model()
@@ -66,7 +71,12 @@ def strip_silence(
         )
 
         if not timestamps:
-            logger.debug("vad_no_speech_detected length_s=%.2f", len(audio) / sample_rate)
+            logger.warning(
+                "%s vad_no_speech_detected length_s=%.2f threshold=%.2f",
+                FAIL_VAD_NO_SPEECH,
+                len(audio) / sample_rate,
+                threshold,
+            )
             return np.array([], dtype=np.float32)
 
         cleaned = collect_chunks(timestamps, audio_t)
@@ -79,7 +89,7 @@ def strip_silence(
         return result
 
     except Exception:
-        logger.warning("vad_failed_returning_original", exc_info=True)
+        logger.warning("%s vad_failed_returning_original", FAIL_VAD_ERROR, exc_info=True)
         return audio
 
 

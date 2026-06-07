@@ -86,6 +86,8 @@ desktop-launcher.example.bat
 
 # Debug / temp files
 *.png
+!desktop/assets/icon.png
+!desktop/assets/icon_256.png
 *.jpg
 *.jpeg
 *.gif
@@ -128,3 +130,34 @@ website/skiper8_chunk.js
 website/words_preloader_search*.json
 website/console.log*
 website/index.html
+.vercel
+
+# Test artifacts / junk files
+.superpowers/
+"app icons/"
+desktop/docs/
+docs/superpowers/
+desktop/0
+desktop/dict
+0
+1
+1000
+15
+16)
+2
+24)
+6.6.0
+8)
+None
+R
+SPEECH_THRESHOLD
+dict
+len(full_audio)`
+list[dict[str
+nul
+str
+strftime('%s'
+tuple[bool
+
+# Python project config
+desktop/pyproject.toml

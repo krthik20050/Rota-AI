@@ -16,12 +16,13 @@ export function WaitlistSystem() {
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null)
 
   // On mount, check if there's a ref in URL
-  const [refCode, setRefCode] = React.useState<string | null>(null)
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const ref = params.get("ref")
-    if (ref) setRefCode(ref)
-  }, [])
+  const [refCode] = React.useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      return params.get("ref")
+    }
+    return null
+  })
 
   // Once joined, periodically poll for status
   React.useEffect(() => {
@@ -199,7 +200,7 @@ export function WaitlistSystem() {
                 <Check className="w-6 h-6" />
               </div>
               <h2 className="text-2xl font-semibold tracking-tighter text-text-primary">
-                You're on the list.
+                You&apos;re on the list.
               </h2>
               <p className="text-text-secondary text-sm max-w-[250px] mx-auto">
                 Check your email for confirmation.

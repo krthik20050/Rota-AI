@@ -234,9 +234,15 @@ print(f'  faster-whisper: OK')
 import torch
 print(f'  torch: {torch.__version__} (CUDA: {torch.cuda.is_available()})')
 
-# Linux backends
+# Linux hotkey backends (in priority order)
+import pynput
+print(f'  pynput (X11): OK')
+
+import jeepney
+print(f'  jeepney (Wayland): OK')
+
 import evdev
-print(f'  evdev: OK')
+print(f'  evdev (fallback): OK')
 
 import keyring
 print(f'  keyring: {keyring.get_keyring()}')

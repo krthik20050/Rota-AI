@@ -5,8 +5,8 @@ Updater functions for InsightsPage.
 Separated to keep insights_page.py under 500 lines.
 """
 
-from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt
-from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QProgressBar, QVBoxLayout, QWidget
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QProgressBar, QVBoxLayout, QWidget
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Syntax highlighting for code blocks in blog posts */
+@import "highlight.js/styles/github-dark.css";
 
 @theme {
   --color-bg: #0e0e12;

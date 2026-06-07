@@ -231,7 +231,8 @@ def test_groq_process_fallback_to_8b(mock_groq_class):
     mock_groq_class.return_value = mock_client
 
     processor = AIProcessor(ai_provider="groq")
-    result = processor.process_text("Raw dictation")
+    # Must be >= 5 words to reach the LLM path (word_count < 5 → rule-based skip)
+    result = processor.process_text("Raw dictation please process this now")
     assert result == "Polished text from instant fallback"
     assert mock_client.chat.completions.create.call_count == 2
 
@@ -247,7 +248,7 @@ def test_gemini_process_success(mock_urlopen):
     mock_urlopen.return_value.__enter__.return_value = mock_resp
 
     processor = AIProcessor(ai_provider="gemini")
-    result = processor.process_text("Raw dictation")
+    result = processor.process_text("Raw dictation please process this text")
     assert result == "Polished text from Gemini"
 
 
@@ -267,7 +268,7 @@ def test_gemini_fallback_to_groq(mock_urlopen, mock_groq_class):
     mock_groq_class.return_value = mock_client
 
     processor = AIProcessor(ai_provider="gemini")
-    result = processor.process_text("Raw dictation")
+    result = processor.process_text("Raw dictation please process this text")
     assert result == "Groq fallback text"
 
 
@@ -293,19 +294,21 @@ def test_process_text_empty_input():
 
 
 @patch.dict(os.environ, {"GROQ_API_KEY": "fake-groq-key"})
+@patch("ai.ai_processor._groq_rate_limiter.acquire", return_value=(True, 0.0))
 @patch("ai.ai_processor.Groq")
-def test_process_text_with_app_context(mock_groq_class):
+def test_process_text_with_app_context(mock_groq_class, mock_rl_acquire):
     """Verify that app context is included in the prompt sent to the LLM."""
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.choices = [MagicMock(message=MagicMock(content="Cleaned text"))]
+    mock_response.choices = [MagicMock(message=MagicMock(content="Hey what is up I am doing great today"))]
     mock_client.chat.completions.create.return_value = mock_response
     mock_groq_class.return_value = mock_client
 
     ctx = FakeAppContext(app_name="Slack - General", category="chat", tone="casual")
     processor = AIProcessor(ai_provider="groq")
-    result = processor.process_text("hey what's up", app_context=ctx)
-    assert result == "Cleaned text"
+    result = processor.process_text("hey what is up I am doing great today", app_context=ctx)
+    # Result shares words with input so _is_too_different doesn't reject it
+    assert result == "Hey what is up I am doing great today"
 
     # Verify the system prompt includes chat context
     call_args = mock_client.chat.completions.create.call_args

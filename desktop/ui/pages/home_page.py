@@ -16,8 +16,8 @@ from datetime import date as Date
 
 import pyperclip
 import structlog
-from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer
+from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -32,6 +32,17 @@ from ui.components.history_item import HistoryItemWidget
 from ui.styles.main_window_qss import (
     STATS_PANEL_W,
 )
+
+
+def _fmt(n: int) -> str:
+    """Format large numbers with K/M suffixes for compact display."""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.2f}M".rstrip("0").rstrip(".")
+    if n >= 10_000:
+        return f"{n / 1_000:.3f}K".rstrip("0").rstrip(".")
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K".rstrip("0").rstrip(".")
+    return f"{n:,}"
 
 logger = structlog.get_logger(__name__)
 
@@ -139,41 +150,31 @@ class HomePage(QWidget):
         lay.setContentsMargins(20, 28, 20, 28)
         lay.setSpacing(16)
 
-        def _section(text: str) -> QLabel:
-            lbl = QLabel(text)
-            lbl.setObjectName("PanelSection")
-            return lbl
-
-        def _divider() -> QFrame:
-            d = QFrame()
-            d.setFixedHeight(1)
-            d.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: none;")
-            return d
-
         self._status_compact = QLabel("● Ready")
         self._status_compact.setObjectName("VoiceProfilePill")
         lay.addWidget(self._status_compact)
 
-        lay.addWidget(_divider())
-        self._lbl_sec_wpm = _section("WORDS / MIN")
-        lay.addWidget(self._lbl_sec_wpm)
-        self._lbl_wpm = QLabel("0")
-        self._lbl_wpm.setObjectName("HomeStatBig")
-        lay.addWidget(self._lbl_wpm)
+        def _stat_card(section_text: str) -> tuple[QLabel, QLabel]:
+            """Build a rounded card with a section label and a big stat value."""
+            card = QFrame()
+            card.setObjectName("HomeStatCard")
+            card_lay = QVBoxLayout(card)
+            card_lay.setContentsMargins(16, 14, 16, 16)
+            card_lay.setSpacing(6)
+            sec = QLabel(section_text)
+            sec.setObjectName("PanelSection")
+            val = QLabel(_fmt(0))
+            val.setObjectName("HomeStatBig")
+            card_lay.addWidget(sec)
+            card_lay.addWidget(val)
+            lay.addWidget(card)
+            return sec, val
 
-        lay.addWidget(_divider())
-        self._lbl_sec_words = _section("WORDS TODAY")
-        lay.addWidget(self._lbl_sec_words)
-        self._lbl_words = QLabel("0")
-        self._lbl_words.setObjectName("HomeStatBig")
-        lay.addWidget(self._lbl_words)
+        self._lbl_sec_wpm, self._lbl_wpm = _stat_card("WORDS / MIN")
 
-        lay.addWidget(_divider())
-        self._lbl_sec_lifetime = _section("ALL TIME")
-        lay.addWidget(self._lbl_sec_lifetime)
-        self._lbl_lifetime = QLabel("0")
-        self._lbl_lifetime.setObjectName("HomeStatBig")
-        lay.addWidget(self._lbl_lifetime)
+        self._lbl_sec_words, self._lbl_words = _stat_card("WORDS TODAY")
+
+        self._lbl_sec_lifetime, self._lbl_lifetime = _stat_card("ALL TIME")
 
         lay.addStretch()
         return panel
@@ -206,18 +207,18 @@ class HomePage(QWidget):
                 self._stats_targets = [wpm, words_today, lifetime_words]
                 # Keep labels at "0" and delay the animation so it starts after
                 # the window is fully rendered and visible to the user.
-                self._lbl_wpm.setText("0")
-                self._lbl_words.setText("0")
-                self._lbl_lifetime.setText("0")
+                self._lbl_wpm.setText(_fmt(0))
+                self._lbl_words.setText(_fmt(0))
+                self._lbl_lifetime.setText(_fmt(0))
                 QTimer.singleShot(300, self._start_initial_anim)
             # No data yet — keep labels at "0" and wait for the next call
             return
         # Already initialized — update targets; don't interrupt a running animation
         self._stats_targets = [wpm, words_today, lifetime_words]
         if not self._stats_anim_timer.isActive():
-            self._lbl_wpm.setText(str(wpm))
-            self._lbl_words.setText(f"{words_today:,}")
-            self._lbl_lifetime.setText(f"{lifetime_words:,}")
+            self._lbl_wpm.setText(_fmt(wpm))
+            self._lbl_words.setText(_fmt(words_today))
+            self._lbl_lifetime.setText(_fmt(lifetime_words))
 
     def _start_initial_anim(self):
         """Start the count-up animation (called 300 ms after first real data)."""
@@ -390,7 +391,7 @@ class HomePage(QWidget):
         self.refresh_history()
 
     def _on_retry(self, entry_id: int):
-        from PyQt6.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
 
         row = self.history_manager.get_entry(entry_id)
         if row is None:
@@ -412,7 +413,7 @@ class HomePage(QWidget):
             QMessageBox.warning(self, "Retry failed", f"Formatting failed:\n{exc}")
 
     def _on_extract_audio(self, entry_id: int):
-        from PyQt6.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
 
         QMessageBox.information(
             self,
@@ -485,6 +486,6 @@ class HomePage(QWidget):
         if t >= 1.0:
             self._stats_anim_timer.stop()
         wpm, words, lifetime = self._stats_targets
-        self._lbl_wpm.setText(str(int(wpm * ease)))
-        self._lbl_words.setText(f"{int(words * ease):,}")
-        self._lbl_lifetime.setText(f"{int(lifetime * ease):,}")
+        self._lbl_wpm.setText(_fmt(int(wpm * ease)))
+        self._lbl_words.setText(_fmt(int(words * ease)))
+        self._lbl_lifetime.setText(_fmt(int(lifetime * ease)))

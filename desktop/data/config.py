@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import json
 import os
 import re
 import sys
+from dataclasses import dataclass, field
+from typing import Any
 
 from utils.log import get_logger
 
@@ -16,8 +20,7 @@ logger = get_logger(__name__)
 _IS_LINUX = sys.platform.startswith("linux")
 _IS_WINDOWS = sys.platform == "win32"
 _IS_MACOS = sys.platform == "darwin"
-
-_ENCRYPTED_KEYS = frozenset({"groq_api_key", "gemini_api_key"})
+_ENCRYPTED_KEYS = frozenset({"groq_api_key", "gemini_api_key", "per_app_config"})
 
 
 def _encrypt(plaintext: str, key_name: str | None = None) -> str | None:
@@ -126,6 +129,102 @@ def _is_ollama_url_allowed(url: str) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# Typed config dataclass
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class AppConfig:
+    """
+    Strongly-typed application configuration.
+
+    Every field has a default that matches ConfigManager.DEFAULT_CONFIG.
+    Use with ConfigManager.get_typed() / ConfigManager.apply_typed().
+    """
+
+    # ── API keys ────────────────────────────────────────────────────────
+    groq_api_key: str = ""
+    gemini_api_key: str = ""
+
+    # ── Hotkey ──────────────────────────────────────────────────────────
+    hotkey: str = "tab"
+    hotkey_mode: str = "toggle"  # "toggle" | "hold"
+
+    # ── Transcription ───────────────────────────────────────────────────
+    model_size: str = "small.en"
+    transcription_quality: str = "fast"  # "fast" | "balanced" | "accurate"
+    live_transcription_enabled: bool = True
+    cpu_threads: int = 0  # 0 = auto
+    auto_stop_silence_s: float = 2.5
+    denoise_enabled: bool = False
+
+    # ── AI Processing ───────────────────────────────────────────────────
+    ai_enabled: bool = True
+    ai_provider: str = "gemini"  # "gemini" | "groq" | "ollama"
+    writing_mode: str = "clean"  # "clean" | "raw" | "smart"
+    ollama_model: str = "qwen3.5:latest"
+    ollama_url: str = "http://localhost:11434"
+
+    # ── UI ──────────────────────────────────────────────────────────────
+    startup_enabled: bool = False
+    bg_audio_control: str = "pause"  # "pause" | "mute" | "ignore"
+    date_display: str = "relative"  # "relative" | "absolute"
+    history_days: int = 2
+    ui_font_scope: str = "app"  # "app" | "system"
+
+    # ── Per-app & advanced ──────────────────────────────────────────────
+    per_app_config: dict[str, Any] = field(default_factory=dict)
+    auto_backup_enabled: bool = True
+
+    # ── Validation ──────────────────────────────────────────────────────
+
+    def __post_init__(self) -> None:
+        """Validate field values after initialization."""
+        valid_modes = {"toggle", "hold"}
+        if self.hotkey_mode not in valid_modes:
+            logger.warning("invalid_hotkey_mode", value=self.hotkey_mode)
+            object.__setattr__(self, "hotkey_mode", "toggle")
+
+        valid_providers = {"gemini", "groq", "ollama"}
+        if self.ai_provider not in valid_providers:
+            logger.warning("invalid_ai_provider", value=self.ai_provider)
+            object.__setattr__(self, "ai_provider", "gemini")
+
+        valid_qualities = {"fast", "balanced", "accurate"}
+        if self.transcription_quality not in valid_qualities:
+            logger.warning("invalid_transcription_quality", value=self.transcription_quality)
+            object.__setattr__(self, "transcription_quality", "fast")
+
+        # Clamp numeric ranges
+        if self.cpu_threads < 0:
+            object.__setattr__(self, "cpu_threads", 0)
+        if self.auto_stop_silence_s < 0.5:
+            object.__setattr__(self, "auto_stop_silence_s", 0.5)
+        if self.history_days < 0:
+            object.__setattr__(self, "history_days", 0)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to a plain dict (for serialization)."""
+        result: dict[str, Any] = {}
+        for f in __dataclass_fields__:
+            result[f] = getattr(self, f)
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AppConfig:
+        """
+        Create an AppConfig from a dict (e.g., loaded from JSON).
+        Unknown keys are silently ignored; missing keys use defaults.
+        """
+        valid_keys = {f.name for f in __dataclass_fields__.values()}
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        return cls(**filtered)
+
+
+__dataclass_fields__ = AppConfig.__dataclass_fields__  # type: ignore[name-defined]
+
+
 class ConfigManager:
     """
     Manages application configuration stored in a JSON file.
@@ -149,12 +248,15 @@ class ConfigManager:
         "ollama_model": "qwen3.5:latest",
         "ollama_url": "http://localhost:11434",
         "auto_stop_silence_s": 2.5,
-        "transcription_quality": "balanced",
+        "transcription_quality": "fast",
         "live_transcription_enabled": True,
         "cpu_threads": 0,
         "date_display": "relative",
         "history_days": 2,
         "ui_font_scope": "app",
+        "denoise_enabled": False,
+        "per_app_config": {},
+        "auto_backup_enabled": True,
     }
 
     def __init__(self, config_path=None):
@@ -256,6 +358,35 @@ class ConfigManager:
                     "Only localhost and private network addresses are permitted."
                 )
         self.config[key] = value
+
+    def get_typed(self) -> AppConfig:
+        """
+        Return the current config as a typed AppConfig dataclass.
+        All validation rules in AppConfig.__post_init__ apply.
+        This is the safe, typed way to consume configuration.
+        """
+        return AppConfig.from_dict(self.config)
+
+    def apply_typed(self, cfg: AppConfig) -> None:
+        """
+        Apply an AppConfig dataclass to the manager and persist.
+        This is the safe, typed way to update configuration.
+        """
+        for f in __dataclass_fields__:
+            self.config[f] = getattr(cfg, f)
+        self.save()
+
+    def update_from_typed(self, cfg: AppConfig) -> None:
+        """
+        Apply only the non-default fields from an AppConfig.
+        Useful for partial updates (e.g., per-app overrides).
+        """
+        defaults = AppConfig()
+        for f in __dataclass_fields__:
+            new_val = getattr(cfg, f)
+            if new_val != getattr(defaults, f):
+                self.config[f] = new_val
+        self.save()
 
     def _handle_startup(self):
         """

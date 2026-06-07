@@ -27,15 +27,6 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# ---------------------------------------------------------------------------
-# Module-level state (mirrors the Windows injector's globals)
-# ---------------------------------------------------------------------------
-_last_undo_content: str | None = None
-_last_injected_text: str | None = None
-_last_injected_field_info = None
-_last_injected_window = None
-_last_injected_correlation_id: str | None = None
-
 # SECURITY: Maximum injection length to prevent abuse
 _MAX_INJECT_LENGTH = 5000  # characters
 
@@ -147,12 +138,16 @@ def _clipboard_copy(text: str, session: SessionType) -> bool:
         # Fallbacks that work on both X11 and Wayland backends.
         for cmd in (["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]):
             if _find_tool(cmd[0]):
-                proc = subprocess.run(
-                    cmd,
-                    input=text.encode("utf-8"),
-                    capture_output=True,
-                    timeout=5,
-                )
+                try:
+                    proc = subprocess.run(
+                        cmd,
+                        input=text.encode("utf-8"),
+                        capture_output=True,
+                        timeout=5,
+                    )
+                except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError) as e:
+                    logger.warning("clipboard_cmd_error", cmd=cmd[0], error=str(e))
+                    continue
                 if proc.returncode == 0:
                     return True
                 logger.warning("clipboard_cmd_failed", cmd=cmd[0], rc=proc.returncode)
@@ -164,12 +159,17 @@ def _clipboard_copy(text: str, session: SessionType) -> bool:
 
             pyperclip.copy(text)
             return True
+        except ImportError:
+            logger.debug("pyperclip_not_available")
         except Exception:
             logger.exception("pyperclip_copy_failed")
 
         return False
-    except Exception:
-        logger.exception("clipboard_copy_error")
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+        logger.warning("clipboard_subprocess_error", error=str(e))
+        return False
+    except OSError as e:
+        logger.error("clipboard_os_error", error=str(e))
         return False
 
 
@@ -177,30 +177,43 @@ def _clipboard_paste(session: SessionType) -> str | None:
     """Read the current clipboard contents. Returns None on failure."""
     try:
         if session == SessionType.WAYLAND:
-            proc = subprocess.run(
-                ["wl-paste", "--no-newline"],
-                capture_output=True,
-                timeout=5,
-            )
-            if proc.returncode == 0:
-                return proc.stdout.decode("utf-8", errors="replace")
+            try:
+                proc = subprocess.run(
+                    ["wl-paste", "--no-newline"],
+                    capture_output=True,
+                    timeout=5,
+                )
+            except (subprocess.TimeoutExpired, OSError) as e:
+                logger.warning("wl_paste_error", error=str(e))
+            else:
+                if proc.returncode == 0:
+                    return proc.stdout.decode("utf-8", errors="replace")
         for cmd in (
             ["xclip", "-selection", "clipboard", "-o"],
             ["xsel", "--clipboard", "--output"],
         ):
             if _find_tool(cmd[0]):
-                proc = subprocess.run(cmd, capture_output=True, timeout=5)
+                try:
+                    proc = subprocess.run(cmd, capture_output=True, timeout=5)
+                except (subprocess.TimeoutExpired, OSError) as e:
+                    logger.warning("clipboard_paste_error", cmd=cmd[0], error=str(e))
+                    continue
                 if proc.returncode == 0:
                     return proc.stdout.decode("utf-8", errors="replace")
         try:
             import pyperclip
 
             return pyperclip.paste()
+        except ImportError:
+            logger.debug("pyperclip_not_available")
         except Exception:
             logger.exception("pyperclip_paste_failed")
         return None
-    except Exception:
-        logger.exception("clipboard_paste_error")
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+        logger.warning("clipboard_paste_subprocess_error", error=str(e))
+        return None
+    except OSError as e:
+        logger.error("clipboard_paste_os_error", error=str(e))
         return None
 
 
@@ -208,11 +221,15 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
     """Send Ctrl+V using *tool*. Returns True on success."""
     try:
         if tool == KeyboardTool.XDOTOOL:
-            proc = subprocess.run(
-                ["xdotool", "key", "--clearmodifiers", "ctrl+v"],
-                capture_output=True,
-                timeout=10,
-            )
+            try:
+                proc = subprocess.run(
+                    ["xdotool", "key", "--clearmodifiers", "ctrl+v"],
+                    capture_output=True,
+                    timeout=10,
+                )
+            except (subprocess.TimeoutExpired, OSError) as e:
+                logger.warning("xdotool_ctrl_v_error", error=str(e))
+                return False
             if proc.returncode == 0:
                 return True
             logger.warning(
@@ -222,11 +239,15 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
             )
 
         elif tool == KeyboardTool.WTYPE:
-            proc = subprocess.run(
-                ["wtype", "-M", "ctrl", "v", "-m", "ctrl"],
-                capture_output=True,
-                timeout=10,
-            )
+            try:
+                proc = subprocess.run(
+                    ["wtype", "-M", "ctrl", "v", "-m", "ctrl"],
+                    capture_output=True,
+                    timeout=10,
+                )
+            except (subprocess.TimeoutExpired, OSError) as e:
+                logger.warning("wtype_ctrl_v_error", error=str(e))
+                return False
             if proc.returncode == 0:
                 return True
             logger.warning(
@@ -239,12 +260,16 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
             # dotool protocol: "keydown <code>" / "keyup <code>" one per line
             # KEY_LEFTCTRL = 29, KEY_V = 47
             commands = "keydown 29\nkeydown 47\nsleep 50\nkeyup 47\nkeyup 29\n"
-            proc = subprocess.run(
-                ["dotool"],
-                input=commands.encode("utf-8"),
-                capture_output=True,
-                timeout=10,
-            )
+            try:
+                proc = subprocess.run(
+                    ["dotool"],
+                    input=commands.encode("utf-8"),
+                    capture_output=True,
+                    timeout=10,
+                )
+            except (subprocess.TimeoutExpired, OSError) as e:
+                logger.warning("dotool_ctrl_v_error", error=str(e))
+                return False
             if proc.returncode == 0:
                 return True
             logger.warning(
@@ -257,9 +282,17 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
             # ydotool key <keycode>:<1=press or 0=release>
             # LEFTCTRL = 29, V = 47
             base_cmd = ["ydotool", "key"]
-            subprocess.run(base_cmd + ["29:1", "47:1"], capture_output=True, timeout=10)
+            try:
+                subprocess.run(base_cmd + ["29:1", "47:1"], capture_output=True, timeout=10)
+            except (subprocess.TimeoutExpired, OSError) as e:
+                logger.warning("ydotool_press_error", error=str(e))
+                return False
             time.sleep(0.05)
-            result = subprocess.run(base_cmd + ["47:0", "29:0"], capture_output=True, timeout=10)
+            try:
+                result = subprocess.run(base_cmd + ["47:0", "29:0"], capture_output=True, timeout=10)
+            except (subprocess.TimeoutExpired, OSError) as e:
+                logger.warning("ydotool_release_error", error=str(e))
+                return False
             if result.returncode == 0:
                 return True
             logger.warning(
@@ -269,8 +302,8 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
             )
 
         return False
-    except Exception:
-        logger.exception("send_ctrl_v_error", tool=tool.value)
+    except (OSError, RuntimeError) as e:
+        logger.exception("send_ctrl_v_error", tool=tool.value, error=str(e))
         return False
 
 
@@ -433,7 +466,8 @@ def _get_focused_process_name(session: SessionType) -> str:
                     except Exception:
                         comm_file = f"/proc/{pid}/comm"
                         if os.path.exists(comm_file):
-                            return open(comm_file).read().strip().lower()
+                            with open(comm_file) as f:
+                                return f.read().strip().lower()
             except Exception:
                 continue
         return ""
@@ -460,6 +494,12 @@ class TextInjector:
     def __init__(self) -> None:
         self._session = detect_session_type()
         self._keyboard = detect_keyboard_tool(self._session)
+        # Instance-level injection state (replaces module-level globals)
+        self._last_undo_content: str | None = None
+        self._last_injected_text: str | None = None
+        self._last_injected_field_info: dict | None = None
+        self._last_injected_window: str | None = None
+        self._last_injected_correlation_id: str | None = None
         logger.info(
             "linux_injector_initialised",
             session=self._session.value,
@@ -494,9 +534,6 @@ class TextInjector:
         Attempts to inject text into the currently focused window.
         Returns (success: bool, message: str).
         """
-        global _last_undo_content, _last_injected_text
-        global _last_injected_field_info, _last_injected_window, _last_injected_correlation_id
-
         if not text:
             return False, "No text to inject"
 
@@ -519,10 +556,10 @@ class TextInjector:
             # Save current clipboard for undo capability.
             try:
                 previous_clipboard = _clipboard_paste(self._session)
-                _last_undo_content = previous_clipboard
+                self._last_undo_content = previous_clipboard
             except Exception:
                 previous_clipboard = None
-                _last_undo_content = None
+                self._last_undo_content = None
 
             try:
                 window_before = _get_active_window_id(self._session)
@@ -574,10 +611,10 @@ class TextInjector:
                             chars=len(text),
                             tool=tool.value,
                         )
-                        _last_injected_text = text
-                        _last_injected_field_info = field_info or {}
-                        _last_injected_window = window_before
-                        _last_injected_correlation_id = correlation_id
+                        self._last_injected_text = text
+                        self._last_injected_field_info = field_info or {}
+                        self._last_injected_window = window_before
+                        self._last_injected_correlation_id = correlation_id
                         return True, "Text injected successfully."
                     else:
                         logger.warning("ctrl_v_failed", attempt=attempt + 1, tool=tool.value)
@@ -611,12 +648,11 @@ class TextInjector:
         Undo the last injection by restoring the previous clipboard content.
         Returns (success, message).
         """
-        global _last_undo_content
-        if _last_undo_content is None:
+        if self._last_undo_content is None:
             return False, "No undo available - nothing was copied before last injection"
         try:
-            _clipboard_copy(_last_undo_content, self._session)
-            _last_undo_content = None
+            _clipboard_copy(self._last_undo_content, self._session)
+            self._last_undo_content = None
             logger.info("undo_inject_success")
             return True, "Previous clipboard restored. Paste to recover."
         except Exception:
@@ -624,8 +660,7 @@ class TextInjector:
             return False, "Undo failed"
 
     def get_last_injected_text(self) -> str:
-        global _last_injected_text
-        return _last_injected_text or ""
+        return self._last_injected_text or ""
 
     def _send_backspaces(self, count: int) -> tuple[bool, str]:
         """Send *count* Backspace keypresses. Returns (success, message)."""
@@ -649,11 +684,10 @@ class TextInjector:
 
     def scratch_that(self, correlation_id: str | None = None) -> tuple[bool, str]:
         """Delete the last injected text by sending backspace N times."""
-        global _last_injected_text, _last_injected_window, _last_injected_correlation_id
-        text = (_last_injected_text or "").strip()
+        text = (self._last_injected_text or "").strip()
         if not text:
             return False, "No previous injection to scratch"
-        if correlation_id is not None and _last_injected_correlation_id != correlation_id:
+        if correlation_id is not None and self._last_injected_correlation_id != correlation_id:
             return False, "Scratch that is only allowed for the active recording session"
 
         # Verify we are still targeting the same window.
@@ -661,14 +695,14 @@ class TextInjector:
             current_win = _get_active_window_id(self._session)
         except Exception:
             current_win = None
-        if _last_injected_window is not None and current_win != _last_injected_window:
+        if self._last_injected_window is not None and current_win != self._last_injected_window:
             return False, "Scratch that is only allowed in the original target window"
 
         ok, msg = self._send_backspaces(len(text))
         if ok:
-            _last_injected_text = None
-            _last_injected_window = None
-            _last_injected_correlation_id = None
+            self._last_injected_text = None
+            self._last_injected_window = None
+            self._last_injected_correlation_id = None
         return ok, msg
 
     def replace_last_injected(
@@ -678,15 +712,14 @@ class TextInjector:
         Apply voice edit command: change *old* to *new* on the last injected text.
         Replaces first case-insensitive match, rewrites text in-place.
         """
-        global _last_injected_text, _last_injected_correlation_id
         import re as _re
 
-        current = (_last_injected_text or "").strip()
+        current = (self._last_injected_text or "").strip()
         if not current:
             return False, "No previous injection to edit"
         if not old.strip():
             return False, "Missing source text for change command"
-        if correlation_id is not None and _last_injected_correlation_id != correlation_id:
+        if correlation_id is not None and self._last_injected_correlation_id != correlation_id:
             return False, "Edit is only allowed for the active recording session"
 
         pattern = _re.compile(_re.escape(old.strip()), _re.IGNORECASE)
@@ -695,8 +728,8 @@ class TextInjector:
 
         rewritten = pattern.sub(new.strip(), current, count=1)
 
-        last_win = _last_injected_window
-        last_field = _last_injected_field_info
+        last_win = self._last_injected_window
+        last_field = self._last_injected_field_info
 
         if last_win is None:
             return False, "No reliable context for edit — please edit manually"
@@ -749,5 +782,4 @@ class TextInjector:
 
     def get_undo_available(self) -> bool:
         """Check if undo is available."""
-        global _last_undo_content
-        return _last_undo_content is not None
+        return self._last_undo_content is not None

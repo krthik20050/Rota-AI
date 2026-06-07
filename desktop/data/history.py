@@ -7,7 +7,10 @@ import threading
 History manager — stores transcription history in SQLite.
 
 PRIVACY NOTE: All transcriptions (raw + cleaned) are stored in PLAINTEXT
-in %APPDATA%/RotaAI/history.db. This includes everything the user ever spoke.
+in %APPDATA%/RotaAI/history.db (Windows),
+%XDG_DATA_HOME%/rota-ai/history.db (Linux), or
+~/Library/Application Support/RotaAI/history.db (macOS).
+This includes everything the user ever spoke.
 There is no encryption at rest. Any process with file access can read this data.
 """
 
@@ -25,10 +28,12 @@ class HistoryManager:
                 appdata_dir = os.path.join(
                     os.path.expanduser("~/Library/Application Support"), "RotaAI"
                 )
+            elif sys.platform.startswith("linux"):
+                xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+                appdata_dir = os.path.join(xdg_data, "rota-ai")
             else:
                 appdata_dir = os.path.join(os.environ.get("APPDATA", "."), "RotaAI")
-            if not os.path.exists(appdata_dir):
-                os.makedirs(appdata_dir)
+            os.makedirs(appdata_dir, exist_ok=True)
             db_path = os.path.join(appdata_dir, "history.db")
 
         self.db_path = db_path
@@ -83,37 +88,41 @@ class HistoryManager:
 
     def get_entries(self, search_query=None):
         """Retrieves history rows newest-first: (id, timestamp, raw_text, cleaned_text, is_prompt)."""
-        cursor = self._conn.cursor()
-        if search_query:
-            # SECURITY: Sanitize search query to prevent LIKE injection
-            sanitized = search_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            # SECURITY: Limit search query length to prevent abuse
-            sanitized = sanitized[:200]
-            cursor.execute(
-                """
-                SELECT id, timestamp, raw_text, cleaned_text, is_prompt
-                FROM history
-                WHERE raw_text LIKE ? ESCAPE '\\' OR cleaned_text LIKE ? ESCAPE '\\'
-                ORDER BY id DESC
-            """,
-                (f"%{sanitized}%", f"%{sanitized}%"),
-            )
-        else:
-            cursor.execute("""
-                SELECT id, timestamp, raw_text, cleaned_text, is_prompt
-                FROM history
-                ORDER BY id DESC
-            """)
-        return cursor.fetchall()
+        with self._write_lock:
+            cursor = self._conn.cursor()
+            if search_query:
+                # SECURITY: Sanitize search query to prevent LIKE injection
+                sanitized = (
+                    search_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                )
+                # SECURITY: Limit search query length to prevent abuse
+                sanitized = sanitized[:200]
+                cursor.execute(
+                    """
+                    SELECT id, timestamp, raw_text, cleaned_text, is_prompt
+                    FROM history
+                    WHERE raw_text LIKE ? ESCAPE '\\' OR cleaned_text LIKE ? ESCAPE '\\'
+                    ORDER BY id DESC
+                """,
+                    (f"%{sanitized}%", f"%{sanitized}%"),
+                )
+            else:
+                cursor.execute("""
+                    SELECT id, timestamp, raw_text, cleaned_text, is_prompt
+                    FROM history
+                    ORDER BY id DESC
+                """)
+            return cursor.fetchall()
 
     def get_entry(self, entry_id: int):
         """Returns a single entry (id, timestamp, raw_text, cleaned_text, is_prompt) or None."""
-        cursor = self._conn.cursor()
-        cursor.execute(
-            "SELECT id, timestamp, raw_text, cleaned_text, is_prompt FROM history WHERE id = ?",
-            (entry_id,),
-        )
-        return cursor.fetchone()
+        with self._write_lock:
+            cursor = self._conn.cursor()
+            cursor.execute(
+                "SELECT id, timestamp, raw_text, cleaned_text, is_prompt FROM history WHERE id = ?",
+                (entry_id,),
+            )
+            return cursor.fetchone()
 
     def update_entry(self, entry_id: int, cleaned_text: str):
         """Updates the cleaned_text field of an existing entry."""

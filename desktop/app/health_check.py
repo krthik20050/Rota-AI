@@ -66,7 +66,7 @@ class StartupHealthChecker:
         try:
             # If running within a Qt app, ensure callback is posted to the
             # Qt main thread to avoid race conditions with UI state.
-            from PyQt6.QtCore import QTimer
+            from PySide6.QtCore import QTimer
 
             QTimer.singleShot(0, lambda: on_complete(report))
         except Exception:
@@ -243,12 +243,7 @@ class StartupHealthChecker:
                 return self._check_macos_integration(started)
             if sys.platform.startswith("linux"):
                 return self._check_linux_integration(started)
-            return HealthCheckItem(
-                name="platform_integration",
-                status="ok",
-                message="Windows platform integration available",
-                duration_ms=(time.perf_counter() - started) * 1000.0,
-            )
+            return self._check_windows_integration(started)
         except Exception as exc:
             return HealthCheckItem(
                 name="platform_integration",
@@ -308,18 +303,47 @@ class StartupHealthChecker:
         missing: list[str] = []
         degraded: list[str] = []
 
+        # Determine session type
+        on_x11 = bool(os.environ.get("DISPLAY"))
+        on_wayland = (
+            os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+            or bool(os.environ.get("WAYLAND_DISPLAY"))
+        )
+        session_type = "wayland" if on_wayland else "x11" if on_x11 else "unknown"
+
+        # --- Hotkey backends (non-invasive preferred) ---
+        # On X11, pynput is the primary backend (no grab, no freeze).
+        # On Wayland, jeepney (XDG Desktop Portal) is the primary backend.
+        # evdev is only needed as a last-resort fallback on either.
+        if on_x11:
+            try:
+                import pynput  # noqa: F401
+            except ImportError:
+                degraded.append("pynput (recommended for X11 hotkeys; evdev fallback available)")
+
+        if on_wayland:
+            try:
+                import jeepney  # noqa: F401
+            except ImportError:
+                degraded.append("jeepney (recommended for Wayland hotkeys)")
+
+        # evdev is optional — only flagged if neither primary backend is available
         try:
             import evdev  # noqa: F401
         except ImportError:
-            missing.append("evdev")
+            if not on_x11 and not on_wayland:
+                missing.append("evdev")
+            else:
+                degraded.append("evdev (fallback only; install for headless/EDE use)")
 
+        # --- Keyring ---
         try:
             import keyring  # noqa: F401
         except ImportError:
             degraded.append("keyring")
 
-        session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
-        if session_type == "wayland":
+        # --- Text injection tools ---
+        if on_wayland:
             if not any(shutil.which(tool) for tool in ("wtype", "dotool", "ydotool")):
                 missing.append("one of wtype, dotool, or ydotool")
             if shutil.which("wl-copy") is None:
@@ -354,4 +378,81 @@ class StartupHealthChecker:
             message="Linux platform tools are ready",
             duration_ms=(time.perf_counter() - started) * 1000.0,
             details={"session": session_type or "unknown"},
+        )
+
+    def _check_windows_integration(self, started: float) -> HealthCheckItem:
+        missing: list[str] = []
+        degraded: list[str] = []
+
+        # --- COM/ctypes availability ---
+        try:
+            import ctypes  # noqa: F401
+
+            # Verify windll user32 is accessible (core Windows API)
+            ctypes.windll.user32.GetSystemMetrics(0)
+        except Exception:
+            missing.append("Windows ctypes API (user32)")
+
+        # --- Audio control (pycaw) ---
+        try:
+            from pycaw.pycaw import AudioUtilities  # noqa: F401
+        except ImportError:
+            degraded.append("pycaw (audio ducking/mute)")
+
+        # --- Text injection (win32clipboard, win32con) ---
+        try:
+            import win32clipboard  # noqa: F401
+            import win32con  # noqa: F401
+        except ImportError:
+            degraded.append("pywin32 (clipboard injection)")
+
+        # --- System tray / startup (winreg) ---
+        try:
+            import winreg  # noqa: F401
+        except ImportError:
+            degraded.append("winreg (startup registration)")
+
+        # --- Keyring (optional) ---
+        try:
+            import keyring  # noqa: F401
+        except ImportError:
+            degraded.append("keyring (credential storage)")
+
+        # --- Windows version info ---
+        try:
+            import platform as _platform
+
+            win_ver_str = _platform.win32_ver() or ""
+            win_release = _platform.release()
+            details: dict[str, str] = {"os": f"Windows {win_release} ({win_ver_str})"}
+            major = int(win_release) if win_release.isdigit() else 0
+            if major < 10:
+                degraded.append("Windows 10+ recommended")
+        except Exception:
+            details = {"os": "Windows (version unknown)"}
+
+        if missing:
+            return HealthCheckItem(
+                name="platform_integration",
+                status="failed",
+                message="Windows integration missing: " + ", ".join(missing),
+                critical=True,
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                details=details,
+            )
+        if degraded:
+            return HealthCheckItem(
+                name="platform_integration",
+                status="degraded",
+                message="Windows integration degraded: " + ", ".join(degraded),
+                critical=False,
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                details=details,
+            )
+        return HealthCheckItem(
+            name="platform_integration",
+            status="ok",
+            message="Windows platform tools are ready",
+            duration_ms=(time.perf_counter() - started) * 1000.0,
+            details=details,
         )

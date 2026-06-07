@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 import structlog
-from PyQt6.QtCore import pyqtSlot
+from PySide6.QtCore import Slot
 
 from app.logging_config import log_event
 from app.signal_bridges import RecordingState
@@ -71,7 +71,7 @@ logger = structlog.get_logger(__name__)
 class HotkeyMixin:
     """Hotkey dispatch and recording start/cancel for RotaApp."""
 
-    @pyqtSlot()
+    @Slot()
     def _handle_hotkey_start(self):
         if self.state == RecordingState.ERROR:
             logger.info("Recovering from ERROR state to IDLE")
@@ -86,14 +86,14 @@ class HotkeyMixin:
             return
         self._dispatch_pipeline_action("start")
 
-    @pyqtSlot()
+    @Slot()
     def _handle_hotkey_stop(self):
         if self.state != RecordingState.LISTENING:
             logger.info("Ignoring hotkey stop in state=%s", self.state.value)
             return
         self._dispatch_pipeline_action("stop")
 
-    @pyqtSlot()
+    @Slot()
     def _cancel_recording(self):
         if self.state != RecordingState.LISTENING:
             return
