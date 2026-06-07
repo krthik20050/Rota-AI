@@ -162,7 +162,7 @@ jobs:
         shell: cmd
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install PySide6 structlog python-dotenv pyperclip pywin32 psutil groq numpy pytest
+          pip install PySide6 structlog python-dotenv pyperclip pywin32 psutil groq numpy pytest pynput
 
       - name: Check imports (Windows)
         shell: cmd
