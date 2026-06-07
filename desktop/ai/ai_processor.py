@@ -385,10 +385,11 @@ class AIProcessor:
         then round-robins within that order so no single model gets all the load.
         """
         # Three Gemini models × free-tier quota = ~4 500 req/day combined capacity.
-        # gemini-2.0-flash was removed (deprecated/shutdown). gemini-1.5-flash was removed (returns 404).
-        # Order: fastest first, most-capable last.
+        # gemini-1.5-flash removed (returns 404 — fully deprecated). gemini-2.0-flash kept (still
+        # serving, sometimes rate-limited). Order: fastest first, most-capable last.
         gemini_slots = (
             [
+                ("gemini", "gemini-2.0-flash"),
                 ("gemini", "gemini-2.0-flash-lite"),
                 ("gemini", "gemini-2.5-flash"),
                 ("gemini", "gemini-2.5-pro"),
