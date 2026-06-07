@@ -18,7 +18,13 @@ Test coverage:
 from __future__ import annotations
 
 import sys
+
+import pytest
 from unittest.mock import MagicMock, patch
+
+# Skip all tests in this file on non-macOS platforms — they test macOS-specific
+# platform backends (macos_injector, macos_hotkey, macos_window, macos_setup).
+pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only tests")
 
 # ===================================================================
 # 1 — macos_injector.py  — TextInjector 4-tier fallback
