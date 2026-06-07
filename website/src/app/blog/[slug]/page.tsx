@@ -9,6 +9,30 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+const AUTHOR_SOCIALS = [
+  {
+    name: "X / Twitter",
+    href: "https://x.com/itsurkk05",
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    ),
+  },
+  {
+    name: "Instagram",
+    href: "https://www.instagram.com/karthikkrishnan000/",
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+    ),
+  },
+  {
+    name: "YouTube",
+    href: "https://www.youtube.com/@Krthikk",
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+    ),
+  },
+];
+
 export async function generateStaticParams() {
   const posts = getAllPosts();
   return posts.map((post) => ({ slug: post.slug }));
@@ -97,7 +121,7 @@ export default async function BlogPostPage({ params }: Props) {
         </Link>
       </nav>
 
-      <article className="max-w-2xl mx-auto px-6 sm:px-10 pt-28 pb-8">
+      <article className="max-w-3xl mx-auto px-6 sm:px-10 pt-28 pb-8">
         {/* Category & meta */}
         <div className="flex items-center gap-3 mb-6">
           <span className="text-[10px] font-mono uppercase tracking-wider text-[#71717a]">
@@ -109,15 +133,14 @@ export default async function BlogPostPage({ params }: Props) {
 
         {/* Title */}
         <h1
-          className="font-display uppercase tracking-[0.02em] leading-[0.92] mb-8"
-          style={{ fontSize: "clamp(28px, 4vw, 44px)", color: "#fafafa" }}
+          className="font-display uppercase tracking-[0.02em] leading-[0.92] mb-10"
+          style={{ fontSize: "clamp(32px, 4.5vw, 52px)", color: "#fafafa" }}
         >
           {post.title}
         </h1>
 
-        {/* Author info row — text only, no avatar box */}
-        <div className="flex items-center justify-between flex-wrap gap-4 mb-14 pb-8"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        {/* Author info — clean, no border */}
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-14 pb-6">
           <div>
             <div className="text-sm font-medium text-[#fafafa]">{post.author}</div>
             <div className="flex items-center gap-2 text-[11px] text-[#50545a] font-mono">
@@ -153,26 +176,26 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Content — clean prose, proper hierarchy */}
+        {/* Content — wider, cleaner prose */}
         <div className="prose prose-invert max-w-none
-          prose-headings:text-[#fafafa] prose-headings:font-semibold prose-headings:mt-12 prose-headings:mb-5
-          prose-h2:text-[22px] prose-h2:tracking-tight prose-h2:leading-snug prose-h2:border-none prose-h2:pb-0
-          prose-h3:text-[17px] prose-h3:mt-8 prose-h3:mb-4
-          prose-p:text-[#d4d4d8] prose-p:leading-[1.75] prose-p:mb-6 prose-p:text-[16px]
+          prose-headings:text-[#fafafa] prose-headings:font-semibold prose-headings:mt-14 prose-headings:mb-6
+          prose-h2:text-[24px] prose-h2:tracking-tight prose-h2:leading-snug
+          prose-h3:text-[18px] prose-h3:mt-10 prose-h3:mb-5
+          prose-p:text-[#d4d4d8] prose-p:leading-[1.85] prose-p:mb-7 prose-p:text-[16.5px]
           prose-strong:text-[#fafafa] prose-strong:font-semibold
           prose-em:text-[#d4d4d8] prose-em:not-italic prose-em:font-semibold
           prose-a:text-[#e4f222] prose-a:no-underline hover:prose-a:underline
           prose-code:text-[#e4f222] prose-code:bg-[#111113] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-sm prose-code:text-sm prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
-          prose-pre:bg-[#111113] prose-pre:border prose-pre:border-white/[.06] prose-pre:rounded-sm prose-pre:p-4
+          prose-pre:bg-[#111113] prose-pre:border prose-pre:border-white/[.06] prose-pre:rounded-sm prose-pre:p-5
           prose-pre:overflow-x-auto
-          prose-blockquote:border-l-[#e4f222] prose-blockquote:text-[#a1a1aa] prose-blockquote:pl-5 prose-blockquote:italic
-          prose-li:text-[#d4d4d8] prose-li:mb-2 prose-li:text-[16px] prose-li:leading-[1.7]
-          prose-ul:my-6 prose-ol:my-6
-          prose-hr:border-white/[.06] prose-hr:my-14
-          prose-img:rounded-sm prose-img:my-10
-          prose-table:text-sm prose-table:my-8
-          prose-th:text-[#fafafa] prose-th:font-medium prose-th:py-2.5 prose-th:px-4 prose-th:border-b prose-th:border-white/[.08] prose-th:text-left
-          prose-td:text-[#d4d4d8] prose-td:py-2.5 prose-td:px-4 prose-td:border-b prose-td:border-white/[.04]
+          prose-blockquote:border-l-[#e4f222] prose-blockquote:text-[#a1a1aa] prose-blockquote:pl-6 prose-blockquote:italic
+          prose-li:text-[#d4d4d8] prose-li:mb-2.5 prose-li:text-[16px] prose-li:leading-[1.8]
+          prose-ul:my-8 prose-ol:my-8
+          prose-hr:border-white/[.06] prose-hr:my-16
+          prose-img:rounded-sm prose-img:my-12
+          prose-table:text-sm prose-table:my-10
+          prose-th:text-[#fafafa] prose-th:font-medium prose-th:py-3 prose-th:px-5 prose-th:border-b prose-th:border-white/[.08] prose-th:text-left
+          prose-td:text-[#d4d4d8] prose-td:py-3 prose-td:px-5 prose-td:border-b prose-td:border-white/[.04]
         ">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>
             {post.content}
@@ -180,10 +203,10 @@ export default async function BlogPostPage({ params }: Props) {
         </div>
       </article>
 
-      {/* Author bio — hairline divider, no box */}
-      <section className="max-w-2xl mx-auto px-6 sm:px-10 pb-16 pt-8"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="flex items-start gap-4 pt-8">
+      {/* Author bio — clean, no border */}
+      <section className="max-w-3xl mx-auto px-6 sm:px-10 pb-16 pt-6">
+        <div className="flex items-start gap-4 p-6 sm:p-8 rounded-sm"
+          style={{ background: "rgba(255,255,255,0.02)" }}>
           <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold uppercase shrink-0"
             style={{ background: "rgba(228,242,34,0.1)", color: "#e4f222" }}>
             {post.author.split(" ").map(n => n[0]).join("").slice(0, 2)}
@@ -193,71 +216,74 @@ export default async function BlogPostPage({ params }: Props) {
             {post.authorRole && (
               <p className="text-[10px] text-[#71717a] uppercase tracking-wider mb-2">{post.authorRole}</p>
             )}
-            <p className="text-xs text-[#71717a] leading-relaxed">
+            <p className="text-xs text-[#71717a] leading-relaxed mb-4">
               {post.author === "Karthik Krishnan"
                 ? "Built Rota AI because no student should pay $15/month for a dictation tool. Writes about open source, voice technology, and building things that matter."
                 : "Contributor to Rota AI. Writing about voice dictation, AI, and open source software."}
             </p>
-            {post.authorTwitter || post.authorLinkedin || post.authorWebsite ? (
-              <div className="flex items-center gap-3 mt-3">
-                {post.authorTwitter && (
-                  <a href={`https://x.com/${post.authorTwitter}`} target="_blank" rel="noopener noreferrer"
-                    className="text-[10px] text-[#71717a] hover:text-[#e4f222] transition-colors uppercase tracking-wider font-mono">
-                    X / Twitter
-                  </a>
-                )}
-                {post.authorLinkedin && (
-                  <a href={`https://linkedin.com/in/${post.authorLinkedin}`} target="_blank" rel="noopener noreferrer"
-                    className="text-[10px] text-[#71717a] hover:text-[#e4f222] transition-colors uppercase tracking-wider font-mono">
-                    LinkedIn
-                  </a>
-                )}
-                {post.authorWebsite && (
-                  <a href={post.authorWebsite} target="_blank" rel="noopener noreferrer"
-                    className="text-[10px] text-[#71717a] hover:text-[#e4f222] transition-colors uppercase tracking-wider font-mono">
-                    GitHub
-                  </a>
-                )}
-              </div>
-            ) : null}
+            {/* Author social links — prominent */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {AUTHOR_SOCIALS.map((social) => (
+                <a
+                  key={social.name}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase tracking-wider text-[#71717a] hover:text-[#e4f222] hover:bg-white/[0.04] transition-all rounded-sm"
+                  style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  {social.icon}
+                  <span>{social.name}</span>
+                </a>
+              ))}
+              {post.authorTwitter && (
+                <a href={`https://x.com/${post.authorTwitter}`} target="_blank" rel="noopener noreferrer"
+                  className="text-[10px] text-[#50545a] hover:text-[#e4f222] transition-colors uppercase tracking-wider font-mono">
+                  X/Twitter
+                </a>
+              )}
+              {post.authorLinkedin && (
+                <a href={`https://linkedin.com/in/${post.authorLinkedin}`} target="_blank" rel="noopener noreferrer"
+                  className="text-[10px] text-[#50545a] hover:text-[#e4f222] transition-colors uppercase tracking-wider font-mono">
+                  LinkedIn
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Related posts — hairline links, no boxes */}
+      {/* Related posts — clean, no border */}
       {shownRelated.length > 0 && (
-        <section className="max-w-4xl mx-auto px-6 sm:px-10 pb-20">
-          <div className="pt-12" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#50545a] mb-6 font-mono">Related articles</h3>
-            <div className="divide-y divide-white/[0.04]">
-              {shownRelated.map((related) => (
-                <Link
-                  key={related.slug}
-                  href={`/blog/${encodeURIComponent(related.slug)}`}
-                  className="group block py-5 transition-colors hover:bg-[#0c0c0e] -mx-4 px-4"
-                >
-                  <div className="flex items-center gap-2 text-[10px] font-mono text-[#50545a] mb-2">
-                    <span>{related.category}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{related.date}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{related.readTime}</span>
-                  </div>
-                  <h4 className="text-sm font-medium text-[#fafafa] group-hover:text-[#e4f222] transition-colors leading-snug mb-1">
-                    {related.title}
-                  </h4>
-                  <p className="text-[12px] text-[#71717a] leading-relaxed line-clamp-1">
-                    {related.description}
-                  </p>
-                </Link>
-              ))}
-            </div>
+        <section className="max-w-4xl mx-auto px-6 sm:px-10 pb-20 pt-4">
+          <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#50545a] mb-8 font-mono">Related articles</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {shownRelated.map((related) => (
+              <Link
+                key={related.slug}
+                href={`/blog/${encodeURIComponent(related.slug)}`}
+                className="group block p-5 transition-all duration-200 hover:bg-[#0c0c0e] rounded-sm"
+                style={{ background: "rgba(255,255,255,0.02)" }}
+              >
+                <div className="flex items-center gap-2 text-[10px] font-mono text-[#50545a] mb-3">
+                  <span>{related.category}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{related.readTime}</span>
+                </div>
+                <h4 className="text-sm font-medium text-[#fafafa] group-hover:text-[#e4f222] transition-colors leading-snug mb-2 line-clamp-2">
+                  {related.title}
+                </h4>
+                <p className="text-[11px] text-[#71717a] leading-relaxed line-clamp-2">
+                  {related.description}
+                </p>
+              </Link>
+            ))}
           </div>
         </section>
       )}
 
-      {/* Footer */}
-      <footer className="py-12 px-6 sm:px-10" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      {/* Footer — minimal, no border */}
+      <footer className="py-12 px-6 sm:px-10">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-5 h-5 flex items-center justify-center rounded-sm" style={{ background: "#e4f222" }}>
