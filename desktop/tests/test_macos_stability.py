@@ -18,9 +18,9 @@ Test coverage:
 from __future__ import annotations
 
 import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import MagicMock, patch
 
 # Skip all tests in this file on non-macOS platforms — they test macOS-specific
 # platform backends (macos_injector, macos_hotkey, macos_window, macos_setup).
