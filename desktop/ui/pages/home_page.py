@@ -17,17 +17,6 @@ from datetime import date as Date
 import pyperclip
 import structlog
 from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer
-
-
-def _fmt(n: int) -> str:
-    """Format large numbers with K/M suffixes for compact display."""
-    if n >= 1_000_000:
-        return f"{n / 1_000_000:.2f}M".rstrip("0").rstrip(".")
-    if n >= 10_000:
-        return f"{n / 1_000:.3f}K".rstrip("0").rstrip(".")
-    if n >= 1_000:
-        return f"{n / 1_000:.1f}K".rstrip("0").rstrip(".")
-    return f"{n:,}"
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -43,6 +32,17 @@ from ui.components.history_item import HistoryItemWidget
 from ui.styles.main_window_qss import (
     STATS_PANEL_W,
 )
+
+
+def _fmt(n: int) -> str:
+    """Format large numbers with K/M suffixes for compact display."""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.2f}M".rstrip("0").rstrip(".")
+    if n >= 10_000:
+        return f"{n / 1_000:.3f}K".rstrip("0").rstrip(".")
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K".rstrip("0").rstrip(".")
+    return f"{n:,}"
 
 logger = structlog.get_logger(__name__)
 

@@ -281,6 +281,7 @@ def _send_ctrl_v(tool: KeyboardTool) -> bool:
         elif tool == KeyboardTool.YDOTOOL:
             # ydotool key <keycode>:<1=press or 0=release>
             # LEFTCTRL = 29, V = 47
+            base_cmd = ["ydotool", "key"]
             try:
                 subprocess.run(base_cmd + ["29:1", "47:1"], capture_output=True, timeout=10)
             except (subprocess.TimeoutExpired, OSError) as e:

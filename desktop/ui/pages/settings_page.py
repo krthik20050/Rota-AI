@@ -458,8 +458,6 @@ class SettingsPage(QWidget):
         """Save current widget values to the config (same as SettingsWindow._save_and_close)."""
         import os
 
-        conf = self.config.config
-
         gemini_key = self.gemini_key_input.text().strip()
         groq_key = self.groq_key_input.text().strip()
         self.config.set("gemini_api_key", gemini_key)
