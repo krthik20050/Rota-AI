@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QRect, QSize, Qt
-from PySide6.QtWidgets import QLayout
+from PySide6.QtWidgets import QLayout, QWidgetItem
 
 
 class FlowLayout(QLayout):
@@ -21,6 +21,19 @@ class FlowLayout(QLayout):
 
     def addItem(self, item):
         self._item_list.append(item)
+
+    def addWidget(self, widget, stretch=0, alignment=Qt.AlignmentFlag()):
+        """Convenience — matches QBoxLayout.addWidget signature.
+        Stretch and alignment params are accepted for API compatibility
+        but ignored — FlowLayout sizes items by their sizeHint.
+        """
+        item = QWidgetItem(widget)
+        self.addItem(item)
+
+    def setSpacing(self, spacing: int):
+        """Set both horizontal and vertical spacing (matches QBoxLayout API)."""
+        self._h_space = spacing
+        self._v_space = spacing
 
     def horizontalSpacing(self):
         return self._h_space

@@ -239,7 +239,7 @@ function F9KeyIllustration() {
         </div>
       </div>
 
-      {/* Fixed-height slot — no layout shift, shows for any hovered key */}
+      {/* Fixed-height slot - no layout shift, shows for any hovered key */}
       <div style={{ height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <AnimatePresence>
           {hoveredKey && (
@@ -343,12 +343,12 @@ function FlowchartDemo() {
     {
       label: "Slack", domain: "slack.com", tone: "// casual",
       short: "Friendly, direct, emoji-ready.",
-      text: "Hey team! Quick update on the deadline — can we push it by a week? Lmk what works!",
+      text: "Hey team! Quick update on the deadline - can we push it by a week? Lmk what works!",
     },
     {
       label: "Discord", domain: "discord.com", tone: "// conversational",
       short: "Chill, informal, relatable.",
-      text: "yo update on deadline — thinking ~1 week push, thoughts? lol",
+      text: "yo update on deadline - thinking ~1 week push, thoughts? lol",
     },
     {
       label: "VS Code", domain: "code.visualstudio.com", tone: "// technical",
@@ -433,7 +433,7 @@ function FlowchartDemo() {
         </svg>
       </div>
 
-      {/* App output cards — hover to expand */}
+      {/* App output cards - hover to expand */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {apps.map((app, i) => (
           <motion.div
@@ -527,7 +527,8 @@ function FadeIn({
 function SectionLabel({ n, title }: { n: string; title: string }) {
   return (
     <div className="flex items-center gap-4 mb-14">
-      <span className="text-xs tracking-[0.25em] uppercase text-[#e4f222] font-mono">§{n}</span>
+      {n && <span className="text-xs tracking-[0.25em] uppercase text-[#e4f222] font-mono">§{n}</span>}
+      {!n && <span className="text-xs tracking-[0.25em] uppercase text-[#e4f222] font-mono">✦</span>}
       <div className="flex-1 h-px bg-white/[.06]" />
       <span className="text-xs tracking-[0.25em] uppercase text-[#50545a] font-mono">{title}</span>
     </div>
@@ -596,9 +597,9 @@ const FEATURES = [
   },
 ];
 
-// Ordered by global daily active users — most used apps first, center of row 1 gets most attention
+// Ordered by global daily active users - most used apps first, center of row 1 gets most attention
 const APPS_DATA: { name: string; domain: string; invert?: boolean }[] = [
-  // Row 1 — Billions / hundreds of millions of users
+  // Row 1 - Billions / hundreds of millions of users
   { name: "YouTube",           domain: "youtube.com" },
   { name: "WhatsApp",          domain: "wa.me" },
   { name: "Facebook",          domain: "facebook.com" },
@@ -615,7 +616,7 @@ const APPS_DATA: { name: string; domain: string; invert?: boolean }[] = [
   { name: "Amazon",            domain: "amazon.com" },
   { name: "Outlook",           domain: "outlook.com" },
   { name: "Zoom",              domain: "zoom.us" },
-  // Row 2 — Major productivity & work tools
+  // Row 2 - Major productivity & work tools
   { name: "Slack",             domain: "slack.com" },
   { name: "Discord",           domain: "discord.com" },
   { name: "Microsoft Teams",   domain: "teams.microsoft.com" },
@@ -637,7 +638,7 @@ const APPS_DATA: { name: string; domain: string; invert?: boolean }[] = [
   { name: "Dropbox",           domain: "dropbox.com" },
   { name: "OneDrive",          domain: "onedrive.live.com" },
   { name: "Threads",           domain: "threads.net" },
-  // Row 3 — Professional & developer tools
+  // Row 3 - Professional & developer tools
   { name: "Cursor",            domain: "cursor.com" },
   { name: "Jira",              domain: "atlassian.com" },
   { name: "Trello",            domain: "trello.com" },
@@ -654,7 +655,7 @@ const APPS_DATA: { name: string; domain: string; invert?: boolean }[] = [
   { name: "Loom",              domain: "loom.com" },
   { name: "Grammarly",         domain: "grammarly.com" },
   { name: "Confluence",        domain: "confluence.atlassian.com" },
-  // Row 4 — Niche but popular
+  // Row 4 - Niche but popular
   { name: "Obsidian",          domain: "obsidian.md" },
   { name: "Warp",              domain: "warp.dev" },
   { name: "Webflow",           domain: "webflow.com" },
@@ -683,7 +684,7 @@ const APPS_DATA: { name: string; domain: string; invert?: boolean }[] = [
   { name: "Fastmail",          domain: "fastmail.com" },
   { name: "Pitch",             domain: "pitch.com" },
   { name: "Nuclino",           domain: "nuclino.com" },
-  // Row 5 — More tools
+  // Row 5 - More tools
   { name: "Google Meet",       domain: "meet.google.com" },
   { name: "Google Drive",      domain: "drive.google.com" },
   { name: "Google Calendar",   domain: "calendar.google.com" },
@@ -1268,7 +1269,7 @@ export function LandingPage() {
               <FlowchartDemo />
             </FadeIn>
 
-            {/* Floating icon grid — icons only, no names */}
+            {/* Floating icon grid - icons only, no names */}
             <FadeIn delay={0.15}>
               <p className="text-[10px] uppercase tracking-[0.25em] text-[#50545a] font-mono mb-4 sm:mb-8">
                 Compatible with 90+ apps
@@ -1464,44 +1465,57 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ── Final CTA ── */}
+        {/* ── About Me ── */}
         <section className="py-24 px-6 sm:px-10 relative overflow-hidden"
           style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="absolute inset-0 pointer-events-none" style={{
             background: "radial-gradient(ellipse at center, rgba(228,242,34,0.03) 0%, transparent 60%)",
           }} />
-          <div className="max-w-2xl mx-auto text-center relative z-10">
+          <div className="max-w-2xl mx-auto relative z-10">
+            <FadeIn><SectionLabel n="" title="About Me" /></FadeIn>
             <FadeIn>
-              <h2 className="font-display uppercase leading-[0.92] tracking-[0.02em]"
-                style={{ fontSize: "clamp(36px, 5.5vw, 72px)", color: "#fafafa" }}>
-                Your time,
-                <br />
-                <span style={{ color: "#e4f222" }}>given back.</span>
-              </h2>
-            </FadeIn>
-            <FadeIn delay={0.1}>
-              <p className="mt-8 text-sm leading-relaxed max-w-md mx-auto">
-                <span className="text-[#a1a1aa]">Stop typing. Start living.</span>
-                <br />
-                <span className="text-[#71717a]">
-                  Free to download. Free forever for casual use. Less than two minutes from install to your first dictation.
-                </span>
-              </p>
-            </FadeIn>
-            <FadeIn delay={0.15} className="mt-10">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button onClick={() => setDownloadModalOpen(true)}
-                  className="group inline-flex items-center gap-2.5 px-7 py-3 text-xs font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 active:scale-[0.98]"
-                  style={{ background: "#e4f222", color: "#000", borderRadius: 2, boxShadow: "0 4px 20px rgba(228,242,34,0.2)", border: "none", cursor: "pointer", font: "inherit" }}>
-                  <Download className="w-3.5 h-3.5" />
-                  Download
-                </button>
-                <a href="https://github.com/krthik20050/Rota-AI" target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 px-7 py-3 text-xs font-semibold uppercase tracking-[0.15em] border transition-all hover:border-white/20"
-                  style={{ borderColor: "rgba(255,255,255,0.08)", color: "#a1a1aa", borderRadius: 2 }}>
-                  <GitBranch className="w-3.5 h-3.5" />
-                  View on GitHub
-                </a>
+              <div className="flex flex-col sm:flex-row items-start gap-8 p-8 sm:p-10 rounded-sm"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden shrink-0 ring-2 ring-[#e4f222]/20 mx-auto sm:mx-0">
+                  <img src="/author.jpg" alt="Karthik Krishnan" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <div className="flex items-center gap-2.5 mb-1 justify-center sm:justify-start">
+                    <h2 className="font-display text-xl uppercase tracking-[0.02em] text-[#fafafa]">Karthik Krishnan</h2>
+                    <span className="text-[9px] uppercase tracking-wider text-[#e4f222] font-mono bg-[#e4f222]/10 px-2 py-0.5 rounded-sm">
+                      Founder
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[#71717a] uppercase tracking-wider mb-4">Founder &amp; Developer of Rota AI</p>
+                  <p className="text-sm text-[#71717a] leading-relaxed mb-5 max-w-lg mx-auto sm:mx-0">
+                    I built Rota because I didn&apos;t have $15 to pay for a dictation tool per month, so I built my own.
+                    What started as a personal hack became an open source project for everyone who believes
+                    good tools shouldn&apos;t cost a monthly subscription.
+                  </p>
+                  <p className="text-[11px] text-[#50545a] leading-relaxed mb-6 max-w-md mx-auto sm:mx-0 italic">
+                    &ldquo;Every student deserves access to tools that make them faster. I&rsquo;m building that future, one commit at a time.&rdquo;
+                  </p>
+                  <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start">
+                    <a href="https://x.com/itsurkk05" target="_blank" rel="noopener noreferrer"
+                      className="social-icon-btn flex items-center gap-2 px-4 py-2.5 text-[10px] uppercase tracking-wider text-[#71717a] hover:text-[#fafafa] rounded-sm transition-all"
+                      style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                      X / Twitter
+                    </a>
+                    <a href="https://www.instagram.com/karthikkrishnan000/" target="_blank" rel="noopener noreferrer"
+                      className="social-icon-btn flex items-center gap-2 px-4 py-2.5 text-[10px] uppercase tracking-wider text-[#71717a] hover:text-[#fafafa] rounded-sm transition-all"
+                      style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                      Instagram
+                    </a>
+                    <a href="https://www.linkedin.com/in/karthik-krishnan-/" target="_blank" rel="noopener noreferrer"
+                      className="social-icon-btn flex items-center gap-2 px-4 py-2.5 text-[10px] uppercase tracking-wider text-[#71717a] hover:text-[#fafafa] rounded-sm transition-all"
+                      style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                      LinkedIn
+                    </a>
+                  </div>
+                </div>
               </div>
             </FadeIn>
           </div>

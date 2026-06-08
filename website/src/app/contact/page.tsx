@@ -98,7 +98,7 @@ export default function ContactPage() {
                 Email
               </h3>
               <p className="text-xs text-[#71717a] leading-relaxed">
-                <span className="text-[#e4f222]">tl24btcs@gmail.com</span> — For direct inquiries,
+                <span className="text-[#e4f222]">tl24btcs@gmail.com</span>  -  For direct inquiries,
                 privacy concerns, or legal requests.
               </p>
             </div>

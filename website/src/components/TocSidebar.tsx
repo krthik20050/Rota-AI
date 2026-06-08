@@ -77,7 +77,7 @@ export function TocSidebar({ items }: TocSidebarProps) {
   );
 }
 
-/** Mobile collapsible TOC — shown below the title on small screens */
+/** Mobile collapsible TOC - shown below the title on small screens */
 export function TocMobile({ items }: TocSidebarProps) {
   const [open, setOpen] = useState(false);
 

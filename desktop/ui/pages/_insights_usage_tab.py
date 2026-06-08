@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.components.circular_progress import CircularProgress
+from ui.components.flow_layout import FlowLayout
 from ui.components.heatmap_grid import HeatmapGrid
 from ui.components.speedometer import SpeedometerWidget
 from ui.components.trend_chart import SpeechTrendChart
@@ -81,7 +82,7 @@ def build_usage_tab(page) -> QScrollArea:
     speedo_lay.addWidget(page._insights_speedometer, 0, Qt.AlignmentFlag.AlignVCenter)
     lay.addWidget(speedo_card)
 
-    mid_row = QHBoxLayout()
+    mid_row = FlowLayout()
     mid_row.setSpacing(16)
 
     page.app_breakdown_card = QFrame()

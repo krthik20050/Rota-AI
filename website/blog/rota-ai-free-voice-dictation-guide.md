@@ -31,13 +31,13 @@ It works on **Windows 10/11, macOS 13+, and Linux (Ubuntu, Fedora, Arch)**. It r
 
 The transcription pipeline has seven stages, each running on its own thread so the UI never freezes:
 
-1. **Audio capture** — 16kHz mono PCM via PortAudio, with real-time waveform visualization
-2. **Voice activity detection** — Silero VAD strips silence before transcription, saving API credits and improving accuracy
-3. **Transcription** — Your choice of Groq Whisper (free tier), Gemini (free tier), or local Ollama (100% offline)
-4. **AI cleanup** — An LLM removes filler words, fixes grammar, resolves self-corrections, and formats output
-5. **Context detection** — Reads the active window to detect whether you are in email, chat, code, or notes
-6. **Text injection** — Multiple fallback methods ensure text lands in even the most stubborn applications
-7. **Persistence** — Session history, snippets, dictionary, and analytics stored in local SQLite
+1. **Audio capture** - 16kHz mono PCM via PortAudio, with real-time waveform visualization
+2. **Voice activity detection** - Silero VAD strips silence before transcription, saving API credits and improving accuracy
+3. **Transcription** - Your choice of Groq Whisper (free tier), Gemini (free tier), or local Ollama (100% offline)
+4. **AI cleanup** - An LLM removes filler words, fixes grammar, resolves self-corrections, and formats output
+5. **Context detection** - Reads the active window to detect whether you are in email, chat, code, or notes
+6. **Text injection** - Multiple fallback methods ensure text lands in even the most stubborn applications
+7. **Persistence** - Session history, snippets, dictionary, and analytics stored in local SQLite
 
 ## How It Compares to Paid Alternatives
 
@@ -61,21 +61,21 @@ The desktop app has zero telemetry. No analytics. No phone-home. No tracking. Th
 ## Getting Started in 60 Seconds
 
 1. **Download** the latest release for your OS from the website or GitHub releases
-2. **Install** — run the installer on Windows, unzip on Mac, or mark the AppImage as executable on Linux
-3. **Choose a backend** — pick Groq (free tier), get an API key from console.groq.com, or install Ollama for offline use
-4. **Start dictating** — press F9 in any app, speak, release. Your text appears
+2. **Install** - run the installer on Windows, unzip on Mac, or mark the AppImage as executable on Linux
+3. **Choose a backend** - pick Groq (free tier), get an API key from console.groq.com, or install Ollama for offline use
+4. **Start dictating** - press F9 in any app, speak, release. Your text appears
 
 That is it. No account creation. No credit card. No configuration beyond picking your preferred transcription backend.
 
 ## Use Cases
 
-**Developers** — Dictate code comments, commit messages, documentation, and Slack updates without breaking flow. Rota detects VS Code and preserves camelCase and technical vocabulary.
+**Developers** - Dictate code comments, commit messages, documentation, and Slack updates without breaking flow. Rota detects VS Code and preserves camelCase and technical vocabulary.
 
-**Writers** — Draft emails, articles, and documents at the speed of speech. The AI cleanup pass removes filler words and fixes grammar automatically.
+**Writers** - Draft emails, articles, and documents at the speed of speech. The AI cleanup pass removes filler words and fixes grammar automatically.
 
-**Students** — Take notes, write essays, and draft emails hands-free. Perfect for long study sessions where typing causes fatigue.
+**Students** - Take notes, write essays, and draft emails hands-free. Perfect for long study sessions where typing causes fatigue.
 
-**Accessibility** — For users with RSI, carpal tunnel, or other conditions that make typing painful, Rota AI provides a completely free way to interact with computers using voice.
+**Accessibility** - For users with RSI, carpal tunnel, or other conditions that make typing painful, Rota AI provides a completely free way to interact with computers using voice.
 
 ## The Future
 

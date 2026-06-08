@@ -1,5 +1,5 @@
 ---
-title: "Wispr Flow Alternatives That Are Actually Free in 2026"
+title: "Rota AI vs Wispr Flow: The Best Free Alternative (2026)"
 date: "2026-05-26"
 description: "Looking for a free alternative to Wispr Flow? Here are 5 options that work on Windows, including open source and privacy-first tools."
 tags: ["wispr flow alternatives", "voice dictation", "free software"]

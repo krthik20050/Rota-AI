@@ -4,7 +4,7 @@ export const runtime = "edge";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const title = searchParams.get("title") || "Rota AI — Free Voice Dictation";
+  const title = searchParams.get("title") || "Rota AI  -  Free Voice Dictation";
   const description =
     searchParams.get("description") ||
     "Free, open source voice dictation for Windows, Mac & Linux";

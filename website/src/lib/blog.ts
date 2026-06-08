@@ -41,7 +41,7 @@ export function getAllPosts(): BlogPost[] {
       return {
         slug,
         title: data.title || slug,
-        date: data.date || "",
+        date: data.date ? new Date(data.date).toISOString().split("T")[0] : "",
         description: data.description || "",
         tags: data.tags || [],
         content,
@@ -98,7 +98,7 @@ export function getPostBySlug(slug: string): BlogPost | null {
     return {
       slug,
       title: data.title || slug,
-      date: data.date || "",
+      date: data.date ? new Date(data.date).toISOString().split("T")[0] : "",
       description: data.description || "",
       tags: data.tags || [],
       content,

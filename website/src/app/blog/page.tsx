@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAllPosts } from "@/lib/blog";
 import { Metadata } from "next";
+import { BlogFilterableContent } from "@/components/BlogFilterableContent";
 
 export const metadata: Metadata = {
   title: "Blog - Rota AI",
@@ -33,8 +34,6 @@ const SOCIAL_LINKS = [
 
 export default function BlogPage() {
   const posts = getAllPosts();
-  const featured = posts[0];
-  const rest = posts.slice(1);
   const categories = [...new Set(posts.map((p) => p.category).filter(Boolean))] as string[];
 
   return (
@@ -76,95 +75,10 @@ export default function BlogPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 sm:px-10 pb-20">
-        {/* Category filter */}
-        {categories.length > 1 && (
-          <div className="flex items-center gap-4 mb-12 overflow-x-auto pb-2">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-[#50545a] font-mono shrink-0">Browse</span>
-            {categories.map((cat) => (
-              <span
-                key={cat}
-                className="text-[11px] font-mono text-[#71717a] hover:text-[#fafafa] transition-colors whitespace-nowrap cursor-default"
-              >
-                {cat}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Interactive content: filter + posts + subscribe */}
+        <BlogFilterableContent posts={posts} categories={categories} />
 
-        {/* Featured post — spacious hero card, no borders */}
-        {featured && (
-          <Link
-            href={`/blog/${encodeURIComponent(featured.slug)}`}
-            className="group block mb-14 p-8 sm:p-10 transition-all duration-300 hover:bg-[#0c0c0e] rounded-sm -mx-6 sm:-mx-8 px-6 sm:px-8"
-            style={{ background: "rgba(255,255,255,0.02)" }}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#e4f222]">
-                {featured.category}
-              </span>
-              <span className="text-[8px] text-[#50545a]" aria-hidden="true">·</span>
-              <span className="text-[10px] font-mono text-[#50545a]">{featured.readTime}</span>
-            </div>
-            <h2
-              className="font-display uppercase tracking-[0.02em] leading-[0.92] mb-4 group-hover:text-[#e4f222] transition-colors"
-              style={{ fontSize: "clamp(24px, 3.5vw, 40px)", color: "#fafafa" }}
-            >
-              {featured.title}
-            </h2>
-            <p className="text-sm text-[#71717a] leading-relaxed max-w-3xl mb-6">
-              {featured.description}
-            </p>
-            <div className="flex items-center gap-2 text-[11px] text-[#50545a] font-mono">
-              <span>{featured.author}</span>
-              <span aria-hidden="true">·</span>
-              <span>{featured.date}</span>
-            </div>
-          </Link>
-        )}
-
-        {/* Remaining posts — text-only, spacious, no borders */}
-        <div className="space-y-8">
-          {rest.map((post) => (
-            <Link
-              key={post.slug}
-              href={`/blog/${encodeURIComponent(post.slug)}`}
-              className="group block p-6 sm:p-8 transition-all duration-300 hover:bg-[#0c0c0e] rounded-sm -mx-6 sm:-mx-8 px-6 sm:px-8"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-[#71717a]">
-                  {post.category}
-                </span>
-                <span className="text-[8px] text-[#50545a]" aria-hidden="true">·</span>
-                <span className="text-[10px] font-mono text-[#50545a]">{post.readTime}</span>
-              </div>
-              <h2
-                className="font-display uppercase tracking-[0.02em] leading-[0.95] mb-3 group-hover:text-[#e4f222] transition-colors"
-                style={{ fontSize: "clamp(18px, 2.5vw, 28px)", color: "#fafafa" }}
-              >
-                {post.title}
-              </h2>
-              <p className="text-sm text-[#71717a] leading-relaxed max-w-2xl mb-5">
-                {post.description}
-              </p>
-              <div className="flex items-center gap-2 text-[11px] text-[#50545a] font-mono">
-                <span>{post.author}</span>
-                <span aria-hidden="true">·</span>
-                <span>{post.date}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* Load more */}
-        {posts.length > 10 && (
-          <div className="pt-12 text-center">
-            <button className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#71717a] hover:text-[#fafafa] transition-colors cursor-pointer bg-transparent border-none">
-              Load more
-            </button>
-          </div>
-        )}
-
-        {/* Social links — follow the author */}
+        {/* Social links - follow the author */}
         <div className="mt-20 pt-12" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div>
@@ -193,34 +107,6 @@ export default function BlogPage() {
                 </a>
               ))}
             </div>
-          </div>
-        </div>
-
-        {/* Subscribe */}
-        <div className="mt-12">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 sm:p-8 rounded-sm"
-            style={{ background: "rgba(255,255,255,0.02)" }}>
-            <div className="flex-1">
-              <h4 className="text-xs font-medium text-[#fafafa] mb-1">Stay in the loop</h4>
-              <p className="text-[11px] text-[#71717a]">New posts, no spam, unsubscribe anytime.</p>
-            </div>
-            <form action="/api/subscribe" method="POST" className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <input
-                type="email"
-                name="email"
-                placeholder="your@email.com"
-                required
-                className="px-3 py-2 text-xs outline-none transition-all bg-transparent rounded-sm w-full sm:w-48"
-                style={{ border: "1px solid rgba(255,255,255,0.1)", color: "#fafafa" }}
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.15em] transition-all hover:opacity-90 rounded-sm whitespace-nowrap"
-                style={{ background: "#e4f222", color: "#000", border: "none", cursor: "pointer" }}
-              >
-                Subscribe
-              </button>
-            </form>
           </div>
         </div>
       </div>

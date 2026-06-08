@@ -39,10 +39,11 @@ def _fmt(n: int) -> str:
     if n >= 1_000_000:
         return f"{n / 1_000_000:.2f}M".rstrip("0").rstrip(".")
     if n >= 10_000:
-        return f"{n / 1_000:.3f}K".rstrip("0").rstrip(".")
+        return f"{n / 1_000:.1f}K".rstrip("0").rstrip(".")
     if n >= 1_000:
         return f"{n / 1_000:.1f}K".rstrip("0").rstrip(".")
     return f"{n:,}"
+
 
 logger = structlog.get_logger(__name__)
 
