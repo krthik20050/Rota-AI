@@ -50,6 +50,7 @@ export default function SeoDashboard() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [period, setPeriod] = React.useState("28d");
+  const [version, setVersion] = React.useState(0);
 
   /** Fetch data and return it (no setState). All setState is in promise handlers below. */
   const fetchData = React.useCallback(async (p: string): Promise<GscRow[]> => {
@@ -77,7 +78,7 @@ export default function SeoDashboard() {
     return data.rows || [];
   }, []);
 
-  /* Fetch on mount & period change. All setState in async promise handlers. */
+  /* Fetch on mount, period change & retry. All setState in async promise handlers. */
   React.useEffect(() => {
     let mounted = true;
     fetchData(period)
@@ -86,12 +87,19 @@ export default function SeoDashboard() {
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
+  }, [period, version]);
 
   const handlePeriodChange = React.useCallback((p: string) => {
     setPeriod(p);
     setLoading(true);
     setError(null);
+    setVersion(0);
+  }, []);
+
+  const handleRetry = React.useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setVersion((v) => v + 1);
   }, []);
 
   const totalClicks = rows.reduce((s, r) => s + r.clicks, 0);
@@ -219,7 +227,7 @@ GOOGLE_SERVICE_ACCOUNT_KEY=&quot;-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END
         ) : error ? (
           <div className="p-6 rounded-sm text-center" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
             <p className="text-xs text-red-400">{error}</p>
-            <button onClick={() => handlePeriodChange(period)}
+            <button onClick={() => handleRetry()}
               className="mt-3 text-xs text-zinc-400 hover:text-white transition-colors underline">
               Try again
             </button>
