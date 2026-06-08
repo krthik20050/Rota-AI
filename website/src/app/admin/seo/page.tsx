@@ -51,15 +51,14 @@ export default function SeoDashboard() {
   const [error, setError] = React.useState<string | null>(null);
   const [period, setPeriod] = React.useState("28d");
 
-  const fetchData = React.useCallback(async (period: string) => {
-    setLoading(true);
-    setError(null);
-
+  /** Callback to kick off a fetch. All setState calls happen after `await`,
+   *  so no cascading-renders warning from the initial synchronous effect path. */
+  const fetchData = React.useCallback(async (p: string) => {
     const now = new Date();
     let startDate: string;
     const endDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    switch (period) {
+    switch (p) {
       case "7d":
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
         break;
@@ -98,10 +97,19 @@ export default function SeoDashboard() {
     }
   }, []);
 
+  /* Period change: update state synchronously here, then kick off the async fetch. */
+  const handlePeriodChange = React.useCallback((p: string) => {
+    setPeriod(p);
+    setLoading(true);
+    setError(null);
+    fetchData(p);
+  }, [fetchData]);
+
+  /* Initial fetch on mount */
   React.useEffect(() => {
     fetchData(period);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
+  }, []);
 
   const totalClicks = rows.reduce((s, r) => s + r.clicks, 0);
   const totalImpressions = rows.reduce((s, r) => s + r.impressions, 0);
@@ -151,7 +159,7 @@ export default function SeoDashboard() {
           {["7d", "28d", "90d"].map((p) => (
             <button
               key={p}
-              onClick={() => setPeriod(p)}
+              onClick={() => handlePeriodChange(p)}
               className="px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider rounded-sm transition-all"
               style={{
                 background: period === p ? "rgba(228,242,34,0.1)" : "rgba(255,255,255,0.03)",
@@ -228,7 +236,7 @@ GOOGLE_SERVICE_ACCOUNT_KEY=&quot;-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END
         ) : error ? (
           <div className="p-6 rounded-sm text-center" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
             <p className="text-xs text-red-400">{error}</p>
-            <button onClick={() => fetchData(period)}
+            <button onClick={() => handlePeriodChange(period)}
               className="mt-3 text-xs text-zinc-400 hover:text-white transition-colors underline">
               Try again
             </button>
