@@ -1525,7 +1525,7 @@ export function LandingPage() {
         <footer style={{ background: "rgba(255,255,255,0.01)" }}
           className="py-16 sm:py-20 px-6 border-t border-white/5">
           <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-10">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-10">
               {/* Brand column */}
               <div className="col-span-2 sm:col-span-3 lg:col-span-2">
                 <img src="/logo.svg" alt="Rota AI" className="h-10 sm:h-14 w-auto mb-4" />
@@ -1541,8 +1541,19 @@ export function LandingPage() {
                   <a href="#features" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Features</a>
                   <a href="/docs" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Docs</a>
                   <a href="/pricing" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Pricing</a>
-                  <a href="#comparison" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Compare</a>
                   <Link href="/blog" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Blog</Link>
+                  <a href="#comparison" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Compare</a>
+                </div>
+              </div>
+
+              {/* Comparisons */}
+              <div>
+                <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-5">Compare</h4>
+                <div className="flex flex-col gap-3">
+                  <Link href="/vs/wispr-flow" className="text-[12px] text-zinc-600 hover:text-white transition-colors">vs Wispr Flow</Link>
+                  <Link href="/vs/superwhisper" className="text-[12px] text-zinc-600 hover:text-white transition-colors">vs SuperWhisper</Link>
+                  <Link href="/blog/wispr-flow-alternatives-free-2026" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Free Alternatives</Link>
+                  <Link href="/blog/best-open-source-voice-dictation-software-in-2026" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Open Source Tools</Link>
                 </div>
               </div>
 

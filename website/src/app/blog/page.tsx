@@ -4,8 +4,8 @@ import { Metadata } from "next";
 import { BlogFilterableContent } from "@/components/BlogFilterableContent";
 
 export const metadata: Metadata = {
-  title: "Blog - Rota AI",
-  description: "Voice dictation, open source AI, and building Rota AI.",
+  title: "Blog — Voice Dictation, Comparisons & Tutorials",
+  description: "Free voice dictation tips, Wispr Flow comparisons, open source AI tutorials, and building Rota AI in the open. Your guide to hands-free typing.",
 };
 
 const SOCIAL_LINKS = [
@@ -37,6 +37,27 @@ export default function BlogPage() {
   const categories = [...new Set(posts.map((p) => p.category).filter(Boolean))] as string[];
 
   return (
+    <>
+    {/* ItemList Schema for blog listing */}
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "itemListElement": posts.map((post, index) => ({
+            "@type": "ListItem",
+            "position": index + 1,
+            "url": `https://rota.software/blog/${post.slug}`,
+            "name": post.title,
+          })),
+          "name": "Rota AI Blog",
+          "description": "Voice dictation tutorials, Wispr Flow comparisons, open source AI tools, and building Rota AI.",
+          "numberOfItems": posts.length,
+        }),
+      }}
+    />
+
     <div className="min-h-screen bg-[#09090b]">
       {/* Nav */}
       <nav
@@ -111,5 +132,6 @@ export default function BlogPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
