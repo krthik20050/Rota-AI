@@ -1,8 +1,14 @@
+<!--
+  GitHub SEO: Rota AI — free alternative to Wispr Flow. Open source voice dictation 
+  for Windows, Mac & Linux. Free speech-to-text desktop app with AI cleanup, offline 
+  mode, no subscriptions. The best free Wispr Flow alternative in 2026.
+-->
+
 <div align="center">
 
 # Rota AI
 
-### Free, open source voice dictation for Windows, macOS, and Linux. Speak in any app. No subscriptions. No cloud lock. No typing.
+### The best free alternative to Wispr Flow. Open source voice dictation for Windows, macOS, and Linux. Speak in any app. No subscriptions. No cloud lock. No typing.
 
 [![GitHub Release](https://img.shields.io/github/v/release/krthik20050/Rota-AI?style=for-the-badge&color=black)](https://github.com/krthik20050/Rota-AI/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/krthik20050/Rota-AI?style=for-the-badge&color=yellow)](https://github.com/krthik20050/Rota-AI/stargazers)

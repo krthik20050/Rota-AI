@@ -91,16 +91,12 @@ export default function RootLayout({
             __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","wwl8nuqt5p");`,
           }}
         />
-        {/* Google Analytics 4 - replace G-XXXXXXXXXX with your measurement ID */}
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-XXXXXXXXXX');`,
-          }}
-        />
+        {/* Analytics: Umami (privacy-first) + Microsoft Clarity (heatmaps) are active above.
+            Google Analytics is NOT configured by default (no tracking ID set).
+            To enable GA4, uncomment below and paste your measurement ID:
+            <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX" />
+            <script dangerouslySetInnerHTML={{ __html: `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-XXXXXXXXXX');` }} />
+        */}
         {/* Organization + WebSite Schema.org JSON-LD */}
         <script
           type="application/ld+json"
