@@ -1,5 +1,5 @@
 ---
-title: "7 Free AI Tools I Use as a Student Developer"
+title: "7 Free AI Tools I Use as a Developer (including Rota AI)"
 date: "2026-05-28"
 description: "The best free AI tools for developers in 2026: Claude Code, Cursor, Rota AI, Ollama, and more. Honest breakdown of what each one does and how to get started."
 tags: ["AI tools", "developer tools", "student", "free software"]

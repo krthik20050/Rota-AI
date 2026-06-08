@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.components.circular_progress import CircularProgress
+from ui.components.flow_layout import FlowLayout
 
 CLR_ACCENT = "#86EFAC"
 
@@ -142,7 +143,7 @@ def _build_rings_card(page, lay):
 
 
 def _build_coaching_row(page, lay):
-    coaching_row = QHBoxLayout()
+    coaching_row = FlowLayout()
     coaching_row.setSpacing(16)
     _build_col1(page, coaching_row)
     _build_col2(page, coaching_row)
@@ -382,7 +383,7 @@ def _build_col3_carousel(page, coaching_row):
 
 
 def _build_indicators_row(page, lay):
-    indicators_row = QHBoxLayout()
+    indicators_row = FlowLayout()
     indicators_row.setSpacing(16)
 
     hes_card = QFrame()

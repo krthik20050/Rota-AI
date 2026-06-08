@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Rota AI — Free Voice Dictation",
     description:
-    "Free, open source Wispr Flow alternative. Speak in any app. AI cleans up your text. No subscriptions, no account, no cloud lock.",
+      "Free, open source Wispr Flow alternative. Speak in any app. AI cleans up your text. No subscriptions, no account, no cloud lock.",
     url: SITE_URL,
     siteName: "Rota AI",
     type: "website",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
         url: "/api/og",
         width: 1200,
         height: 630,
-        alt: "Rota AI - Free Voice Dictation",
+        alt: "Rota AI — Free Voice Dictation",
       },
     ],
   },
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Rota AI — Free Voice Dictation",
     description:
-    "Free, open source voice dictation for Windows, macOS & Linux — no subscriptions, no account needed.",
+      "Free, open source voice dictation for Windows, macOS & Linux — no subscriptions, no account needed.",
     images: ["/api/og"],
   },
   icons: {
@@ -99,6 +99,37 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-XXXXXXXXXX');`,
+          }}
+        />
+        {/* Organization + WebSite Schema.org JSON-LD */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": "Rota AI",
+                "url": "https://rota.software",
+                "logo": "https://rota.software/logo.svg",
+                "description": "Free, open source voice dictation for Windows, Mac & Linux.",
+                "sameAs": [
+                  "https://x.com/itsurkk05",
+                  "https://github.com/krthik20050/Rota-AI",
+                  "https://www.instagram.com/karthikkrishnan000/",
+                  "https://www.youtube.com/@Krthikk",
+                  "https://www.linkedin.com/in/karthik-krishnan-/"
+                ]
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": "Rota AI",
+                "url": "https://rota.software",
+                "description": "Free, open source voice dictation that works in any app.",
+                "inLanguage": "en-US"
+              }
+            ]),
           }}
         />
       </head>

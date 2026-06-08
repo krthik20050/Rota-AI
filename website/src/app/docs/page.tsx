@@ -437,9 +437,53 @@ export default function DocsPage() {
                 </div>
                 <p className="mt-4">Still having issues? <a href="https://github.com/krthik20050/Rota-AI/issues" target="_blank" rel="noopener noreferrer" className="text-[#e4f222] hover:underline">Open a GitHub issue</a> with details about your problem.</p>
               </div>
-            </section>
-
-            <section id="faq" className="mb-16 scroll-mt-24">
+            </section>              {/* FAQPage JSON-LD Schema */}
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "FAQPage",
+                    "mainEntity": [
+                      {
+                        "@type": "Question",
+                        "name": "Is Rota AI really free forever?",
+                        "acceptedAnswer": { "@type": "Answer", "text": "Yes. MIT licensed. No pro plan, no premium tier, no credit card." }
+                      },
+                      {
+                        "@type": "Question",
+                        "name": "Do I need an account?",
+                        "acceptedAnswer": { "@type": "Answer", "text": "No. Rota AI works without any account. Cloud backends need their own free API keys." }
+                      },
+                      {
+                        "@type": "Question",
+                        "name": "Can I use Rota AI on multiple computers?",
+                        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Download and install on each machine. Settings are per-machine by design." }
+                      },
+                      {
+                        "@type": "Question",
+                        "name": "Does Rota AI work in games?",
+                        "acceptedAnswer": { "@type": "Answer", "text": "It can, depending on the game. Fullscreen games may block the overlay. Windowed or borderless mode works best." }
+                      }
+                    ]
+                  }),
+                }}
+              />
+              {/* BreadcrumbList JSON-LD Schema */}
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "BreadcrumbList",
+                    "itemListElement": [
+                      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rota.software/" },
+                      { "@type": "ListItem", "position": 2, "name": "Docs", "item": "https://rota.software/docs" }
+                    ]
+                  }),
+                }}
+              />
+              <section id="faq" className="mb-16 scroll-mt-24">
               <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Frequently Asked Questions</h2>
               <div className="space-y-0 text-sm text-[#a1a1aa] leading-relaxed">
                 {[

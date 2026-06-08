@@ -130,6 +130,40 @@ def update_from_dashboard(page, words_or_dashboard, wpm=None):
 # ---------------------------------------------------------------------------
 
 
+def _build_app_row(app_name: str, count: int, max_usage: int) -> QWidget:
+    """Build a single app breakdown row widget with animated progress bar."""
+    row_widget = QWidget()
+    row_lay = QHBoxLayout(row_widget)
+    row_lay.setContentsMargins(0, 0, 0, 0)
+    row_lay.setSpacing(10)
+    lbl_name = QLabel(app_name)
+    lbl_name.setObjectName("InsightText")
+    lbl_name.setStyleSheet("font-weight: 500; min-width: 80px; background: transparent;")
+    prog = QProgressBar()
+    prog.setFixedHeight(6)
+    prog.setRange(0, max_usage)
+    prog.setValue(0)
+    prog.setTextVisible(False)
+    prog.setStyleSheet(
+        "QProgressBar { background: rgba(255, 255, 255, 0.1); border: none; border-radius: 3px; }"
+        "QProgressBar::chunk { background: #86EFAC; border-radius: 3px; }"
+    )
+    _anim = QPropertyAnimation(prog, b"value")
+    _anim.setDuration(900)
+    _anim.setStartValue(0)
+    _anim.setEndValue(count)
+    _anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+    _anim.start()
+    prog._bar_anim = _anim  # keep reference alive
+    lbl_val = QLabel(f"{count} {'session' if count == 1 else 'sessions'}")
+    lbl_val.setObjectName("SuggestionText")
+    lbl_val.setStyleSheet("min-width: 70px; text-align: right; background: transparent;")
+    row_lay.addWidget(lbl_name)
+    row_lay.addWidget(prog, 1)
+    row_lay.addWidget(lbl_val)
+    return row_widget
+
+
 def _update_app_breakdown(page, app_usage):
     if not hasattr(page, "app_breakdown_layout"):
         return
@@ -141,38 +175,18 @@ def _update_app_breakdown(page, app_usage):
 
     _clear_layout(page.app_breakdown_layout)
     if app_usage:
+        sorted_items = sorted(app_usage.items(), key=lambda x: x[1], reverse=True)
+        top_n = sorted_items[:5]
+        other_count = sum(c for _, c in sorted_items[5:])
         max_usage = max(app_usage.values()) if app_usage else 1
-        for app_name, count in sorted(app_usage.items(), key=lambda x: x[1], reverse=True):
-            row_widget = QWidget()
-            row_lay = QHBoxLayout(row_widget)
-            row_lay.setContentsMargins(0, 0, 0, 0)
-            row_lay.setSpacing(10)
-            lbl_name = QLabel(app_name)
-            lbl_name.setObjectName("InsightText")
-            lbl_name.setStyleSheet("font-weight: 500; min-width: 80px; background: transparent;")
-            prog = QProgressBar()
-            prog.setFixedHeight(6)
-            prog.setRange(0, max_usage)
-            prog.setValue(0)
-            prog.setTextVisible(False)
-            prog.setStyleSheet(
-                "QProgressBar { background: rgba(255, 255, 255, 0.1); border: none; border-radius: 3px; }"
-                "QProgressBar::chunk { background: #86EFAC; border-radius: 3px; }"
+
+        for app_name, count in top_n:
+            page.app_breakdown_layout.addWidget(_build_app_row(app_name, count, max_usage))
+
+        if other_count > 0:
+            page.app_breakdown_layout.addWidget(
+                _build_app_row(f"Others ({len(sorted_items) - 5} more)", other_count, max_usage)
             )
-            _anim = QPropertyAnimation(prog, b"value")
-            _anim.setDuration(900)
-            _anim.setStartValue(0)
-            _anim.setEndValue(count)
-            _anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-            _anim.start()
-            prog._bar_anim = _anim  # keep reference alive
-            lbl_val = QLabel(f"{count} {'session' if count == 1 else 'sessions'}")
-            lbl_val.setObjectName("SuggestionText")
-            lbl_val.setStyleSheet("min-width: 70px; text-align: right; background: transparent;")
-            row_lay.addWidget(lbl_name)
-            row_lay.addWidget(prog, 1)
-            row_lay.addWidget(lbl_val)
-            page.app_breakdown_layout.addWidget(row_widget)
     else:
         empty = QLabel("No application usage tracked yet.")
         empty.setObjectName("InsightText")

@@ -1,23 +1,17 @@
 ---
-title: "Rota AI vs Wispr Flow: The Best Free Alternative (2026)"
-date: "2026-05-26"
-description: "Looking for a free alternative to Wispr Flow? Here are 5 options that work on Windows, including open source and privacy-first tools."
-tags: ["wispr flow alternatives", "voice dictation", "free software"]
-author: "Karthik Krishnan"
-authorRole: "Founder & Developer"
-authorTwitter: "krthik20050"
-authorLinkedin: "karthik-krishnan-rota"
-authorWebsite: "https://github.com/krthik20050"
-image: "/logo.svg"
-readTime: "6 min read"
-category: "Comparison"
+title: "Rota AI vs Wispr Flow: The Free Alternative in 2026"
+description: "Looking for a free alternative to Wispr Flow? Here are 5 options that work on Windows, including open source and privacy first."
+author: Karthik Krishnan
+date: 2026-05-15
+category: Voice Dictation
 ---
 
-## Wispr Flow Alternatives That Are Actually Free in 2026
 
-**TL;DR:** Wispr Flow is a great product but $15/month adds up. Here are 5 free (or freemium) alternatives for Windows. Not all of them are good. I tested each one before building my own.
+# 6. Wispr Flow Alternatives That Are Actually Free in 2026
 
-I tried Wispr Flow last year. Genuinely loved it. The way it understood what I was saying, cleaned up my speech, and dropped polished text into whatever app I was using.
+TL;DR: Wispr Flow is a great product but $15/month adds up. Here are 5 free (or freemium) alternatives for Windows. Not all of them are good. I tested every single one before building my own.
+
+I tried Wispr Flow last year. Genuinely loved it. The way it understood what I was saying, cleaned up my speech, and dropped polished text into whatever app I was using. It felt like the future.
 
 Then my 14-day trial ended. The price: $15 per month. $180 per year.
 
@@ -37,7 +31,7 @@ So people search for alternatives. Here are the ones that actually work.
 
 ## Rota AI
 
-**Free. MIT license. Windows only. Works offline with Ollama.**
+Free. MIT license. Windows only. Works offline with Ollama.
 
 This is what I built after realizing I could not afford Wispr Flow. It does the same core thing: hold a hotkey, speak, get clean text in any app.
 
@@ -55,7 +49,7 @@ The trade-off: Windows only. No Mac, no mobile. Not as polished as Wispr Flow. B
 
 ## Windows Built-In Dictation
 
-**Free. Windows 10 and 11. No installation needed.**
+Free. Windows 10 and 11. No installation needed.
 
 Press Win + H and start talking. Works in any text field.
 
@@ -65,7 +59,7 @@ For quick notes or short messages, it works. For serious writing or coding, you 
 
 ## Google Docs Voice Typing
 
-**Free. Any browser. Chrome works best.**
+Free. Any browser. Chrome works best.
 
 Open Google Docs, go to Tools > Voice typing, click the microphone. Uses Google's speech recognition, which is decent.
 
@@ -73,7 +67,7 @@ But it only works inside Google Docs. You cannot use it in VS Code, Slack, or an
 
 ## Otter.ai Free Tier
 
-**Free for 300 minutes per month. Web, iOS, Android.**
+Free for 300 minutes per month. Web, iOS, Android.
 
 Otter.ai is a transcription tool, not a dictation tool. It records audio and transcribes it later. The workflow is different: record first, get the transcript, then copy-paste it where you need it.
 
@@ -81,7 +75,7 @@ Good for meetings and interviews. Not great for real-time dictation into arbitra
 
 ## Dictation.io
 
-**Free. Browser-based. No installation.**
+Free. Browser-based. No installation.
 
 Open the website, click the mic, talk. That is it.
 
@@ -101,11 +95,15 @@ It exists. It is free. But I would not rely on it for anything important.
 
 ## Which One Should You Pick
 
-- If you are on Windows and want free: **Rota AI**
-- If you can afford $8.49/month and want cross-platform: **SuperWhisper**
-- If you need something with no setup: **Windows dictation**
-- If you only write in Google Docs: **Google Docs voice typing**
-- If you need meeting transcription: **Otter.ai**
+If you are on Windows and want free: Rota AI.
+
+If you can afford $8.49/month and want cross-platform: SuperWhisper.
+
+If you need something with no setup: Windows dictation.
+
+If you only write in Google Docs: Google Docs voice typing.
+
+If you need meeting transcription: Otter.ai.
 
 ## FAQ
 

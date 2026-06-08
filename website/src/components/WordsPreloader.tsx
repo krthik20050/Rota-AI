@@ -36,7 +36,7 @@ export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
       return;
     }
 
-    // Detect back/forward navigation — skip preloader to avoid blank page
+    // Detect back/forward navigation - skip preloader to avoid blank page
     try {
       const navEntries = performance.getEntriesByType("navigation");
       if (navEntries.length > 0) {
@@ -48,7 +48,7 @@ export function WordsPreloader({ onComplete }: { onComplete: () => void }) {
         }
       }
     } catch {
-      // performance API not available — fall through
+      // performance API not available - fall through
     }
 
     // Mark this session as having seen the preloader

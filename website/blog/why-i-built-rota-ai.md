@@ -62,25 +62,25 @@ It works in **VS Code, Slack, Notion, Gmail, Word, Discord, your browser, your t
 
 The pipeline has 7 stages, each on its own thread:
 
-**Stage 1 — Audio capture**
+**Stage 1 - Audio capture**
 16kHz mono PCM via PortAudio. Real-time RMS for waveform visualization.
 
-**Stage 2 — Voice activity detection**
+**Stage 2 - Voice activity detection**
 Silero VAD v6 strips leading and trailing silence before anything goes to the transcription engine. 2MB model, under 1ms per chunk. This saves API credits and improves accuracy.
 
-**Stage 3 — Transcription**
+**Stage 3 - Transcription**
 Your choice of Groq Whisper (cloud, free tier), Gemini (cloud, free tier), or local Faster Whisper via Ollama (no internet ever needed).
 
-**Stage 4 — AI cleanup**
+**Stage 4 - AI cleanup**
 A second LLM pass removes filler words, resolves self-corrections, formats lists, adjusts tone. Skipped entirely for phrases under 5 words to keep latency low.
 
-**Stage 5 — Context detection**
+**Stage 5 - Context detection**
 Reads the active window title and process name. Classifies context: code editor, email, chat, notes. Adapts output accordingly. VS Code gets camelCase preserved. Slack gets casual tone. Outlook gets formal.
 
-**Stage 6 — Text injection**
+**Stage 6 - Text injection**
 Multiple methods: SendInput API for short text, clipboard + Ctrl+V for longer passages, fallback to pyautogui for stubborn apps.
 
-**Stage 7 — Persistence**
+**Stage 7 - Persistence**
 SQLite for session history, snippets, personal dictionary, analytics. DPAPI-encrypted config for API keys.
 
 ---
@@ -107,4 +107,4 @@ If you are a student and this inspires you to build something, do it. You do not
 
 ---
 
-**Rota AI is free and open source.** [Star it on GitHub](https://github.com/krthik20050/Rota-AI) — it helps others find it.
+**Rota AI is free and open source.** [Star it on GitHub](https://github.com/krthik20050/Rota-AI) - it helps others find it.
