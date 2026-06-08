@@ -22,11 +22,13 @@ class FlowLayout(QLayout):
     def addItem(self, item):
         self._item_list.append(item)
 
-    def addWidget(self, widget, stretch=0, alignment=Qt.AlignmentFlag()):
+    def addWidget(self, widget, stretch=0, alignment=None):
         """Convenience — matches QBoxLayout.addWidget signature.
         Stretch and alignment params are accepted for API compatibility
         but ignored — FlowLayout sizes items by their sizeHint.
         """
+        _ = stretch  # unused, kept for API compat
+        _ = alignment
         item = QWidgetItem(widget)
         self.addItem(item)
 
