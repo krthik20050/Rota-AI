@@ -51,64 +51,47 @@ export default function SeoDashboard() {
   const [error, setError] = React.useState<string | null>(null);
   const [period, setPeriod] = React.useState("28d");
 
-  /** Callback to kick off a fetch. All setState calls happen after `await`,
-   *  so no cascading-renders warning from the initial synchronous effect path. */
-  const fetchData = React.useCallback(async (p: string) => {
+  /** Fetch data and return it (no setState). All setState is in promise handlers below. */
+  const fetchData = React.useCallback(async (p: string): Promise<GscRow[]> => {
     const now = new Date();
+    const endDate = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     let startDate: string;
-    const endDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     switch (p) {
-      case "7d":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        break;
-      case "90d":
-        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        break;
-      default: // 28d
-        startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      case "7d":  startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10); break;
+      case "90d": startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10); break;
+      default:    startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     }
 
-    try {
-      const res = await fetch("/api/search-console", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate, dimensions: ["query"], rowLimit: 50 }),
-      });
+    const res = await fetch("/api/search-console", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate, endDate, dimensions: ["query"], rowLimit: 50 }),
+    });
+    const data = await res.json();
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 503) {
-          setError("NOT_CONFIGURED");
-        } else {
-          setError(data.error || "Failed to fetch data");
-        }
-        setRows([]);
-      } else {
-        setRows(data.rows || []);
-        setError(null);
-      }
-    } catch {
-      setError("Network error");
-      setRows([]);
-    } finally {
-      setLoading(false);
+    if (!res.ok) {
+      if (res.status === 503) throw new Error("NOT_CONFIGURED");
+      throw new Error(data.error || "Failed to fetch data");
     }
+    return data.rows || [];
   }, []);
 
-  /* Period change: update state synchronously here, then kick off the async fetch. */
+  /* Fetch on mount & period change. All setState in async promise handlers. */
+  React.useEffect(() => {
+    let mounted = true;
+    fetchData(period)
+      .then((rows) => { if (mounted) { setRows(rows); setError(null); } })
+      .catch((err: Error) => { if (mounted) { setRows([]); setError(err.message); } })
+      .finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
+
   const handlePeriodChange = React.useCallback((p: string) => {
     setPeriod(p);
     setLoading(true);
     setError(null);
-    fetchData(p);
-  }, [fetchData]);
-
-  /* Initial fetch on mount */
-  React.useEffect(() => {
-    fetchData(period);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const totalClicks = rows.reduce((s, r) => s + r.clicks, 0);
