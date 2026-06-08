@@ -100,7 +100,8 @@ export default function SeoDashboard() {
 
   React.useEffect(() => {
     fetchData(period);
-  }, [period, fetchData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
 
   const totalClicks = rows.reduce((s, r) => s + r.clicks, 0);
   const totalImpressions = rows.reduce((s, r) => s + r.impressions, 0);

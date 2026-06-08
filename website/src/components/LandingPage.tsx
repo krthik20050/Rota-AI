@@ -1552,8 +1552,8 @@ export function LandingPage() {
                 <div className="flex flex-col gap-3">
                   <Link href="/vs/wispr-flow" className="text-[12px] text-zinc-600 hover:text-white transition-colors">vs Wispr Flow</Link>
                   <Link href="/vs/superwhisper" className="text-[12px] text-zinc-600 hover:text-white transition-colors">vs SuperWhisper</Link>
-                  <a href="/blog/wispr-flow-alternatives-free-2026" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Free Alternatives</a>
-                  <a href="/blog/best-open-source-voice-dictation-software-in-2026" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Open Source Tools</a>
+                  <Link href="/blog/wispr-flow-alternatives-free-2026" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Free Alternatives</Link>
+                  <Link href="/blog/best-open-source-voice-dictation-software-in-2026" className="text-[12px] text-zinc-600 hover:text-white transition-colors">Open Source Tools</Link>
                 </div>
               </div>
 
