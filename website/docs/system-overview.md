@@ -36,15 +36,3 @@ graph TD
 #### 5. Data & Storage Layer (`data/` / `services/`)
 - Config manager handles configuration reads and writes.
 - Local SQLite database caches transcription history and snippet mappings.
-
----
-
-### Complete Start-to-End Application Lifecycle
-
-To help visualize how all these layers and subsystems interact from initialization to final text injection, here is the full start-to-end execution path:
-
-```mermaid
-graph TD
-    %% This mermaid block is intercepted and rendered as the FullApplicationLifecycleDiagram
-    Start[Instance Mutex] --> Lifecycle[Full Application Lifecycle]
-```
