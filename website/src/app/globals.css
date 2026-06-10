@@ -95,3 +95,10 @@
 .animate-fade-slide-up {
   animation: fadeSlideUp 0.5s ease-out forwards;
 }
+
+/* Ensure inline code blocks are not bold, but use a highly legible yellow highlight */
+.prose :not(pre) > code {
+  font-weight: 500 !important;
+  color: #fbbf24 !important; /* Highly readable golden yellow */
+  background-color: rgba(24, 24, 27, 0.8) !important; /* Zinc-900 background */
+}
