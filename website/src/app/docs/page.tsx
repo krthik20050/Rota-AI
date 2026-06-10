@@ -167,19 +167,14 @@ export default function DocsPage() {
                             components={{
                               pre({ children, ...props }) {
                                 const childrenArray = React.Children.toArray(children);
-                                const codeChild = childrenArray.find(
+                                const mermaidChild = childrenArray.find(
                                   (child) =>
                                     React.isValidElement(child) &&
-                                    child.type === "code"
+                                    (child.props as any).className?.includes("language-mermaid")
                                 ) as React.ReactElement<{ className?: string; children?: React.ReactNode }> | undefined;
 
-                                if (codeChild) {
-                                  const className = codeChild.props.className || "";
-                                  const match = /language-(\w+)/.exec(className);
-                                  const isMermaid = match && match[1] === "mermaid";
-                                  if (isMermaid) {
-                                    return <ArchitecturalDiagram type={String(codeChild.props.children || "")} />;
-                                  }
+                                if (mermaidChild) {
+                                  return <ArchitecturalDiagram type={String(mermaidChild.props.children || "")} />;
                                 }
                                 return <pre {...props}>{children}</pre>;
                               },
