@@ -8,9 +8,9 @@ To solve this, Rota AI features a multi-tiered **Personal Dictionary** system. I
 
 ---
 
-### Dictionary Override Flow
+### System Architecture & Data Routing
 
-The following diagram illustrates the horizontal sequence of Rota AI's override pipeline, from raw audio input to final text output injection:
+The following diagram illustrates how personal terms are configured, stored in JSON format, injected into the transcription/LLM cascade, normalized, and auto-learned back into storage:
 
 ```mermaid
 graph TD
