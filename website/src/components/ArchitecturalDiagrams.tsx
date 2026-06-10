@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 interface DiagramProps {
   type: string;
@@ -766,71 +766,683 @@ function DictionaryOverrideDiagram() {
   );
 }
 
+interface StepDetail {
+  title: string;
+  badge: string;
+  badgeColor: string;
+  file: string;
+  classMethod: string;
+  input: string;
+  output: string;
+  logs: string[];
+}
+
+const STEPS: StepDetail[] = [
+  {
+    title: "System Idle & Listener Active",
+    badge: "Ready",
+    badgeColor: "text-zinc-400 bg-zinc-900/80 border border-zinc-800",
+    file: "desktop/app/rota_app.py",
+    classMethod: "RotaApp.run()",
+    input: "None - Waiting for hotkey",
+    output: "PyQt6 event loop active",
+    logs: [
+      "[INFO] Initializing RotaApp (desktop/app/rota_app.py)",
+      "[INFO] Loading single-instance guard (desktop/app/instance_guard.py)",
+      "[INFO] SQLite database connection established: data/rota.db",
+      "[INFO] System Tray UI initialized successfully",
+      "[INFO] Global Hotkey Listener registered. Press [F9] to dictate."
+    ]
+  },
+  {
+    title: "Global Hotkey Event Captured",
+    badge: "Hotkey Pressed",
+    badgeColor: "text-blue-400 bg-blue-950/40 border border-blue-900",
+    file: "desktop/audio/hotkey.py",
+    classMethod: "HotkeyHandler._on_press()",
+    input: "Global Keypress [F9] (Hold State)",
+    output: "Qt Signal: toggle_recording(start=True)",
+    logs: [
+      "[INFO] pynput hook intercepted VK_F9 key-down",
+      "[INFO] RecordingStateMixin: State changed to RECORDING",
+      "[INFO] Floating Overlay Pill animated to active recording state",
+      "[INFO] Muting background system audio channels (if enabled)"
+    ]
+  },
+  {
+    title: "Real-time Audio Ingestion",
+    badge: "Recording",
+    badgeColor: "text-cyan-400 bg-cyan-950/40 border border-cyan-900",
+    file: "desktop/audio/recorder.py",
+    classMethod: "AudioRecorder.start_stream()",
+    input: "Analog Microphone Input",
+    output: "NumPy Array (Float32, 16kHz, Mono)",
+    logs: [
+      "[INFO] sounddevice InputStream opened successfully",
+      "[INFO] Capturing audio frames at 16,000 samples per second",
+      "[INFO] PCM buffer streaming started (Float32 format)",
+      "[INFO] Average signal amplitude: -28dB"
+    ]
+  },
+  {
+    title: "Speech Verification (VAD Filter)",
+    badge: "Processing VAD",
+    badgeColor: "text-teal-400 bg-teal-950/40 border border-teal-900",
+    file: "desktop/audio/vad.py",
+    classMethod: "VADFilter.is_speech()",
+    input: "Audio Stream Chunk (512 samples)",
+    output: "Speech Probability [0.0 - 1.0]",
+    logs: [
+      "[INFO] Silero VAD running local ONNX model inference",
+      "[INFO] Chunk speech probability: 0.963 -> buffering chunk",
+      "[INFO] Active speech section detected, prepending 300ms window",
+      "[INFO] Writing speech frames to memory WAV buffer"
+    ]
+  },
+  {
+    title: "ASR Speech-to-Text Transcription",
+    badge: "Transcribing",
+    badgeColor: "text-yellow-400 bg-yellow-950/40 border border-yellow-900",
+    file: "desktop/ai/ai_processor.py",
+    classMethod: "AIProcessor.transcribe_audio()",
+    input: "Memory WAV Buffer (16-bit PCM)",
+    output: "Raw text: \"rota ai is awsom\"",
+    logs: [
+      "[INFO] User released F9 hotkey -> Recording session stopped",
+      "[INFO] WAV buffer compiled (Size: 112 KB, duration: 3.5s)",
+      "[INFO] Dispatching audio to API backend (Groq Whisper-large-v3)",
+      "[INFO] API transcription completed in 210ms",
+      "[INFO] Raw transcript text: \"rota ai is awsom\""
+    ]
+  },
+  {
+    title: "LLM Contextual Post-Processing",
+    badge: "Cleaning Text",
+    badgeColor: "text-yellow-400 bg-yellow-950/40 border border-yellow-900",
+    file: "desktop/ai/auto_improvement.py",
+    classMethod: "AutoImprovement.apply_cascade()",
+    input: "\"rota ai is awsom\" + App: \"VS Code\"",
+    output: "\"Rota AI is awesome.\"",
+    logs: [
+      "[INFO] Detecting active window: \"Visual Studio Code - main.py\"",
+      "[INFO] Loading terminology context from personal_dictionary.json",
+      "[INFO] Prompting Gemini Flash with contextual terminology",
+      "[INFO] LLM cascade output: \"Rota AI is awesome.\"",
+      "[INFO] Running local regex replacements (Snippets overrides)"
+    ]
+  },
+  {
+    title: "Virtual Text Injection into Active App",
+    badge: "Injecting",
+    badgeColor: "text-red-400 bg-red-950/40 border border-red-900",
+    file: "desktop/injection/injector.py",
+    classMethod: "TextInjector.inject_text()",
+    input: "Clean text: \"Rota AI is awesome.\"",
+    output: "OS Input Event: Virtual Keypresses",
+    logs: [
+      "[INFO] Bringing target window to focus",
+      "[INFO] Injecting text: \"Rota AI is awesome.\"",
+      "[INFO] Method: Win32 SendInput keyboard sequence",
+      "[INFO] Target field text length updated (+19 characters)",
+      "[INFO] Play success feedback tone (if enabled)"
+    ]
+  },
+  {
+    title: "Auto-Learning & Dictionary Logging",
+    badge: "Updating DB",
+    badgeColor: "text-orange-400 bg-orange-950/40 border border-orange-900",
+    file: "desktop/ai/personal_dictionary.py",
+    classMethod: "PersonalDictionary.learn_from_text()",
+    input: "Polished transcript history log",
+    output: "Database insert & JSON write",
+    logs: [
+      "[INFO] SQLite: Saved transcription log row (ID: 1042)",
+      "[INFO] Extraction: parsing terminology in background thread",
+      "[INFO] Extracted term \"Rota AI\" -> added to dictionary JSON",
+      "[INFO] Vocabulary feedback loop updated for next transcription prompt"
+    ]
+  }
+];
+
+const CODE_SNIPPETS: { [key: number]: { file: string; code: string } } = {
+  0: {
+    file: "desktop/app/rota_app.py",
+    code: `class RotaApp(QApplication):
+    def run(self):
+        # Initialize thread lifecycle mixins
+        self.init_instance_guard()
+        self.init_database()
+        self.init_tray_ui()
+
+        # Start global hotkey listener
+        self.start_hotkey_listener()
+
+        # Start PyQt6 event loop
+        sys.exit(self.exec())`
+  },
+  1: {
+    file: "desktop/audio/hotkey.py",
+    code: `class HotkeyHandler(threading.Thread):
+    def _on_press(self, key):
+        if key == Key.f9 and not self.is_held:
+            self.is_held = True
+            # Dispatch signal to main thread
+            self.signals.toggle_recording.emit(True)
+            self.logger.info("F9 hold event registered")`
+  },
+  2: {
+    file: "desktop/audio/recorder.py",
+    code: `class AudioRecorder:
+    def start_stream(self):
+        self.buffer = []
+        self.stream = sd.InputStream(
+            samplerate=16000,
+            channels=1,
+            dtype='float32',
+            callback=self._audio_callback
+        )
+        self.stream.start()`
+  },
+  3: {
+    file: "desktop/audio/vad.py",
+    code: `class VADFilter:
+    def __init__(self):
+        # Load local Silero VAD model via ONNX
+        self.model = ort.InferenceSession("silero_vad.onnx")
+
+    def is_speech(self, audio_chunk):
+        # Run ONNX inference on Float32 PCM chunk
+        prob = self.model.run(None, {"input": audio_chunk})[0]
+        return prob > 0.5`
+  },
+  4: {
+    file: "desktop/ai/ai_processor.py",
+    code: `class AIProcessor:
+    def transcribe_audio(self, wav_bytes):
+        # Choose active backend
+        backend = self.config.get("backend")
+        if backend == "groq":
+            return self.groq_client.audio.transcriptions.create(
+                file=("dictation.wav", wav_bytes),
+                model="whisper-large-v3"
+            ).text`
+  },
+  5: {
+    file: "desktop/ai/auto_improvement.py",
+    code: `class AutoImprovement:
+    def apply_cascade(self, raw_text, app_context):
+        # Combine transcription with active window info
+        system_prompt = self.prompts.get_context_prompt(app_context)
+
+        # Get correction from Gemini/Ollama
+        corrected = self.llm.generate(
+            prompt=raw_text,
+            system=system_prompt
+        )
+        return self.snippets.replace(corrected)`
+  },
+  6: {
+    file: "desktop/injection/injector.py",
+    code: `class TextInjector:
+    def inject_text(self, text):
+        # Use Win32 SendInput for low-level injection
+        inputs = []
+        for char in text:
+            inputs.append(self._create_keyboard_input(char, down=True))
+            inputs.append(self._create_keyboard_input(char, down=False))
+
+        win32api.SendInput(len(inputs), inputs)`
+  },
+  7: {
+    file: "desktop/ai/personal_dictionary.py",
+    code: `class PersonalDictionary:
+    def learn_from_text(self, text):
+        # Extract potential terminology/acronyms
+        new_terms = self.extractor.find_proper_nouns(text)
+
+        for term in new_terms:
+            self.dictionary.add_entry(term)
+
+        # Write to JSON file and SQLite logs
+        self.save_to_json()`
+  }
+};
+
 function FullApplicationLifecycleDiagram() {
+  const [activeStep, setActiveStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const terminalEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-play interval
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    let progressTimer: NodeJS.Timeout;
+
+    if (isPlaying) {
+      timer = setInterval(() => {
+        setActiveStep((prev) => (prev + 1) % STEPS.length);
+        setProgress(0);
+      }, 4000);
+
+      progressTimer = setInterval(() => {
+        setProgress((prev) => Math.min(prev + 2.5, 100));
+      }, 100);
+    }
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(progressTimer);
+    };
+  }, [isPlaying]);
+
+  // Scroll terminal logs on step change
+  useEffect(() => {
+    if (terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [activeStep]);
+
+  const handleNext = () => {
+    setActiveStep((prev) => (prev + 1) % STEPS.length);
+    setProgress(0);
+  };
+
+  const handlePrev = () => {
+    setActiveStep((prev) => (prev - 1 + STEPS.length) % STEPS.length);
+    setProgress(0);
+  };
+
+  const handleReset = () => {
+    setActiveStep(0);
+    setProgress(0);
+    setIsPlaying(false);
+  };
+
+  const handleStepClick = (index: number) => {
+    setActiveStep(index);
+    setProgress(0);
+  };
+
+  const getAccumulatedLogs = () => {
+    let accumulated: string[] = [];
+    for (let i = 0; i <= activeStep; i++) {
+      accumulated = [...accumulated, ...STEPS[i].logs];
+    }
+    return accumulated;
+  };
+
+  // Subsystem active checks
+  const isSub1Active = activeStep === 1 || activeStep === 6;
+  const isSub2Active = activeStep === 2 || activeStep === 3;
+  const isSub3Active = activeStep === 4 || activeStep === 5;
+  const isSub4Active = activeStep === 7;
+
+  // Arrow transition triggers
+  const line1Active = activeStep === 1;
+  const line2Active = activeStep === 3;
+  const line3Active = activeStep === 5;
+  const line4Active = activeStep === 6;
+  const line5Active = activeStep === 7;
+
   return (
-    <div className="min-w-[860px] mx-auto">
-      <svg viewBox="0 0 900 530" className="w-full h-auto select-none" fill="none">
-        <SVGDefs />
+    <div className="flex flex-col gap-6 w-full max-w-[950px] mx-auto text-zinc-100 font-sans p-6 rounded-lg bg-zinc-950 border border-white/[0.06] shadow-xl">
+      <style>{`
+        @keyframes sketchyDash {
+          to {
+            stroke-dashoffset: -20;
+          }
+        }
+        .animate-dash {
+          stroke-dasharray: 6, 4;
+          animation: sketchyDash 0.8s linear infinite;
+        }
+        .terminal-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .terminal-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .terminal-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 4px;
+        }
+      `}</style>
 
-        {/* --- SUBSYSTEM 1: FRONTEND & OS INTERFACE --- */}
-        <SketchyRect x={50} y={40} width={340} height={190} stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.04} />
-        <text x={70} y={75} fill="#3b82f6" className="excalidraw-font text-sm font-semibold">1. Frontend &amp; OS Interface</text>
-        <text x={75} y={110} fill="#fafafa" className="excalidraw-font text-xs">• PyQt6 System Tray &amp; Recording Pill Overlay</text>
-        <text x={75} y={135} fill="#fafafa" className="excalidraw-font text-xs">• Global Hotkey Daemon (SetWindowsHookEx)</text>
-        <text x={75} y={165} fill="#fafafa" className="excalidraw-font text-xs">• Active Window Tracker (Context awareness)</text>
-        <text x={75} y={190} fill="#fafafa" className="excalidraw-font text-xs">• OS Virtual Text Injector (SendInput API)</text>
+      {/* --- SVG INTERACTIVE DIAGRAM PANEL --- */}
+      <div className="w-full relative bg-zinc-900/20 border border-white/[0.02] rounded-md p-2 overflow-x-auto">
+        <svg viewBox="0 0 900 530" className="w-full h-auto select-none min-w-[840px]" fill="none">
+          <SVGDefs />
 
-        {/* --- SUBSYSTEM 2: AUDIO INGEST PIPELINE --- */}
-        <SketchyRect x={510} y={40} width={340} height={190} stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.04} />
-        <text x={530} y={75} fill="#06b6d4" className="excalidraw-font text-sm font-semibold">2. Audio Ingest Pipeline</text>
-        <text x={535} y={110} fill="#fafafa" className="excalidraw-font text-xs">• sounddevice Recorder (16kHz Mono PCM)</text>
-        <text x={535} y={135} fill="#fafafa" className="excalidraw-font text-xs">• Silero VAD ONNX Filter (Speech probability)</text>
-        <text x={535} y={165} fill="#fafafa" className="excalidraw-font text-xs">• Temporary WAV Buffer Session Management</text>
-        <text x={535} y={190} fill="#fafafa" className="excalidraw-font text-xs">• Sound Level &amp; Signal Energy Estimator</text>
+          {/* --- SUBSYSTEM 1: FRONTEND & OS INTERFACE --- */}
+          <SketchyRect
+            x={50}
+            y={40}
+            width={340}
+            height={190}
+            stroke={isSub1Active ? "#3b82f6" : "#27272a"}
+            fill={isSub1Active ? "#3b82f6" : "#27272a"}
+            fillOpacity={isSub1Active ? 0.08 : 0.02}
+            strokeWidth={isSub1Active ? 2.5 : 1.25}
+          />
+          <text x={70} y={75} fill={isSub1Active ? "#3b82f6" : "#a1a1aa"} className="excalidraw-font text-sm font-semibold transition-colors duration-300">1. Frontend &amp; OS Interface</text>
+          <text x={75} y={110} fill={activeStep === 1 || activeStep === 6 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• PyQt6 System Tray &amp; Recording Pill Overlay</text>
+          <text x={75} y={135} fill={activeStep === 1 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Global Hotkey Daemon (SetWindowsHookEx)</text>
+          <text x={75} y={165} fill={activeStep === 5 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Active Window Tracker (Context awareness)</text>
+          <text x={75} y={190} fill={activeStep === 6 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• OS Virtual Text Injector (SendInput API)</text>
 
-        {/* --- SUBSYSTEM 3: ASR & LLM ENGINES --- */}
-        <SketchyRect x={510} y={300} width={340} height={190} stroke="#e4f222" fill="#e4f222" fillOpacity={0.04} />
-        <text x={530} y={335} fill="#e4f222" className="excalidraw-font text-sm font-semibold">3. ASR &amp; LLM Engines</text>
-        <text x={535} y={370} fill="#fafafa" className="excalidraw-font text-xs">• Whisper ASR (Groq, Gemini, or CTranslate2 Local)</text>
-        <text x={535} y={395} fill="#fafafa" className="excalidraw-font text-xs">• LLM Post-Processor (Grammar &amp; Tone formatting)</text>
-        <text x={535} y={420} fill="#fafafa" className="excalidraw-font text-xs">• Contextual Prompter (Active window context pass)</text>
-        <text x={535} y={445} fill="#fafafa" className="excalidraw-font text-xs">• Local Voice Snippets &amp; Abbreviation Processor</text>
+          {/* --- SUBSYSTEM 2: AUDIO INGEST PIPELINE --- */}
+          <SketchyRect
+            x={510}
+            y={40}
+            width={340}
+            height={190}
+            stroke={isSub2Active ? "#06b6d4" : "#27272a"}
+            fill={isSub2Active ? "#06b6d4" : "#27272a"}
+            fillOpacity={isSub2Active ? 0.08 : 0.02}
+            strokeWidth={isSub2Active ? 2.5 : 1.25}
+          />
+          <text x={530} y={75} fill={isSub2Active ? "#06b6d4" : "#a1a1aa"} className="excalidraw-font text-sm font-semibold transition-colors duration-300">2. Audio Ingest Pipeline</text>
+          <text x={535} y={110} fill={activeStep === 2 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• sounddevice Recorder (16kHz Mono PCM)</text>
+          <text x={535} y={135} fill={activeStep === 3 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Silero VAD ONNX Filter (Speech probability)</text>
+          <text x={535} y={165} fill={isSub2Active ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Temporary WAV Buffer Session Management</text>
+          <text x={535} y={190} fill={activeStep === 2 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Sound Level &amp; Signal Energy Estimator</text>
 
-        {/* --- SUBSYSTEM 4: LOCAL STORAGE & LEARNING --- */}
-        <SketchyRect x={50} y={300} width={340} height={190} stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.04} />
-        <text x={70} y={335} fill="#f59e0b" className="excalidraw-font text-sm font-semibold">4. Local Storage &amp; Learning</text>
-        <text x={75} y={370} fill="#fafafa" className="excalidraw-font text-xs">• SQLite DB (Transcription history &amp; configuration)</text>
-        <text x={75} y={395} fill="#fafafa" className="excalidraw-font text-xs">• Personal Dictionary (Persistent custom term JSON)</text>
-        <text x={75} y={420} fill="#fafafa" className="excalidraw-font text-xs">• Auto-Learning Engine (learn_from_text worker)</text>
-        <text x={75} y={445} fill="#fafafa" className="excalidraw-font text-xs">• Windows DPAPI Secure API Keyrings</text>
+          {/* --- SUBSYSTEM 3: ASR & LLM ENGINES --- */}
+          <SketchyRect
+            x={510}
+            y={300}
+            width={340}
+            height={190}
+            stroke={isSub3Active ? "#e4f222" : "#27272a"}
+            fill={isSub3Active ? "#e4f222" : "#27272a"}
+            fillOpacity={isSub3Active ? 0.08 : 0.02}
+            strokeWidth={isSub3Active ? 2.5 : 1.25}
+          />
+          <text x={530} y={335} fill={isSub3Active ? "#e4f222" : "#a1a1aa"} className="excalidraw-font text-sm font-semibold transition-colors duration-300">3. ASR &amp; LLM Engines</text>
+          <text x={535} y={370} fill={activeStep === 4 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Whisper ASR (Groq, Gemini, or CTranslate2 Local)</text>
+          <text x={535} y={395} fill={activeStep === 5 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• LLM Post-Processor (Grammar &amp; Tone formatting)</text>
+          <text x={535} y={420} fill={activeStep === 5 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Contextual Prompter (Active window context pass)</text>
+          <text x={535} y={445} fill={activeStep === 5 ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Local Voice Snippets &amp; Abbreviation Processor</text>
 
-        {/* --- CONNECTIONS & TRANSITIONS --- */}
+          {/* --- SUBSYSTEM 4: LOCAL STORAGE & LEARNING --- */}
+          <SketchyRect
+            x={50}
+            y={300}
+            width={340}
+            height={190}
+            stroke={isSub4Active ? "#f59e0b" : "#27272a"}
+            fill={isSub4Active ? "#f59e0b" : "#27272a"}
+            fillOpacity={isSub4Active ? 0.08 : 0.02}
+            strokeWidth={isSub4Active ? 2.5 : 1.25}
+          />
+          <text x={70} y={335} fill={isSub4Active ? "#f59e0b" : "#a1a1aa"} className="excalidraw-font text-sm font-semibold transition-colors duration-300">4. Local Storage &amp; Learning</text>
+          <text x={75} y={370} fill={isSub4Active ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• SQLite DB (Transcription history &amp; configuration)</text>
+          <text x={75} y={395} fill={isSub4Active ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Personal Dictionary (Persistent custom term JSON)</text>
+          <text x={75} y={420} fill={isSub4Active ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Auto-Learning Engine (learn_from_text worker)</text>
+          <text x={75} y={445} fill={isSub4Active ? "#fafafa" : "#71717a"} className="excalidraw-font text-xs">• Windows DPAPI Secure API Keyrings</text>
 
-        {/* Transition 1: Interface -> Audio Pipeline */}
-        <SketchyLine x1={390} y1={135} x2={510} y2={135} markerEnd="url(#arrow)" />
-        <text x={450} y={115} textAnchor="middle" fill="#a1a1aa" className="excalidraw-font text-[10px] font-semibold">F9 Held</text>
-        <text x={450} y={130} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">Start Ingest</text>
+          {/* --- CONNECTIONS & TRANSITIONS --- */}
 
-        {/* Transition 2: Audio Pipeline -> Engines */}
-        <SketchyLine x1={680} y1={230} x2={680} y2={300} markerEnd="url(#arrow)" />
-        <text x={695} y={260} fill="#a1a1aa" className="excalidraw-font text-[10px] font-semibold">F9 Released</text>
-        <text x={695} y={275} fill="#71717a" className="excalidraw-font text-[9px]">Pass WAV Buffer</text>
+          {/* Transition 1: Interface -> Audio Pipeline */}
+          <SketchyLine
+            x1={390}
+            y1={135}
+            x2={510}
+            y2={135}
+            stroke={line1Active ? "#3b82f6" : "#2d2d30"}
+            strokeWidth={line1Active ? 2.5 : 1.5}
+            className={line1Active ? "animate-dash" : ""}
+            markerEnd="url(#arrow)"
+          />
+          <text x={450} y={115} textAnchor="middle" fill={line1Active ? "#3b82f6" : "#52525b"} className="excalidraw-font text-[10px] font-semibold transition-colors duration-300">F9 Held</text>
+          <text x={450} y={130} textAnchor="middle" fill={line1Active ? "#fafafa" : "#3f3f46"} className="excalidraw-font text-[9px]">Start Ingest</text>
 
-        {/* Transition 3: Engines -> Interface (Curved diagonal back) */}
-        <SketchyCurve x1={510} y1={320} qx={430} qy={240} x2={390} y2={200} markerEnd="url(#arrow)" />
-        <text x={425} y={250} textAnchor="middle" fill="#a1a1aa" className="excalidraw-font text-[10px] font-semibold">Clean Text</text>
-        <text x={425} y={265} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">Virtual OS Type</text>
+          {/* Transition 2: Audio Pipeline -> Engines */}
+          <SketchyLine
+            x1={680}
+            y1={230}
+            x2={680}
+            y2={300}
+            stroke={line2Active ? "#06b6d4" : "#2d2d30"}
+            strokeWidth={line2Active ? 2.5 : 1.5}
+            className={line2Active ? "animate-dash" : ""}
+            markerEnd="url(#arrow)"
+          />
+          <text x={695} y={260} fill={line2Active ? "#06b6d4" : "#52525b"} className="excalidraw-font text-[10px] font-semibold transition-colors duration-300">F9 Released</text>
+          <text x={695} y={275} fill={line2Active ? "#fafafa" : "#3f3f46"} className="excalidraw-font text-[9px]">Pass WAV Buffer</text>
 
-        {/* Transition 4: Interface -> Storage & Learning */}
-        <SketchyLine x1={220} y1={230} x2={220} y2={300} markerEnd="url(#arrow)" />
-        <text x={205} y={260} textAnchor="end" fill="#a1a1aa" className="excalidraw-font text-[10px] font-semibold">Injected Text</text>
-        <text x={205} y={275} textAnchor="end" fill="#71717a" className="excalidraw-font text-[9px]">Log &amp; Auto-Learn</text>
+          {/* Transition 3: Engines -> Interface */}
+          <SketchyCurve
+            x1={510}
+            y1={320}
+            qx={430}
+            qy={240}
+            x2={390}
+            y2={200}
+            stroke={line3Active ? "#e4f222" : "#2d2d30"}
+            strokeWidth={line3Active ? 2.5 : 1.5}
+            className={line3Active ? "animate-dash" : ""}
+            markerEnd="url(#arrow)"
+          />
+          <text x={425} y={250} textAnchor="middle" fill={line3Active ? "#e4f222" : "#52525b"} className="excalidraw-font text-[10px] font-semibold transition-colors duration-300">Clean Text</text>
+          <text x={425} y={265} textAnchor="middle" fill={line3Active ? "#fafafa" : "#3f3f46"} className="excalidraw-font text-[9px]">Virtual OS Type</text>
 
-        {/* Transition 5: Storage -> Engines (Dashed feedback loop) */}
-        <SketchyLine x1={390} y1={395} x2={510} y2={395} strokeDasharray="4,4" markerEnd="url(#arrow)" />
-        <text x={450} y={375} textAnchor="middle" fill="#a1a1aa" className="excalidraw-font text-[10px] font-semibold">Feedback Loop</text>
-        <text x={450} y={420} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">Vocabulary &amp; Snippets</text>
-      </svg>
+          {/* Transition 4: Interface -> Storage & Learning */}
+          <SketchyLine
+            x1={220}
+            y1={230}
+            x2={220}
+            y2={300}
+            stroke={line4Active ? "#ef4444" : "#2d2d30"}
+            strokeWidth={line4Active ? 2.5 : 1.5}
+            className={line4Active ? "animate-dash" : ""}
+            markerEnd="url(#arrow)"
+          />
+          <text x={205} y={260} textAnchor="end" fill={line4Active ? "#ef4444" : "#52525b"} className="excalidraw-font text-[10px] font-semibold transition-colors duration-300">Injected Text</text>
+          <text x={205} y={275} textAnchor="end" fill={line4Active ? "#fafafa" : "#3f3f46"} className="excalidraw-font text-[9px]">Log &amp; Auto-Learn</text>
+
+          {/* Transition 5: Storage -> Engines (Dashed feedback loop) */}
+          <SketchyLine
+            x1={390}
+            y1={395}
+            x2={510}
+            y2={395}
+            stroke={line5Active ? "#f59e0b" : "#2d2d30"}
+            strokeWidth={line5Active ? 2.5 : 1.5}
+            strokeDasharray="4,4"
+            className={line5Active ? "animate-dash" : ""}
+            markerEnd="url(#arrow)"
+          />
+          <text x={450} y={375} textAnchor="middle" fill={line5Active ? "#f59e0b" : "#52525b"} className="excalidraw-font text-[10px] font-semibold transition-colors duration-300">Feedback Loop</text>
+          <text x={450} y={420} textAnchor="middle" fill={line5Active ? "#fafafa" : "#3f3f46"} className="excalidraw-font text-[9px]">Vocabulary &amp; Snippets</text>
+        </svg>
+      </div>
+
+      {/* --- DASHBOARD STEPS NAVIGATION BAR --- */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.04] pb-4">
+        {/* Playback Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrev}
+            className="p-2 rounded bg-zinc-900 border border-white/[0.06] hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
+            title="Previous step"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+            </svg>
+          </button>
+
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-semibold uppercase tracking-wider bg-[#e4f222] hover:opacity-90 text-black transition-all"
+          >
+            {isPlaying ? (
+              <>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+                <span>Pause</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <span>Simulate</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleNext}
+            className="p-2 rounded bg-zinc-900 border border-white/[0.06] hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
+            title="Next step"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+            </svg>
+          </button>
+
+          <button
+            onClick={handleReset}
+            className="p-2 rounded bg-zinc-900 border border-white/[0.06] hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
+            title="Reset simulation"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Step Buttons */}
+        <div className="flex items-center gap-1">
+          {STEPS.map((step, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleStepClick(idx)}
+              className={`w-7 h-7 rounded-full text-xs font-semibold flex items-center justify-center border transition-all duration-300 ${
+                activeStep === idx
+                  ? "bg-zinc-100 text-zinc-950 border-white"
+                  : "bg-zinc-900 text-zinc-400 border-white/[0.04] hover:bg-zinc-800"
+              }`}
+            >
+              {idx}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Auto-Play Progress Indicator */}
+      {isPlaying && (
+        <div className="w-full bg-zinc-900 h-0.5 rounded overflow-hidden -mt-4">
+          <div
+            className="bg-[#e4f222] h-full transition-all duration-100 ease-linear"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+
+      {/* --- STEP TRACE DETAILS & EMULATED CONSOLE --- */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start mt-2">
+        {/* Left Side: Step info & Code tab */}
+        <div className="md:col-span-7 flex flex-col gap-4">
+          {/* Active step title & badge */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#e4f222]">Step {activeStep}: {STEPS[activeStep].badge}</span>
+              <h4 className="text-[16px] font-semibold text-white leading-tight mt-1">{STEPS[activeStep].title}</h4>
+            </div>
+            <span className={`px-2 py-0.5 rounded text-[9px] uppercase tracking-widest font-mono font-bold ${STEPS[activeStep].badgeColor}`}>
+              {STEPS[activeStep].badge}
+            </span>
+          </div>
+
+          {/* Dynamic Mock Data Inspector */}
+          <div className="bg-[#121214] border border-white/[0.03] rounded p-3">
+            <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-2 font-mono">💡 In-Memory Data Pipeline</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-[9px] font-mono text-zinc-500">INPUT DATA</div>
+                <div className="text-[11px] font-mono text-zinc-300 mt-0.5 font-medium truncate" title={STEPS[activeStep].input}>
+                  {STEPS[activeStep].input}
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-mono text-zinc-500">OUTPUT PAYLOAD</div>
+                <div className="text-[11px] font-mono text-zinc-300 mt-0.5 font-medium truncate" title={STEPS[activeStep].output}>
+                  {STEPS[activeStep].output}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Code Inspector Block */}
+          <div className="bg-[#121214] border border-white/[0.04] rounded overflow-hidden">
+            {/* Fake IDE Header Tab */}
+            <div className="flex items-center justify-between bg-[#18181b] border-b border-white/[0.04] px-4 py-1.5">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500/80" />
+                <span className="text-[10px] font-mono text-zinc-400 font-semibold">{CODE_SNIPPETS[activeStep].file}</span>
+              </div>
+              <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-600 font-bold">{STEPS[activeStep].classMethod}</span>
+            </div>
+
+            {/* Snippet Output */}
+            <pre className="p-4 overflow-x-auto text-[11px] font-mono text-zinc-300 leading-relaxed max-h-[170px] select-text">
+              <code>{CODE_SNIPPETS[activeStep].code}</code>
+            </pre>
+          </div>
+        </div>
+
+        {/* Right Side: Log Console emulator */}
+        <div className="md:col-span-5 flex flex-col gap-2 h-full">
+          <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 font-mono">📋 Live Daemon Log Output</div>
+
+          {/* Terminal Window container */}
+          <div className="bg-[#09090b] border border-white/[0.08] rounded flex flex-col h-[280px]">
+            {/* Header bar */}
+            <div className="flex items-center justify-between border-b border-white/[0.04] px-3.5 py-2 shrink-0">
+              <div className="flex gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-zinc-800" />
+                <span className="w-2 h-2 rounded-full bg-zinc-800" />
+                <span className="w-2 h-2 rounded-full bg-zinc-800" />
+              </div>
+              <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest font-semibold">rota-ai-daemon.log</span>
+            </div>
+
+            {/* Log viewport */}
+            <div className="flex-1 p-3.5 overflow-y-auto terminal-scrollbar space-y-2 select-text">
+              {getAccumulatedLogs().map((log, idx) => {
+                let colorClass = "text-zinc-400";
+                if (log.includes("[INFO]")) {
+                  colorClass = "text-zinc-300";
+                } else if (log.includes("[WARNING]")) {
+                  colorClass = "text-yellow-500 font-medium";
+                }
+
+                // Highlight variables/payloads inside logs
+                const formatted = log
+                  .replace(/RECORDING/g, '<span class="text-red-400 font-semibold">RECORDING</span>')
+                  .replace(/"rota ai is awsom"/g, '<span class="text-emerald-400">"rota ai is awsom"</span>')
+                  .replace(/"Rota AI is awesome."/g, '<span class="text-emerald-400 font-semibold">"Rota AI is awesome."</span>');
+
+                return (
+                  <div
+                    key={idx}
+                    className={`text-[10px] leading-relaxed font-mono ${colorClass}`}
+                    dangerouslySetInnerHTML={{ __html: formatted }}
+                  />
+                );
+              })}
+              <div ref={terminalEndRef} />
+
+              <span className="text-cyan-400 ml-1 inline-block animate-pulse font-bold text-[10px] -mt-1">▋</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
