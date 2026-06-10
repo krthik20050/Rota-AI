@@ -34,6 +34,8 @@ export function ArchitecturalDiagram({ type }: DiagramProps) {
         <AudioPipelineDiagram />
       ) : type.includes("evdev") || type.includes("ModelLoader") ? (
         <ThreadingModelDiagram />
+      ) : type.includes("Full Application Lifecycle") || type.includes("Instance Mutex") ? (
+        <FullApplicationLifecycleDiagram />
       ) : (
         <SystemOverviewDiagram />
       )}
@@ -759,6 +761,147 @@ function DictionaryOverrideDiagram() {
         {/* Auto-Learning Engine -> Storage */}
         <SketchyLine x1={90} y1={280} x2={90} y2={225} strokeDasharray="3,3" markerEnd="url(#arrow)" />
         <text x={70} y={252} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">Update JSON</text>
+      </svg>
+    </div>
+  );
+}
+
+function FullApplicationLifecycleDiagram() {
+  return (
+    <div className="min-w-[760px] mx-auto">
+      <svg viewBox="0 0 800 460" className="w-full h-auto select-none" fill="none">
+        <SVGDefs />
+
+        {/* --- SWIMLANES / COLUMN HEADERS --- */}
+        <text x={100} y={20} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs uppercase tracking-wider font-semibold">1. App Start &amp; Setup</text>
+        <text x={290} y={20} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs uppercase tracking-wider font-semibold">2. Audio Ingest (F9 Held)</text>
+        <text x={495} y={20} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs uppercase tracking-wider font-semibold">3. Transcribe &amp; Clean</text>
+        <text x={695} y={20} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs uppercase tracking-wider font-semibold">4. Input &amp; Auto-Learn</text>
+
+        {/* Dashed Separator Lines */}
+        <line x1={195} y1={10} x2={195} y2={430} stroke="#27272a" strokeWidth={1} strokeDasharray="4,4" />
+        <line x1={395} y1={10} x2={395} y2={430} stroke="#27272a" strokeWidth={1} strokeDasharray="4,4" />
+        <line x1={595} y1={10} x2={595} y2={430} stroke="#27272a" strokeWidth={1} strokeDasharray="4,4" />
+
+        {/* --- COLUMN 1: STARTUP --- */}
+        {/* App Init & Mutex */}
+        <SketchyRect x={20} y={40} width={160} height={55} stroke="#a1a1aa" fill="#a1a1aa" fillOpacity={0.03} />
+        <text x={100} y={63} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">App Init &amp; Mutex</text>
+        <text x={100} y={80} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">instance_guard.py</text>
+
+        {/* Health Check */}
+        <SketchyRect x={20} y={125} width={160} height={55} stroke="#a1a1aa" fill="#a1a1aa" fillOpacity={0.03} />
+        <text x={100} y={148} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Health Check</text>
+        <text x={100} y={165} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">check system dependencies</text>
+
+        {/* Config & DB Setup */}
+        <SketchyRect x={20} y={210} width={160} height={55} stroke="#a1a1aa" fill="#a1a1aa" fillOpacity={0.03} />
+        <text x={100} y={233} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Config &amp; DB Setup</text>
+        <text x={100} y={250} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">rota.db / settings</text>
+
+        {/* Tray UI & Hotkey */}
+        <SketchyRect x={20} y={295} width={160} height={55} stroke="#10b981" fill="#10b981" fillOpacity={0.04} />
+        <text x={100} y={318} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Tray UI &amp; Hotkey</text>
+        <text x={100} y={335} textAnchor="middle" fill="#10b981" className="excalidraw-font text-[9px]">SetWindowsHookEx / F9</text>
+
+        {/* Arrows Col 1 */}
+        <SketchyLine x1={100} y1={95} x2={100} y2={125} markerEnd="url(#arrow)" />
+        <SketchyLine x1={100} y1={180} x2={100} y2={210} markerEnd="url(#arrow)" />
+        <SketchyLine x1={100} y1={265} x2={100} y2={295} markerEnd="url(#arrow)" />
+
+        {/* --- COLUMN 2: AUDIO CAPTURE --- */}
+        {/* sounddevice Ingest */}
+        <SketchyRect x={210} y={40} width={160} height={55} stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.04} />
+        <text x={290} y={63} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">sounddevice Ingest</text>
+        <text x={290} y={80} textAnchor="middle" fill="#3b82f6" className="excalidraw-font text-[9px]">Active Recording (F9 Held)</text>
+
+        {/* Float32 Stream */}
+        <SketchyRect x={210} y={125} width={160} height={55} stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.04} />
+        <text x={290} y={148} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Float32 Stream</text>
+        <text x={290} y={165} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">16,000 Hz mono PCM</text>
+
+        {/* Silero VAD (ONNX) */}
+        <SketchyRect x={210} y={210} width={160} height={55} stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.04} />
+        <text x={290} y={233} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Silero VAD (ONNX)</text>
+        <text x={290} y={250} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">filter speech probability</text>
+
+        {/* Recording Session */}
+        <SketchyRect x={210} y={295} width={160} height={55} stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.04} />
+        <text x={290} y={318} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Recording Session</text>
+        <text x={290} y={335} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">temporary WAV buffer</text>
+
+        {/* Arrows Col 2 */}
+        <SketchyLine x1={290} y1={95} x2={290} y2={125} markerEnd="url(#arrow)" />
+        <SketchyLine x1={290} y1={180} x2={290} y2={210} markerEnd="url(#arrow)" />
+        <SketchyLine x1={290} y1={265} x2={290} y2={295} markerEnd="url(#arrow)" />
+
+        {/* Cross-Col Arrow: Hook -> Ingest */}
+        <SketchyCurve x1={100} y1={350} qx={155} qy={380} x2={210} y2={68} markerEnd="url(#arrow)" />
+        <text x={155} y={375} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">F9 Held</text>
+
+        {/* --- COLUMN 3: TRANSCRIBE & CLEAN --- */}
+        {/* ASR Transcriber */}
+        <SketchyRect x={410} y={40} width={170} height={55} stroke="#e4f222" fill="#e4f222" fillOpacity={0.04} />
+        <text x={495} y={63} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">ASR Transcriber</text>
+        <text x={495} y={80} textAnchor="middle" fill="#e4f222" className="excalidraw-font text-[9px]">Groq / Gemini / Local</text>
+
+        {/* App Context Detector */}
+        <SketchyRect x={410} y={125} width={170} height={55} stroke="#a1a1aa" fill="#a1a1aa" fillOpacity={0.03} />
+        <text x={495} y={148} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">App Context Detector</text>
+        <text x={495} y={165} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">read active window title</text>
+
+        {/* LLM Processing Pass */}
+        <SketchyRect x={410} y={210} width={170} height={55} stroke="#e4f222" fill="#e4f222" fillOpacity={0.04} />
+        <text x={495} y={233} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">LLM Processing Pass</text>
+        <text x={495} y={250} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">casing/grammar cleanup</text>
+
+        {/* Snippets & Mappings */}
+        <SketchyRect x={410} y={295} width={170} height={55} stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.04} />
+        <text x={495} y={318} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Snippets &amp; Mappings</text>
+        <text x={495} y={335} textAnchor="middle" fill="#f59e0b" className="excalidraw-font text-[9px]">local regex override</text>
+
+        {/* Arrows Col 3 */}
+        <SketchyLine x1={495} y1={95} x2={495} y2={210} markerEnd="url(#arrow)" />
+        <SketchyLine x1={495} y1={180} x2={495} y2={210} markerEnd="url(#arrow)" />
+        <SketchyLine x1={495} y1={265} x2={495} y2={295} markerEnd="url(#arrow)" />
+
+        {/* Cross-Col Arrow: Session -> ASR */}
+        <SketchyCurve x1={290} y1={350} qx={350} qy={380} x2={410} y2={68} markerEnd="url(#arrow)" />
+        <text x={350} y={375} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">F9 Released</text>
+
+        {/* --- COLUMN 4: INJECTION & LEARN --- */}
+        {/* OS Text Injector */}
+        <SketchyRect x={610} y={40} width={170} height={55} stroke="#ef4444" fill="#ef4444" fillOpacity={0.04} />
+        <text x={695} y={63} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">OS Text Injector</text>
+        <text x={695} y={80} textAnchor="middle" fill="#ef4444" className="excalidraw-font text-[9px]">SendInput / AXUIElement</text>
+
+        {/* Active Target App */}
+        <SketchyRect x={610} y={125} width={170} height={55} stroke="#a1a1aa" fill="#a1a1aa" fillOpacity={0.03} />
+        <text x={695} y={148} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Active Target App</text>
+        <text x={695} y={165} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">types text at cursor focus</text>
+
+        {/* Auto-Learning */}
+        <SketchyRect x={610} y={210} width={170} height={55} stroke="#ef4444" fill="#ef4444" fillOpacity={0.04} />
+        <text x={695} y={233} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Auto-Learning</text>
+        <text x={695} y={250} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">background learn_from_text()</text>
+
+        {/* Personal Dictionary */}
+        <SketchyRect x={610} y={295} width={170} height={55} stroke="#10b981" fill="#10b981" fillOpacity={0.04} />
+        <text x={695} y={318} textAnchor="middle" fill="#fafafa" className="excalidraw-font text-xs font-semibold">Personal Dictionary</text>
+        <text x={695} y={335} textAnchor="middle" fill="#10b981" className="excalidraw-font text-[9px]">learned terms JSON database</text>
+
+        {/* Arrows Col 4 */}
+        <SketchyLine x1={695} y1={95} x2={695} y2={125} markerEnd="url(#arrow)" />
+        <SketchyLine x1={695} y1={180} x2={695} y2={210} markerEnd="url(#arrow)" />
+        <SketchyLine x1={695} y1={265} x2={695} y2={295} markerEnd="url(#arrow)" />
+
+        {/* Cross-Col Arrow: Snippets -> Injector */}
+        <SketchyCurve x1={495} y1={350} qx={550} qy={380} x2={610} y2={68} markerEnd="url(#arrow)" />
+        <text x={555} y={375} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">Clean Text</text>
+
+        {/* Closed-Loop Feedback Arrow: Dict -> Config DB */}
+        <SketchyCurve x1={610} y1={322} qx={350} qy={430} x2={180} y2={237} strokeDasharray="3,3" markerEnd="url(#arrow)" />
+        <text x={350} y={425} textAnchor="middle" fill="#71717a" className="excalidraw-font text-[9px]">Auto-Learn updates vocabulary context</text>
       </svg>
     </div>
   );
