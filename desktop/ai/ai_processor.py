@@ -35,6 +35,7 @@ from ai.rate_limiter import (
     _gemini_rate_limiter,
     _groq_rate_limiter,
 )
+from ai.style_profile import StyleProfile
 from ai.text_utils import (
     _build_dynamic_prompt,
     _is_too_different,
@@ -93,6 +94,11 @@ class AIProcessor:
 
         # Auto-learning personal dictionary
         self.personal_dict = PersonalDictionary()
+
+        # Cached StyleProfile — loaded once on first use (lazy), saved
+        # after each AI call if dirty (the auto-improvement system calls
+        # learn_from_correction directly on the cached instance).
+        self._style_profile: StyleProfile | None = None
 
     def update_api_keys(self, groq_key: str = "", gemini_key: str = "") -> None:
         """Update API keys at runtime (e.g. after onboarding saves new keys)."""
@@ -196,11 +202,12 @@ class AIProcessor:
         if mode == "raw":
             return text
 
-        # ── PERFORMANCE: Skip LLM call for very short text (< 5 words) ──
-        # Short dictations like "yes", "no thanks", "send" don't need an LLM
-        # round-trip (~1-3s latency). Rule-based cleanup is instant and sufficient.
+        # ── PERFORMANCE: Skip LLM call for very short text (< 6 words) ──
+        # Short dictations like "yeah yeah yeah", "yes please", "send",
+        # or simple confirmations don't need an LLM round-trip (~1-3s latency).
+        # Rule-based cleanup is instant and sufficient for short utterances.
         word_count = len(text.split())
-        if word_count < 5:
+        if word_count < 6:
             result = _rule_based_clean(text)
             logger.debug(
                 "ai_cleanup_skipped_short",
@@ -217,13 +224,15 @@ class AIProcessor:
         if backend == "rule-based":
             return _rule_based_clean(text)
 
-        # Build context-aware dynamic prompt
+        # Build context-aware dynamic prompt with style preferences
         personal_terms = self.personal_dict.get_terms()[:_MAX_PERSONAL_TERMS]  # SECURITY: cap terms
+        style_profile = self._get_style_profile()
         system_prompt = _build_dynamic_prompt(
             writing_mode=mode,
             app_context=app_context,
             field_text=field_text,
             personal_terms=personal_terms if personal_terms else None,
+            style_preferences=style_profile.to_prompt_injection(),
         )
 
         # SECURITY: Cap system prompt length
@@ -247,24 +256,65 @@ class AIProcessor:
 
         if result is not None:
             # Safety net: strip any code blocks / markdown the LLM may have generated
-            result = _sanitize_llm_output(result, text)
-            if mode == "clean" and _is_too_different(result, text):
-                logger.warning("ai_cleanup_too_different", cid=correlation_id)
+            try:
+                result = _sanitize_llm_output(result, text)
+            except Exception:
+                logger.error("sanitize_llm_output_failed", cid=correlation_id, exc_info=True)
+                return _rule_based_clean(text)
+
+            try:
+                if mode == "clean" and _is_too_different(result, text):
+                    logger.warning("ai_cleanup_too_different", cid=correlation_id)
+                    return _rule_based_clean(text)
+            except Exception:
+                logger.error(
+                    "ai_cleanup_too_different_check_failed", cid=correlation_id, exc_info=True
+                )
                 return _rule_based_clean(text)
 
             # AI Auto-Edit: second structural pass (Wispr Flow-style two-pass)
             # Only run for clean mode on long-enough text with list/structure signals
             if mode == "clean" and should_run_structure_pass(result):
-                structured = self._run_structure_pass(result, correlation_id)
-                if structured:
-                    result = structured
+                try:
+                    structured = self._run_structure_pass(result, correlation_id)
+                    if structured:
+                        result = structured
+                except Exception:
+                    logger.error("structure_pass_failed", cid=correlation_id, exc_info=True)
 
             # Auto-learn from the polished output
-            self.personal_dict.learn_from_text(result)
+            try:
+                self.personal_dict.learn_from_text(result)
+            except Exception:
+                logger.error("personal_dict_learn_failed", cid=correlation_id, exc_info=True)
+
+            # Save style profile (will be overwritten atomically)
+            try:
+                style_profile.save()
+            except Exception:
+                pass
+
             return result
 
         # Final fallback: rule-based clean
         return _rule_based_clean(text)
+
+    # ------------------------------------------------------------------
+    # Cached StyleProfile — avoids disk I/O on every dictation
+    # ------------------------------------------------------------------
+
+    def _get_style_profile(self) -> StyleProfile:
+        """
+        Return the cached StyleProfile, loading from disk on first use.
+
+        Once loaded, the profile stays in memory. The auto-improvement
+        system calls learn_from_correction() directly on this cached
+        instance, and save() only writes to disk when the dirty flag
+        is set — so no periodic reload is needed.
+        """
+        if self._style_profile is None:
+            self._style_profile = StyleProfile.load()
+        return self._style_profile
 
     # ------------------------------------------------------------------
     # AI Auto-Edit: second structural pass (Wispr Flow two-pass architecture)
@@ -279,9 +329,19 @@ class AIProcessor:
         wrapped = f'TEXT TO STRUCTURE:\n"""\n{text}\n"""'
         result = self._cloud_cascade(wrapped, _AUTO_STRUCTURE_PROMPT, "clean", correlation_id)
         if result:
-            result = _sanitize_llm_output(result, text)
-            if not _is_too_different(result, text):
-                logger.debug("structure_pass_ok", cid=correlation_id)
+            try:
+                result = _sanitize_llm_output(result, text)
+            except Exception:
+                logger.error("structure_pass_sanitize_failed", cid=correlation_id, exc_info=True)
+                return None
+            try:
+                if not _is_too_different(result, text):
+                    logger.debug("structure_pass_ok", cid=correlation_id)
+                    return result
+            except Exception:
+                logger.error(
+                    "structure_pass_too_different_check_failed", cid=correlation_id, exc_info=True
+                )
                 return result
             logger.warning("structure_pass_too_different", cid=correlation_id)
         return None

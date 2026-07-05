@@ -208,31 +208,6 @@ def _rule_based_clean(text: str) -> str:
     return text
 
 
-# Window title substrings → override category for browser/web apps
-_TITLE_CONTEXT_OVERRIDES: list[tuple[str, str]] = [
-    ("gmail", "email"),
-    ("outlook", "email"),
-    ("mail", "email"),
-    ("inbox", "email"),
-    ("superhuman", "email"),
-    ("hey.com", "email"),
-    ("slack", "chat"),
-    ("discord", "chat"),
-    ("whatsapp", "chat"),
-    ("telegram", "chat"),
-    ("messenger", "chat"),
-    ("teams", "chat"),
-    ("github", "editor"),
-    ("gitlab", "editor"),
-    ("linear", "editor"),
-    ("jira", "editor"),
-    ("notion", "document"),
-    ("obsidian", "document"),
-    ("docs.google", "document"),
-    ("google docs", "document"),
-    ("word", "document"),
-]
-
 # Map categories that don't have explicit _CONTEXT_RULES keys
 _CATEGORY_CONTEXT_MAP: dict[str, str] = {
     "office": "document",
@@ -246,6 +221,7 @@ def _build_dynamic_prompt(
     app_context=None,
     field_text: str = "",
     personal_terms: list[str] | None = None,
+    style_preferences: str = "",
 ) -> str:
     """
     Build a context-aware system prompt dynamically for each dictation.
@@ -267,14 +243,9 @@ def _build_dynamic_prompt(
         app_name = getattr(app_context, "app_name", "") or ""
         tone = getattr(app_context, "tone", "neutral") or "neutral"
 
-        # Override category based on window title for browser/Electron apps
-        title_lower = app_name.lower()
-        for title_hint, override_category in _TITLE_CONTEXT_OVERRIDES:
-            if title_hint in title_lower:
-                category = override_category
-                break
-
-        # Map categories without explicit _CONTEXT_RULES entries
+        # Note: Category overrides are now handled in app_detector.py's _classify(),
+        # so by the time we get here, 'category' already reflects window-title context.
+        # Only fall through for categories without explicit _CONTEXT_RULES entries.
         category = _CATEGORY_CONTEXT_MAP.get(category, category)
 
         context_rules = _CONTEXT_RULES.get(category, _CONTEXT_RULES["other"])
@@ -304,6 +275,10 @@ def _build_dynamic_prompt(
             f"The user frequently uses these specific terms. Preserve their exact "
             f"spelling and capitalization when they appear in the transcript:\n{terms_str}"
         )
+
+    # Inject per-user style preferences (learned over time from corrections)
+    if style_preferences and style_preferences.strip():
+        parts.append(style_preferences)
 
     # Always append the security block — no mode should miss it
     parts.append(_SECURITY_BLOCK)

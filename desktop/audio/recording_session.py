@@ -5,6 +5,10 @@ from collections.abc import Generator
 from dataclasses import dataclass, field
 from typing import Any
 
+from utils.log import get_logger
+
+logger = get_logger(__name__)
+
 
 @dataclass
 class RecordingSession:
@@ -47,6 +51,13 @@ class RecordingSession:
                     idle_count += 1
                     if idle_count >= idle_timeouts:
                         break
+                continue
+            except Exception:
+                # Queue corruption (e.g., ValueError from a poisoned queue)
+                # should never crash the recording. Create a fresh queue
+                # and continue so the processor thread can drain safely.
+                logger.exception("audio_queue_get_failed_creating_replacement")
+                self.audio_queue = queue.Queue()
                 continue
             if chunk is None:
                 break

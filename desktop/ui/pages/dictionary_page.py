@@ -15,8 +15,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui.components.flow_layout import FlowLayout
-
 _DICT_PATH = Path(__file__).parent.parent.parent / "data" / "dictionary.json"
 
 
@@ -107,7 +105,9 @@ class DictionaryPage(QWidget):
         suggestion_lay.addWidget(self._suggestion_icon)
         self._suggestion_text = QLabel("")
         self._suggestion_text.setWordWrap(True)
-        self._suggestion_text.setStyleSheet("color: #86EFAC; font-size: 12px; background: transparent;")
+        self._suggestion_text.setStyleSheet(
+            "color: #86EFAC; font-size: 12px; background: transparent;"
+        )
         suggestion_lay.addWidget(self._suggestion_text, 1)
         self._suggestion_add_btn = QPushButton("Add to Dictionary")
         self._suggestion_add_btn.setObjectName("SuggestionAddBtn")
@@ -129,7 +129,9 @@ class DictionaryPage(QWidget):
             "QPushButton:hover { color: #F87171; }"
         )
         self._suggestion_dismiss_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._suggestion_dismiss_btn.clicked.connect(lambda: self._suggestion_panel.setVisible(False))
+        self._suggestion_dismiss_btn.clicked.connect(
+            lambda: self._suggestion_panel.setVisible(False)
+        )
         suggestion_lay.addWidget(self._suggestion_dismiss_btn)
         lay.addWidget(self._suggestion_panel)
 
@@ -141,7 +143,9 @@ class DictionaryPage(QWidget):
         self._dict_container.setObjectName("DictContainer")
         self._dict_container.setStyleSheet("background: transparent;")
         self._dict_container.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self._dict_flow_layout = FlowLayout(self._dict_container, hspacing=8, vspacing=8)
+        self._dict_layout = QVBoxLayout(self._dict_container)
+        self._dict_layout.setContentsMargins(0, 0, 0, 0)
+        self._dict_layout.setSpacing(8)
         self._dict_scroll.setWidget(self._dict_container)
         lay.addWidget(self._dict_scroll, 1)
 
@@ -205,7 +209,9 @@ class DictionaryPage(QWidget):
         if hasattr(self, "_dict_search_input"):
             search_term = self._dict_search_input.text().strip().lower()
         # Filter
-        filtered_words = [w for w in words if search_term in w.lower()] if search_term else list(words)
+        filtered_words = (
+            [w for w in words if search_term in w.lower()] if search_term else list(words)
+        )
         # Sort: newest first = reverse insertion order (last added = most recent)
         if self._sort_newest:
             filtered_words.reverse()
@@ -213,8 +219,8 @@ class DictionaryPage(QWidget):
             self._dict_count_lbl.setText(
                 f"{len(filtered_words)} word{'s' if len(filtered_words) != 1 else ''}"
             )
-        while self._dict_flow_layout.count():
-            item = self._dict_flow_layout.takeAt(0)
+        while self._dict_layout.count():
+            item = self._dict_layout.takeAt(0)
             w = item.widget()
             if w:
                 w.deleteLater()
@@ -226,10 +232,20 @@ class DictionaryPage(QWidget):
             )
             empty.setObjectName("Subtitle")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self._dict_flow_layout.addWidget(empty)
+            self._dict_layout.addWidget(empty)
             return
-        for word in filtered_words:
-            self._dict_flow_layout.addWidget(self._create_word_chip(word))
+        # Group words into rows of up to 5 chips for a grid-like layout
+        row_widget = None
+        row_layout = None
+        for i, word in enumerate(filtered_words):
+            if i % 5 == 0:
+                row_widget = QWidget()
+                row_widget.setStyleSheet("background: transparent;")
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(8)
+                self._dict_layout.addWidget(row_widget)
+            row_layout.addWidget(self._create_word_chip(word))
 
     def _dict_add_word(self):
         word = self._dict_input.text().strip()
@@ -270,9 +286,7 @@ class DictionaryPage(QWidget):
         )
         self._suggestion_add_btn.setVisible(True)
         self._suggestion_add_btn.clicked.disconnect()
-        self._suggestion_add_btn.clicked.connect(
-            lambda: self._add_suggestion_word(suggested)
-        )
+        self._suggestion_add_btn.clicked.connect(lambda: self._add_suggestion_word(suggested))
         self._suggestion_panel.setVisible(True)
 
     def _add_suggestion_word(self, word: str):
@@ -286,6 +300,6 @@ class DictionaryPage(QWidget):
                 vocab.append(word)
                 data["vocabulary"] = vocab
                 self._dict_save(data)
-        self._suggestion_text.setText(f"✅ Added <b>\"{word}\"</b> to dictionary!")
+        self._suggestion_text.setText(f'✅ Added <b>"{word}"</b> to dictionary!')
         self._suggestion_add_btn.setVisible(False)
         self._dict_refresh()

@@ -9,7 +9,11 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # SECURITY: Maximum injection length to prevent abuse
-_MAX_INJECT_LENGTH = 5000  # characters
+# Raised from 5000 → 100000 after user reports of long transcription data loss.
+# Very long text (~100K chars = ~15-20 min dictation) is still injected via
+# clipboard + Ctrl+V which works reliably in modern apps. The old 5000 limit
+# silently discarded user data.
+_MAX_INJECT_LENGTH = 100000  # characters
 
 # SECURITY: Terminal process names — injecting here can execute arbitrary commands
 _TERMINAL_PROCESS_NAMES = frozenset(
@@ -114,7 +118,13 @@ class TextInjector:
 
         # SECURITY: Enforce maximum injection length
         if len(text) > _MAX_INJECT_LENGTH:
-            logger.warning("injection_too_long", length=len(text), max=_MAX_INJECT_LENGTH)
+            logger.warning(
+                "injection_too_long",
+                length=len(text),
+                max=_MAX_INJECT_LENGTH,
+                truncated_to=_MAX_INJECT_LENGTH,
+                correlation_id=correlation_id,
+            )
             text = text[:_MAX_INJECT_LENGTH]
 
         # Log a warning when injecting into terminals (informational only — not blocked).
@@ -126,6 +136,7 @@ class TextInjector:
 
         previous_clipboard = None
         hwnd_before = None
+        _injection_succeeded = False
         try:
             # Save current clipboard for undo capability.
             try:
@@ -151,19 +162,45 @@ class TextInjector:
 
             if field_info:
                 try:
-                    from injection.field_detector import restore_focus_and_click
+                    from injection.field_detector import (
+                        focus_text_input,
+                        restore_focus_and_click,
+                        scan_for_text_inputs,
+                    )
 
                     restored = restore_focus_and_click(field_info)
                     if not restored:
                         logger.warning(
-                            "focus_restore_skipped_or_failed", correlation_id=correlation_id
+                            "focus_restore_failed",
+                            correlation_id=correlation_id,
+                            hwnd=field_info.get("hwnd"),
                         )
+                        # Fallback: scan for text inputs in the target window
+                        target_hwnd = field_info.get("hwnd")
+                        if target_hwnd:
+                            text_inputs = scan_for_text_inputs(target_hwnd)
+                            if text_inputs:
+                                logger.info(
+                                    "text_input_scan_fallback",
+                                    candidates=len(text_inputs),
+                                    best_class=text_inputs[0].get("class_name"),
+                                    correlation_id=correlation_id,
+                                )
+                                focus_text_input(text_inputs[0])
                 except Exception:
                     logger.exception("focus_restore_failed", correlation_id=correlation_id)
 
-            time.sleep(0.05)  # Increased from 10ms — gives slow apps time to register focus
+            # Scale delays by text length — short text pastes near-instantly,
+            # long text needs more time for the target app to render.
+            text_len = len(text)
+            focus_delay = 0.02 if text_len < 100 else (0.04 if text_len < 500 else 0.08)
+            hold_delay = 0.008 if text_len < 100 else (0.015 if text_len < 500 else 0.025)
+            paste_delay = 0.03 if text_len < 100 else (0.05 if text_len < 500 else 0.10)
 
-            for attempt in range(3):  # Increased from 2 — one more retry for reliability
+            time.sleep(focus_delay)
+
+            max_attempts = 2 if text_len < 100 else 3
+            for attempt in range(max_attempts):
                 try:
                     # Send Ctrl+V using native Windows keybd_event.
                     # WHY: Avoids importing/using python-keyboard package which initializes
@@ -172,13 +209,13 @@ class TextInjector:
                     VK_V = 0x56
                     KEYEVENTF_KEYUP = 0x0002
                     ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 0, 0)
-                    time.sleep(0.005)  # Small delay between key down for reliability
+                    time.sleep(0.003)  # Small delay between key down
                     ctypes.windll.user32.keybd_event(VK_V, 0, 0, 0)
-                    time.sleep(0.02)  # Increased from 10ms — hold keys longer for slow apps
+                    time.sleep(hold_delay)
                     ctypes.windll.user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
-                    time.sleep(0.005)
+                    time.sleep(0.003)
                     ctypes.windll.user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
-                    time.sleep(0.08)  # Increased from 50ms — more time for paste to register
+                    time.sleep(paste_delay)
                     logger.info(
                         "text_injected",
                         correlation_id=correlation_id,
@@ -189,6 +226,7 @@ class TextInjector:
                     self._last_injected_field_info = field_info or {}
                     self._last_injected_hwnd = hwnd_before
                     self._last_injected_correlation_id = correlation_id
+                    _injection_succeeded = True
                     return True, "Text injected successfully."
                 except Exception:
                     logger.error(
@@ -210,15 +248,40 @@ class TextInjector:
             return False, "Injection failed"
 
         finally:
-            # Restore previous clipboard. Wait an additional 100 ms here so
-            # slow apps (Electron, browsers) have time to process the Ctrl+V
-            # message before we overwrite the clipboard contents.
-            if previous_clipboard is not None:
-                try:
-                    time.sleep(0.1)
-                    pyperclip.copy(previous_clipboard)
-                except Exception:
-                    pass
+            # Defer clipboard restore — store state for deferred execution.
+            # The caller (processing_pipeline_mixin) will invoke
+            # restore_clipboard() via QTimer.singleShot(0, ...) so the UI
+            # doesn't block during the restore delay.
+            self._pending_clipboard_restore = previous_clipboard
+            self._pending_injection_succeeded = _injection_succeeded
+            self._pending_restore_text_len = len(text)
+
+    def restore_clipboard(self) -> None:
+        """
+        Perform deferred clipboard restore after injection.
+
+        Called from the main Qt thread via QTimer.singleShot(0, ...) so the
+        time.sleep(restore_delay) does NOT block the event loop during
+        injection. Must be called AFTER inject() returns.
+        """
+        clipboard = getattr(self, "_pending_clipboard_restore", None)
+        succeeded = getattr(self, "_pending_injection_succeeded", False)
+        text_len = getattr(self, "_pending_restore_text_len", 0)
+        self._pending_clipboard_restore = None
+        self._pending_injection_succeeded = False
+        self._pending_restore_text_len = 0
+
+        if clipboard is None:
+            return
+        # Only restore on success — on failure, text stays in clipboard
+        if not succeeded:
+            return
+        try:
+            restore_delay = min(0.8, 0.1 + (text_len / 100000.0) * 0.7)
+            time.sleep(restore_delay)
+            pyperclip.copy(clipboard)
+        except Exception:
+            pass
 
     def undo_last_inject(self) -> tuple[bool, str]:
         """

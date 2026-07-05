@@ -35,7 +35,11 @@ logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # SECURITY: Maximum injection length to prevent abuse
-_MAX_INJECT_LENGTH = 5000  # characters
+# Raised from 5000 → 100000 after user reports of long transcription data loss.
+# Very long text (~100K chars = ~15-20 min dictation) is still injected via
+# clipboard + Cmd+V which works reliably in modern apps. The old 5000 limit
+# silently discarded user data.
+_MAX_INJECT_LENGTH = 100000  # characters
 
 # SECURITY: Terminal / shell process names — injecting here can execute commands.
 # Only used for informational warnings; injection is not blocked.
@@ -478,7 +482,13 @@ class TextInjector:
 
         # SECURITY: Enforce maximum injection length.
         if len(text) > _MAX_INJECT_LENGTH:
-            logger.warning("injection_too_long", length=len(text), max=_MAX_INJECT_LENGTH)
+            logger.warning(
+                "injection_too_long",
+                length=len(text),
+                max=_MAX_INJECT_LENGTH,
+                truncated_to=_MAX_INJECT_LENGTH,
+                correlation_id=correlation_id,
+            )
             text = text[:_MAX_INJECT_LENGTH]
 
         # Log a warning when injecting into terminals.
@@ -511,6 +521,7 @@ class TextInjector:
 
         # Take a snapshot for restore
         _ClipboardSnapshot.save()
+        _injection_succeeded = False
 
         try:
             # Restore focus to target app
@@ -522,6 +533,7 @@ class TextInjector:
                     self._last_injected_text = text
                     self._last_injected_field_info = field_info or {}
                     self._last_injected_correlation_id = correlation_id
+                    _injection_succeeded = True
                     return True, "Text injected via AXUIElement"
 
             if not use_paste_shortcut:
@@ -533,6 +545,7 @@ class TextInjector:
                 self._last_injected_text = text
                 self._last_injected_field_info = field_info or {}
                 self._last_injected_correlation_id = correlation_id
+                _injection_succeeded = True
                 return True, "Text injected via AppleScript"
 
             # Tier 3: pynput Cmd+V
@@ -540,6 +553,7 @@ class TextInjector:
                 self._last_injected_text = text
                 self._last_injected_field_info = field_info or {}
                 self._last_injected_correlation_id = correlation_id
+                _injection_succeeded = True
                 return True, "Text injected via pynput"
 
             # Tier 4: character-by-character typing
@@ -547,6 +561,7 @@ class TextInjector:
                 self._last_injected_text = text
                 self._last_injected_field_info = field_info or {}
                 self._last_injected_correlation_id = correlation_id
+                _injection_succeeded = True
                 return True, "Text typed character by character"
 
             return False, "All injection methods failed"
@@ -556,21 +571,59 @@ class TextInjector:
             return False, f"Injection failed: {exc}"
 
         finally:
-            # Always restore the clipboard snapshot if one was taken, so stale
-            # snapshot data never leaks into the next injection call.
-            had_rich_data = bool(_ClipboardSnapshot._types_and_data)
+            # Defer clipboard restore — store state for deferred execution.
+            # The caller (processing_pipeline_mixin) will invoke
+            # restore_clipboard() via QTimer.singleShot(0, ...) so the UI
+            # doesn't block during the restore delay.
+            self._pending_clipboard_snapshot = list(_ClipboardSnapshot._types_and_data)
+            self._pending_undo_content = self._last_undo_content
+            self._pending_injection_succeeded = _injection_succeeded
+            self._pending_restore_text_len = len(text)
+            # Always clear the live snapshot — it will be re-created next call
+            _ClipboardSnapshot._types_and_data = []
+
+    def restore_clipboard(self) -> None:
+        """
+        Perform deferred clipboard restore after injection.
+
+        Called from the main Qt thread via QTimer.singleShot(0, ...) so the
+        time.sleep(restore_delay) does NOT block the event loop during
+        injection. Must be called AFTER inject() returns.
+        """
+        succeeded = getattr(self, "_pending_injection_succeeded", False)
+        text_len = getattr(self, "_pending_restore_text_len", 0)
+        self._pending_injection_succeeded = False
+        self._pending_restore_text_len = 0
+
+        if not succeeded:
+            self._pending_clipboard_snapshot = []
+            self._pending_undo_content = None
+            return
+
+        try:
+            restore_delay = min(0.8, 0.1 + (text_len / 100000.0) * 0.7)
+            time.sleep(restore_delay)
+
+            snapshot = getattr(self, "_pending_clipboard_snapshot", [])
+            undo_content = getattr(self, "_pending_undo_content", None)
+
+            had_rich_data = bool(snapshot)
             if had_rich_data:
                 try:
-                    time.sleep(0.1)
+                    _ClipboardSnapshot._types_and_data = list(snapshot)
                     _ClipboardSnapshot.restore()
                 except Exception:
-                    _ClipboardSnapshot._types_and_data = []
-            if self._last_undo_content is not None and not had_rich_data:
+                    pass
+            if undo_content is not None and not had_rich_data:
                 try:
-                    time.sleep(0.1)
-                    _clipboard_copy(self._last_undo_content)
+                    _clipboard_copy(undo_content)
                 except Exception:
                     pass
+        except Exception:
+            pass
+        finally:
+            self._pending_clipboard_snapshot = []
+            self._pending_undo_content = None
 
     def undo_last_inject(self) -> tuple[bool, str]:
         """Undo the last injection by restoring the previous clipboard content."""

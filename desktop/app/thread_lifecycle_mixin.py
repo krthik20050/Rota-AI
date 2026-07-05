@@ -98,10 +98,11 @@ class ThreadLifecycleMixin:
         if thread is None or not thread.isRunning():
             return True
 
-        try:
-            session.audio_queue.put_nowait(None)
-        except Exception:
-            pass
+        # Do NOT send a None sentinel here — recorder.stop() already sends one
+        # via target_session.audio_queue.put(None) when the session is stopped.
+        # Sending another None creates a duplicate sentinel that wastes queue memory.
+        # The isInterruptionRequested() check in processor_thread.run() handles
+        # cancellation within 250ms (iter_chunks timeout).
 
         thread.requestInterruption()
         thread.quit()

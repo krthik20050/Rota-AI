@@ -78,7 +78,15 @@ class TestMacOSCheckRow:
         from ui.macos_first_run import _CheckRow
 
         row = _CheckRow(
-            CheckResult(key="portaudio", label="P", detail="Ready", ok=True, critical=True, can_install=False, needs_user=False)
+            CheckResult(
+                key="portaudio",
+                label="P",
+                detail="Ready",
+                ok=True,
+                critical=True,
+                can_install=False,
+                needs_user=False,
+            )
         )
         assert row._icon.text() == "✓"
         assert row._btn.isHidden()
@@ -89,7 +97,15 @@ class TestMacOSCheckRow:
         from ui.macos_first_run import _CheckRow
 
         row = _CheckRow(
-            CheckResult(key="pyobjc", label="PyObjC", detail="Missing", ok=False, critical=True, can_install=True, needs_user=False)
+            CheckResult(
+                key="pyobjc",
+                label="PyObjC",
+                detail="Missing",
+                ok=False,
+                critical=True,
+                can_install=True,
+                needs_user=False,
+            )
         )
         assert row._icon.text() == "●"
         # Use isHidden() instead of isVisible() — child widgets need a shown parent
@@ -102,7 +118,15 @@ class TestMacOSCheckRow:
         from ui.macos_first_run import _CheckRow
 
         row = _CheckRow(
-            CheckResult(key="portaudio", label="P", detail="Not found", ok=False, critical=True, can_install=True, needs_user=False)
+            CheckResult(
+                key="portaudio",
+                label="P",
+                detail="Not found",
+                ok=False,
+                critical=True,
+                can_install=True,
+                needs_user=False,
+            )
         )
         row.set_busy()
         assert "⟳" in row._icon.text()
@@ -249,6 +273,7 @@ class TestOnboardingDialog:
 
         dialog = OnboardingDialog(config=None)
         from PySide6.QtCore import QPoint
+
         # Simulate mouse press + move (should not crash)
         event_press = MagicMock()
         event_press.button.return_value = Qt.MouseButton.LeftButton
@@ -308,8 +333,8 @@ class TestPillOverlay:
         pill._audio_level = 0.5
         pill.set_state(PillState.TRANSCRIBING)
         assert pill.get_state() == PillState.TRANSCRIBING
-        # Mouse events should be disabled after recording
-        assert pill.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        # Mouse events are enabled for drag repositioning in all visible states
+        assert not pill.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def test_state_transition_done(self):
         _ensure_app()
@@ -382,6 +407,7 @@ class TestPillOverlay:
 
         # Simulate click in cancel zone (left)
         from unittest.mock import MagicMock
+
         event = MagicMock()
         event.position.return_value.x.return_value = 5
         pill.mousePressEvent(event)
@@ -429,6 +455,7 @@ class TestToast:
 
         toast = Toast("Click me", on_click=_on_click, duration_ms=5000)
         from unittest.mock import MagicMock
+
         event = MagicMock()
         toast.mousePressEvent(event)
         assert len(clicked) == 1
@@ -444,6 +471,7 @@ class TestToast:
         assert toast.isVisible()
         # Process Qt events so the QTimer.singleShot(100, close) actually fires
         import time
+
         deadline = time.monotonic() + 3.0
         while toast.isVisible() and time.monotonic() < deadline:
             QApplication.processEvents()
@@ -463,8 +491,10 @@ class TestToast:
 class TestBackendFallbackToasts:
     """Tests for _maybe_notify_backend_fallback error message classification.
 
-    Tests that each error category produces the correct toast message
-    without making network calls or needing a full application instance.
+    New behavior (silent fallback):
+    - Only FAIL_GROQ_AUTH failure codes produce a toast
+    - All other failures (rate limits, timeouts, latency, generic) are silent
+    - The system recovers automatically within _GROQ_RECOVERY_COOLDOWN (30s)
     """
 
     @staticmethod
@@ -474,6 +504,8 @@ class TestBackendFallbackToasts:
 
         app = MagicMock()
         app.transcriber = MagicMock()
+        # Default: no failure code so tests fall through to backend/reason check
+        app.transcriber.consume_last_failure_code.return_value = None
         return app
 
     def _bind_method(self, app):
@@ -508,64 +540,99 @@ class TestBackendFallbackToasts:
         app._maybe_notify_backend_fallback()
         app.show_toast.assert_not_called()
 
-    def test_latency_fallback(self):
+    # ── Silent failures (no toast) ──
+
+    def test_latency_fallback_silent(self):
+        """Latency-based fallback is handled silently — no toast."""
         app = self._make_mock_app()
         self._bind_method(app)
         app.transcriber.consume_backend_event.return_value = ("local", "latency=4.2")
         app._maybe_notify_backend_fallback()
-        app.show_toast.assert_called_once()
-        msg = app.show_toast.call_args[0][0]
-        assert "slow" in msg.lower()
+        app.show_toast.assert_not_called()
 
-    def test_rate_limit_detected(self):
+    def test_rate_limit_silent(self):
+        """Rate-limit fallback is handled silently — no toast."""
         app = self._make_mock_app()
         self._bind_method(app)
-        for reason in ["429 Too Many Requests", "rate limit hit", "quota exceeded", "too many requests from this"]:
+        for reason in [
+            "429 Too Many Requests",
+            "rate limit hit",
+            "quota exceeded",
+            "too many requests from this",
+        ]:
             app.transcriber.consume_backend_event.return_value = ("local", reason)
             app.show_toast.reset_mock()
             app._maybe_notify_backend_fallback()
-            app.show_toast.assert_called_once()
-            msg = app.show_toast.call_args[0][0]
-            assert any(t in msg.lower() for t in ("rate limit", "too many", "quota")), f"Failed for reason: {reason}"
+            app.show_toast.assert_not_called()
 
-    def test_invalid_key_detected(self):
-        app = self._make_mock_app()
-        self._bind_method(app)
-        for reason in ["401 Unauthorized", "unauthorized", "invalid api key"]:
-            app.transcriber.consume_backend_event.return_value = ("local", reason)
-            app.show_toast.reset_mock()
-            app._maybe_notify_backend_fallback()
-            app.show_toast.assert_called_once()
-            msg = app.show_toast.call_args[0][0]
-            assert any(t in msg.lower() for t in ("invalid", "unauthorized")), f"Failed for reason: {reason}"
-
-    def test_invalid_key_shows_warning(self):
-        app = self._make_mock_app()
-        self._bind_method(app)
-        app.transcriber.consume_backend_event.return_value = ("local", "invalid key")
-        app._maybe_notify_backend_fallback()
-        kwargs = app.show_toast.call_args[1]
-        assert kwargs.get("warning") is True
-
-    def test_timeout_detected(self):
+    def test_timeout_silent(self):
+        """Timeout fallback is handled silently — no toast."""
         app = self._make_mock_app()
         self._bind_method(app)
         for reason in ["timeout error", "connection timed out"]:
             app.transcriber.consume_backend_event.return_value = ("local", reason)
             app.show_toast.reset_mock()
             app._maybe_notify_backend_fallback()
-            app.show_toast.assert_called_once()
-            msg = app.show_toast.call_args[0][0]
-            assert "time" in msg.lower()
+            app.show_toast.assert_not_called()
 
-    def test_generic_fallback(self):
+    def test_generic_fallback_silent(self):
+        """Generic fallback is handled silently — no toast."""
         app = self._make_mock_app()
         self._bind_method(app)
-        app.transcriber.consume_backend_event.return_value = ("local", "some unknown error occurred")
+        app.transcriber.consume_backend_event.return_value = (
+            "local",
+            "some unknown error occurred",
+        )
+        app._maybe_notify_backend_fallback()
+        app.show_toast.assert_not_called()
+
+    # ── Auth failures (only ones that show toasts) ──
+
+    def _set_auth_failure(self, app):
+        """Set up mocks for an auth failure scenario."""
+        from app.processor_thread import FAIL_GROQ_AUTH
+
+        app.transcriber.consume_last_failure_code.return_value = FAIL_GROQ_AUTH
+        # consume_backend_event is also called (but returns before unpacking on auth path)
+        app.transcriber.consume_backend_event.return_value = ("", "")
+
+    def _set_failure_code(self, app, code):
+        """Set up mocks for a non-auth failure code."""
+        app.transcriber.consume_last_failure_code.return_value = code
+        app.transcriber.consume_backend_event.return_value = ("", "")
+
+    def test_auth_failure_shows_toast(self):
+        """FAIL_GROQ_AUTH is the only failure code that produces a toast."""
+        app = self._make_mock_app()
+        self._bind_method(app)
+        self._set_auth_failure(app)
         app._maybe_notify_backend_fallback()
         app.show_toast.assert_called_once()
-        msg = app.show_toast.call_args[0][0]
-        assert "unavailable" in msg.lower()
+
+    def test_auth_failure_shows_warning(self):
+        """Auth failure toast should have warning=True."""
+        app = self._make_mock_app()
+        self._bind_method(app)
+        self._set_auth_failure(app)
+        app._maybe_notify_backend_fallback()
+        kwargs = app.show_toast.call_args[1]
+        assert kwargs.get("warning") is True
+
+    def test_other_failure_code_silent(self):
+        """Non-auth failure codes (e.g. rate limit, timeout) are silent."""
+        from app.processor_thread import FAIL_GROQ_RATE_LIMIT, FAIL_GROQ_TIMEOUT
+
+        for code in [
+            "FAIL_GROQ_RATE_LIMIT",
+            "FAIL_TIMEOUT",
+            FAIL_GROQ_RATE_LIMIT,
+            FAIL_GROQ_TIMEOUT,
+        ]:
+            app = self._make_mock_app()
+            self._bind_method(app)
+            self._set_failure_code(app, code)
+            app._maybe_notify_backend_fallback()
+            app.show_toast.assert_not_called()
 
 
 # ===================================================================

@@ -147,7 +147,12 @@ def set_pill_window_region(win_id: int, width: int, height: int, radius: int) ->
         # x1,y1 = top-left, x2,y2 = bottom-right (exclusive)
         # CreateRoundRectRgn right/bottom are exclusive — pass exact dimensions
         region = ctypes.windll.gdi32.CreateRoundRectRgn(
-            0, 0, width, height, radius * 2, radius * 2,
+            0,
+            0,
+            width,
+            height,
+            radius * 2,
+            radius * 2,
         )
         if region:
             ctypes.windll.user32.SetWindowRgn(hwnd, region, True)
@@ -252,7 +257,7 @@ def draw_done(
 def draw_recording_controls(painter: QPainter, width: float, height: float) -> None:
     """Draw cancel (✕) button left, stop (■) button right."""
     cy = height / 2.0
-    btn_r = 12.0
+    btn_r = height * 0.3  # Scale button radius to pill height (~9 for HEIGHT=30)
     cx_cancel = height / 2.0
     cx_stop = width - height / 2.0
 
@@ -261,7 +266,7 @@ def draw_recording_controls(painter: QPainter, width: float, height: float) -> N
     painter.setBrush(QColor(255, 255, 255, 22))
     painter.drawEllipse(QPointF(cx_cancel, cy), btn_r, btn_r)
     # X lines
-    off = 4.5
+    off = height * 0.12  # Scale X offset to pill height (~3.6 for HEIGHT=30)
     pen = QPen(QColor(255, 255, 255, 200), 1.5)
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     painter.setPen(pen)
@@ -274,7 +279,7 @@ def draw_recording_controls(painter: QPainter, width: float, height: float) -> N
     painter.setBrush(QColor(220, 48, 48))
     painter.drawEllipse(QPointF(cx_stop, cy), btn_r, btn_r)
     # Stop square icon
-    sq = 9.0
+    sq = height * 0.23  # Scale square to pill height (~7 for HEIGHT=30)
     painter.setBrush(QColor(255, 255, 255, 245))
     r = 2.0
     painter.drawRoundedRect(QRectF(cx_stop - sq / 2, cy - sq / 2, sq, sq), r, r)

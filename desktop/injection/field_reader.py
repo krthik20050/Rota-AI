@@ -1,173 +1,190 @@
 """
-Read text from the currently focused input field using Windows UI Automation.
+Field text reader — reads existing text from the focused window before injection.
 
-Used to provide continuity context to the AI cleanup LLM — so it knows what
-the user has already typed and can continue naturally from that point.
+Uses a layered approach (best → fallback):
+1. UIA via pywin32 (Chrome, VS Code, Electron, WPF — modern apps)
+2. WM_GETTEXT via ctypes (Notepad, terminals, Qt/WinForms — standard controls)
+3. Empty string (graceful degradation)
 
-Architecture:
-  - Uses the IUIAutomation COM interface via comtypes
-  - Falls back to reading clipboard + selected text if UIA fails
-  - Never raises — returns empty string on any failure
-  - Best-effort: works well with native Win32 controls, Electron apps,
-    and most browsers. Some custom controls may not expose text.
+All wrapped in try/except so failure never blocks the pipeline.
 """
 
 from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes
+import sys
 
-from utils.log import get_logger
+# WM_GETTEXT constant
+WM_GETTEXT = 0x000D
 
-logger = get_logger(__name__)
-
-user32 = ctypes.windll.user32
+_user32 = None
 
 
-def get_field_text() -> str:
+def _ensure_user32():
+    global _user32
+    if _user32 is None and sys.platform == "win32":
+        try:
+            _user32 = ctypes.windll.user32
+        except Exception:
+            pass
+    return _user32
+
+
+def read_focused_field_text(max_chars: int = 500) -> str:
     """
-    Read existing text from the currently focused input field.
+    Read the existing text from the currently focused text field.
 
-    Returns the text currently in the field (what the user has already typed),
-    or empty string if unable to read.
+    Strategy (tried in order):
+    1. UIA via pywin32 (Chrome, VS Code, Electron, WPF — modern apps)
+    2. WM_GETTEXT via ctypes (Notepad, terminals, Qt/WinForms — standard controls)
+    3. Returns empty string (graceful degradation)
 
-    This context is sent to the LLM so it can maintain writing continuity
-    and match the user's existing style/tone.
+    Args:
+        max_chars: Maximum characters to read (default 500, capped for safety)
+
+    Returns:
+        The text content of the focused field, or empty string.
     """
-    # Strategy 1: Try Windows UI Automation (most reliable for modern apps)
-    text = _try_uia_text()
-    if text:
-        return text
+    if sys.platform != "win32":
+        return ""
 
-    # Strategy 2: Try WM_GETTEXT for classic Win32 Edit controls
-    text = _try_wm_gettext()
-    if text:
-        return text
+    # Layer 1: UIA (Chrome, VS Code, Electron, WPF — the modern web)
+    result = _read_focused_field_text_uia(max_chars)
+    if result:
+        return result
 
-    return ""
+    # Layer 2: WM_GETTEXT (standard Win32 controls)
+    return _read_focused_field_text_wm(max_chars)
 
 
-def _try_uia_text() -> str:
-    """Read text using IUIAutomation COM interface."""
+def _read_focused_field_text_uia(max_chars: int = 500) -> str:
+    """
+    Read field text using UI Automation (Chrome, VS Code, Electron, WPF).
+
+    Uses pywin32's win32com.client to access the UIA COM API.
+    Returns empty string on any failure so callers fall back to WM_GETTEXT.
+
+    Args:
+        max_chars: Maximum characters to read.
+
+    Returns:
+        The text content, or empty string.
+    """
+    if sys.platform != "win32":
+        return ""
+
     try:
-        import comtypes.client
+        from win32com.client import Dispatch
 
-        # Do NOT call CoInitialize/CoUninitialize here.
-        # comtypes manages COM initialization internally per-thread.
-        # Calling CoUninitialize while COM objects are still alive in local
-        # scope causes access violations on the next COM call.
+        automation = Dispatch("UIAutomation.UIAutomationClient.CUIAutomation")
+        if automation is None:
+            return ""
 
-        # Create UI Automation instance
-        uia = comtypes.client.CreateObject(
-            "{ff48dba4-60ef-4201-aa87-54103eef594e}",  # CUIAutomation CLSID
-            interface=None,
-        )
-
-        # Get the focused element
-        focused = uia.GetFocusedElement()
+        focused = automation.GetFocusedElement()
         if focused is None:
             return ""
 
-        # Try to get the Value pattern (works for text inputs)
+        # Try ValuePattern (plain text inputs — most common)
         try:
-            # UIA_ValuePatternId = 10002
             value_pattern = focused.GetCurrentPattern(10002)
-            if value_pattern is not None:
-                import comtypes.gen.UIAutomationClient
-
-                val = value_pattern.QueryInterface(
-                    comtypes.gen.UIAutomationClient.IUIAutomationValuePattern
-                )
-                text = val.CurrentValue or ""
-                if text.strip():
-                    logger.debug("uia_value_read", length=len(text))
-                    return text.strip()
+            if value_pattern:
+                text = value_pattern.CurrentValue
+                if text and text.strip():
+                    return text.strip()[:max_chars]
         except Exception:
             pass
 
-        # Try to get the Text pattern (works for rich text controls)
+        # Try TextPattern (rich text editors, code editors)
         try:
-            # UIA_TextPatternId = 10014
             text_pattern = focused.GetCurrentPattern(10014)
-            if text_pattern is not None:
-                import comtypes.gen.UIAutomationClient
+            if text_pattern:
+                doc_range = text_pattern.DocumentRange
+                if doc_range:
+                    text = doc_range.GetText(max_chars)
+                    if text and text.strip():
+                        return text.strip()[:max_chars]
+        except Exception:
+            pass
 
-                txt = text_pattern.QueryInterface(
-                    comtypes.gen.UIAutomationClient.IUIAutomationTextPattern
-                )
-                doc_range = txt.DocumentRange
-                text = doc_range.GetText(-1) or ""
-                if text.strip():
-                    logger.debug("uia_text_read", length=len(text))
-                    return text.strip()
+        # Try Name property (some controls expose content here)
+        try:
+            name = focused.CurrentName
+            if name and name.strip() and len(name) > 5:
+                return name.strip()[:max_chars]
         except Exception:
             pass
 
         return ""
 
-    except ImportError:
-        logger.debug("comtypes_not_available")
-        return ""
-    except Exception as exc:
-        logger.debug("uia_read_failed", error=str(exc))
+    except Exception:
         return ""
 
 
-def _try_wm_gettext() -> str:
-    """Read text using WM_GETTEXT message for classic Win32 controls."""
+def _read_focused_field_text_wm(max_chars: int = 500) -> str:
+    """
+    Read field text using WM_GETTEXT via ctypes (standard Win32 controls).
+
+    Covers Notepad, WordPad, Outlook compose, terminals, many Qt/WinForms
+    apps that use standard EDIT/RichEdit controls.
+
+    Args:
+        max_chars: Maximum characters to read (default 500, capped at 1000)
+
+    Returns:
+        The text content, or empty string.
+    """
+    user32 = _ensure_user32()
+    if user32 is None:
+        return ""
+
     try:
-        # Get the foreground window and its focused control
         hwnd = user32.GetForegroundWindow()
         if not hwnd:
             return ""
 
-        # Get the thread of the foreground window
         foreground_tid = user32.GetWindowThreadProcessId(hwnd, None)
-        current_tid = ctypes.windll.kernel32.GetCurrentThreadId()
+        if not foreground_tid:
+            return ""
 
-        focused_hwnd = None
+        class GUITHREADINFO(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", ctypes.wintypes.DWORD),
+                ("flags", ctypes.wintypes.DWORD),
+                ("hwndActive", ctypes.wintypes.HWND),
+                ("hwndFocus", ctypes.wintypes.HWND),
+                ("hwndCapture", ctypes.wintypes.HWND),
+                ("hwndMenuOwner", ctypes.wintypes.HWND),
+                ("hwndMoveSize", ctypes.wintypes.HWND),
+                ("hwndCaret", ctypes.wintypes.HWND),
+                ("rcCaret", ctypes.wintypes.RECT),
+            ]
 
-        # Attach to foreground thread to get its focused control
-        if foreground_tid != current_tid:
-            attached = user32.AttachThreadInput(current_tid, foreground_tid, True)
-            if attached:
-                try:
-                    focused_hwnd = user32.GetFocus()
-                finally:
-                    user32.AttachThreadInput(current_tid, foreground_tid, False)
-        else:
-            focused_hwnd = user32.GetFocus()
+        gti = GUITHREADINFO()
+        gti.cbSize = ctypes.sizeof(GUITHREADINFO)
+        if not user32.GetGUIThreadInfo(foreground_tid, ctypes.byref(gti)):
+            return ""
 
+        focused_hwnd = gti.hwndFocus
         if not focused_hwnd:
             return ""
 
-        # Check the control class to see if it's a text control
-        class_buf = ctypes.create_unicode_buffer(256)
-        user32.GetClassNameW(focused_hwnd, class_buf, 256)
-        class_name = class_buf.value.lower()
+        buf_size = min(max_chars + 1, 1001)
+        buf = ctypes.create_unicode_buffer(buf_size)
+        chars_copied = user32.SendMessageW(focused_hwnd, WM_GETTEXT, buf_size, buf)
 
-        # Only read from known text control classes
-        text_classes = ("edit", "richedit", "richedit20", "richedit50w", "scintilla")
-        if not any(tc in class_name for tc in text_classes):
-            return ""
+        if chars_copied > 0:
+            text = buf.value.strip()
+            if text:
+                return text
 
-        # WM_GETTEXTLENGTH = 0x000E, WM_GETTEXT = 0x000D
-        length = user32.SendMessageW(focused_hwnd, 0x000E, 0, 0)
-        # SECURITY: Reduce cap from 10000 to 2000 chars to limit data exposure
-        if length <= 0 or length > 2000:
-            return ""
-
-        buf = ctypes.create_unicode_buffer(length + 1)
-        user32.SendMessageW(focused_hwnd, 0x000D, length + 1, buf)
-        text = buf.value or ""
-
-        if text.strip():
-            logger.debug("wm_gettext_read", length=len(text), control_class=class_name)
-            # Return only the last 500 chars for context (don't overwhelm the LLM)
-            return text.strip()[-500:]
+        title_buf = ctypes.create_unicode_buffer(buf_size)
+        chars_copied = user32.GetWindowTextW(focused_hwnd, title_buf, buf_size)
+        if chars_copied > 0:
+            text = title_buf.value.strip()
+            if text:
+                return text
 
         return ""
-
-    except Exception as exc:
-        logger.debug("wm_gettext_failed", error=str(exc))
+    except Exception:
         return ""

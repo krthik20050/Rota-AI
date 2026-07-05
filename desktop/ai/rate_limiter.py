@@ -3,7 +3,9 @@ import threading
 import time
 
 # SECURITY: Maximum lengths to prevent abuse
-_MAX_TRANSCRIPT_LENGTH = 10000  # chars — reject longer inputs to LLM
+_MAX_TRANSCRIPT_LENGTH = 100000  # chars — raised from 10000 to match _MAX_INJECT_LENGTH
+# so long dictations (>10K chars) still get AI cleanup instead of silently
+# falling back to rule-based cleaning. 100K chars ≈ 15-20 min of speech.
 _MAX_PERSONAL_TERMS = 50  # cap personal dictionary terms sent to LLM
 _MAX_SYSTEM_PROMPT_LENGTH = 12000  # chars — prevent prompt overflow
 

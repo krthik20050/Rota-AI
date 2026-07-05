@@ -7,6 +7,7 @@ import sys
 from PySide6.QtCore import (
     QAbstractAnimation,
     QEasingCurve,
+    QPointF,
     QRect,
     QRectF,
     Qt,
@@ -39,17 +40,17 @@ class PillOverlay(QWidget):
     cancel_requested = Signal()
     stop_requested = Signal()
 
-    HEIGHT = 38
-    RADIUS = 19
+    HEIGHT = 30
+    RADIUS = 15
     MARGIN_BOTTOM = 26
 
     STATE_WIDTHS = {
-        PillState.IDLE: 42,
-        PillState.RECORDING: 152,  # room for X + waveform + stop button
-        PillState.TRANSCRIBING: 150,
-        PillState.PROCESSING: 150,
-        PillState.DONE: 118,
-        PillState.ERROR: 124,
+        PillState.IDLE: 36,
+        PillState.RECORDING: 120,  # room for X + waveform + stop button
+        PillState.TRANSCRIBING: 110,
+        PillState.PROCESSING: 110,
+        PillState.DONE: 100,
+        PillState.ERROR: 100,
     }
 
     BG_COLOR = QColor(18, 18, 20, 255)
@@ -70,6 +71,12 @@ class PillOverlay(QWidget):
         self._ellipsis_index = 0
         self._ellipsis_frames = [" ", ". ", ".. ", "..."]
         self._active_animations: list[QAbstractAnimation] = []
+        # Drag state — stores offset from window origin to click point
+        self._drag_offset: QPointF | None = None
+        self._dragging = False
+        # Custom position set by drag — when set, _target_rect uses it instead
+        # of re-centering at screen bottom. Persists across state transitions.
+        self._custom_pos: tuple[int, int] | None = None
 
         self._glow_active = False
         self._setup_window()
@@ -109,8 +116,9 @@ class PillOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
-        # Start transparent to mouse — enabled only during RECORDING
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        # Start transparent to mouse in non-IDLE states — IDLE is interactive
+        # (draggable) and RECORDING handles cancel/stop buttons.
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.setAutoFillBackground(False)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setMinimumHeight(self.HEIGHT)
@@ -122,6 +130,10 @@ class PillOverlay(QWidget):
         return screen.geometry() if screen is not None else None
 
     def _target_rect(self, width: int) -> QRect:
+        # Use saved custom position from drag if set, otherwise re-center at bottom
+        if self._custom_pos is not None:
+            cx, cy = self._custom_pos
+            return QRect(cx, cy, width, self.HEIGHT)
         screen_geo = self._screen_geometry()
         if screen_geo is None:
             return QRect(self.x(), self.y(), width, self.HEIGHT)
@@ -186,13 +198,19 @@ class PillOverlay(QWidget):
             self._transition_to_done()
         elif new_state == PillState.IDLE:
             self._transition_to_idle()
+        elif new_state == PillState.ERROR:
+            self._clear_drag()
+            self._animate_width(self.STATE_WIDTHS[PillState.ERROR])
+            self.update()
         else:
+            self._clear_drag()
             self._animate_width(self.STATE_WIDTHS[new_state])
             self.update()
 
     # ── State transitions ────────────────────────────────────────────────────
 
     def _transition_idle_to_recording(self) -> None:
+        self._clear_drag()
         self._partial_text = ""
         self._text_opacity = 0.0
         self._ellipsis_timer.stop()
@@ -210,8 +228,7 @@ class PillOverlay(QWidget):
     def _transition_recording_to_transcribing(self) -> None:
         # Audio cue fires IMMEDIATELY when recording stops
         play_haptic("stop")
-        # Disable mouse events — no buttons visible after recording
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self._clear_drag()
         self._waveform.set_active(False)
         self._animate_width(
             self.STATE_WIDTHS[PillState.TRANSCRIBING], QEasingCurve.Type.OutCubic, 260
@@ -231,6 +248,7 @@ class PillOverlay(QWidget):
         QTimer.singleShot(140, self._start_text_fade_in)
 
     def _transition_to_processing(self) -> None:
+        self._clear_drag()
         self._animate_width(
             self.STATE_WIDTHS[PillState.PROCESSING], QEasingCurve.Type.OutCubic, 260
         )
@@ -244,6 +262,7 @@ class PillOverlay(QWidget):
         self.update()
 
     def _transition_to_done(self) -> None:
+        self._clear_drag()
         self._ellipsis_timer.stop()
         self._waveform.set_active(False)
         self._waveform.set_bar_opacity(0.0)
@@ -257,6 +276,7 @@ class PillOverlay(QWidget):
         self._done_timer.start(900)
 
     def _transition_to_idle(self) -> None:
+        self._clear_drag()
         self._partial_text = ""
         self._ellipsis_timer.stop()
         self._waveform.set_active(False)
@@ -436,19 +456,65 @@ class PillOverlay(QWidget):
             self._apply_pill_region()
         # macOS/Linux: transparency handled by the compositor/WM
 
-    # ── Mouse events (active only in RECORDING state) ─────────────────────────
+    # ── Mouse events (drag repositioning in all states; button clicks in RECORDING) ─
+
+    def _clear_drag(self) -> None:
+        """Reset drag state — called on state transitions so stale drag doesn't linger."""
+        self._drag_offset = None
+        self._dragging = False
 
     def mousePressEvent(self, event) -> None:
-        if self._state != PillState.RECORDING:
+        if self._state == PillState.IDLE:
+            self._drag_offset = event.position()
+            self._dragging = False
+            event.accept()
+            return
+        elif self._state == PillState.RECORDING:
+            x = event.position().x()
+            # Cancel zone: left HEIGHT pixels
+            if x <= self.HEIGHT:
+                self.cancel_requested.emit()
+            # Stop zone: right HEIGHT pixels
+            elif x >= self.width() - self.HEIGHT:
+                self.stop_requested.emit()
+            else:
+                # Middle zone — drag
+                self._drag_offset = event.position()
+                self._dragging = False
+            event.accept()
+            return
+        elif self._state in (
+            PillState.TRANSCRIBING,
+            PillState.PROCESSING,
+            PillState.DONE,
+            PillState.ERROR,
+        ):
+            # Drag in any visible state
+            self._drag_offset = event.position()
+            self._dragging = False
+            event.accept()
+            return
+        event.ignore()
+
+    def mouseMoveEvent(self, event) -> None:
+        if self._drag_offset is None:
             event.ignore()
             return
-        x = event.position().x()
-        # Cancel zone: left HEIGHT pixels
-        if x <= self.HEIGHT:
-            self.cancel_requested.emit()
-        # Stop zone: right HEIGHT pixels
-        elif x >= self.width() - self.HEIGHT:
-            self.stop_requested.emit()
+        if not self._dragging:
+            delta = event.position() - self._drag_offset
+            if abs(delta.x()) < 8 and abs(delta.y()) < 8:
+                event.accept()
+                return
+            self._dragging = True
+        new_pos = event.globalPosition().toPoint() - self._drag_offset.toPoint()
+        self.move(new_pos.x(), new_pos.y())
+        # Save the custom position so state transitions don't re-center the pill
+        self._custom_pos = (new_pos.x(), new_pos.y())
+        event.accept()
+
+    def mouseReleaseEvent(self, event) -> None:
+        self._drag_offset = None
+        self._dragging = False
         event.accept()
 
     # ── Painting ─────────────────────────────────────────────────────────────
@@ -480,7 +546,9 @@ class PillOverlay(QWidget):
                     alpha = int(55 * (i / 6.0))
                     painter.setBrush(QColor(134, 239, 172, alpha))
                     painter.drawRoundedRect(
-                        QRectF(-expand, -expand, self.width() + expand * 2, self.height() + expand * 2),
+                        QRectF(
+                            -expand, -expand, self.width() + expand * 2, self.height() + expand * 2
+                        ),
                         self.RADIUS + expand,
                         self.RADIUS + expand,
                     )
@@ -496,7 +564,11 @@ class PillOverlay(QWidget):
         s = self._state
 
         # Use slightly more transparent background when active
-        bg = self.BG_COLOR_ACTIVE if s in (PillState.RECORDING, PillState.TRANSCRIBING, PillState.PROCESSING) else self.BG_COLOR
+        bg = (
+            self.BG_COLOR_ACTIVE
+            if s in (PillState.RECORDING, PillState.TRANSCRIBING, PillState.PROCESSING)
+            else self.BG_COLOR
+        )
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(bg)
         painter.drawRoundedRect(0, 0, w, h, self.RADIUS, self.RADIUS)
