@@ -120,6 +120,7 @@ test_startup_out.txt
 build-linux/
 
 # Website build artifacts (keep source only)
+.next/
 website/.env
 website/.vercel/
 website/tsconfig.tsbuildinfo
