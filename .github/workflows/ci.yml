@@ -230,8 +230,8 @@ jobs:
           os.environ['QT_QPA_PLATFORM'] = 'offscreen'
           from plat import get_hotkey_handler, get_injector, get_window_detector
           print('plat imports: OK')
-          from PyQt6.QtWidgets import QApplication
-          print('PyQt6: OK')
+          from PySide6.QtWidgets import QApplication
+          print('PySide6: OK')
           from data.config import ConfigManager
           print('ConfigManager: OK')
           from data.snippets import SnippetsManager
@@ -296,8 +296,8 @@ jobs:
           print(f"Window detector: {window.__name__}")
           from plat import macos_hotkey, macos_injector, macos_setup, macos_startup, macos_window
           print("macOS platform imports: OK")
-          from PyQt6.QtWidgets import QApplication
-          print("PyQt6: OK")
+          from PySide6.QtWidgets import QApplication
+          print("PySide6: OK")
           from data.config import ConfigManager
           print("ConfigManager: OK")
           from data.snippets import SnippetsManager

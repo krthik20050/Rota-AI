@@ -170,7 +170,7 @@ export default function DocsPage() {
                                 const mermaidChild = childrenArray.find(
                                   (child) =>
                                     React.isValidElement(child) &&
-                                    (child.props as any).className?.includes("language-mermaid")
+                                    (child.props as { className?: string }).className?.includes("language-mermaid")
                                 ) as React.ReactElement<{ className?: string; children?: React.ReactNode }> | undefined;
 
                                 if (mermaidChild) {
