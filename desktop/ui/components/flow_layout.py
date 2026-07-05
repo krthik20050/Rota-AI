@@ -5,7 +5,13 @@ from PySide6.QtWidgets import QLayout, QWidgetItem
 
 
 class FlowLayout(QLayout):
-    """Wraps child widgets horizontally (like CSS flex-wrap)."""
+    """Wraps child widgets horizontally (like CSS flex-wrap).
+
+    CRITICAL NOTE: Custom QLayout subclasses in PySide6 risk access violations
+    because Qt destroys child QWidgetItem C++ objects during parent cleanup,
+    but the Python _item_list still holds references to them. All item iteration
+    is wrapped in try-except guards to handle this gracefully.
+    """
 
     def __init__(self, parent=None, margin=0, hspacing=6, vspacing=6):
         super().__init__(parent)
@@ -14,26 +20,19 @@ class FlowLayout(QLayout):
         self._v_space = vspacing
         self.setContentsMargins(margin, margin, margin, margin)
 
-    def __del__(self):
-        item = self.takeAt(0)
-        while item:
-            item = self.takeAt(0)
+    # NO __del__ — Qt's parent-child ownership already handles cleanup of
+    # child items. A custom __del__ risks double-free / use-after-free.
 
     def addItem(self, item):
         self._item_list.append(item)
 
     def addWidget(self, widget, stretch=0, alignment=None):
-        """Convenience — matches QBoxLayout.addWidget signature.
-        Stretch and alignment params are accepted for API compatibility
-        but ignored — FlowLayout sizes items by their sizeHint.
-        """
-        _ = stretch  # unused, kept for API compat
+        _ = stretch
         _ = alignment
         item = QWidgetItem(widget)
         self.addItem(item)
 
     def setSpacing(self, spacing: int):
-        """Set both horizontal and vertical spacing (matches QBoxLayout API)."""
         self._h_space = spacing
         self._v_space = spacing
 
@@ -63,49 +62,79 @@ class FlowLayout(QLayout):
         return True
 
     def heightForWidth(self, width):
-        return self._do_layout(QRect(0, 0, width, 0), True)
+        try:
+            return self._do_layout(QRect(0, 0, width, 0), True)
+        except Exception:
+            return 0
 
     def setGeometry(self, rect):
         super().setGeometry(rect)
-        self._do_layout(rect, False)
+        try:
+            self._do_layout(rect, False)
+        except Exception:
+            pass
 
     def sizeHint(self):
-        return self.minimumSize()
+        try:
+            size = QSize()
+            for item in list(self._item_list):
+                try:
+                    size = size.expandedTo(item.sizeHint())
+                except Exception:
+                    continue
+            margins = self.contentsMargins()
+            size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+            return size
+        except Exception:
+            return QSize(200, 100)
 
     def minimumSize(self):
-        size = QSize()
-        for item in self._item_list:
-            size = size.expandedTo(item.minimumSize())
-        margins = self.contentsMargins()
-        size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
-        return size
+        try:
+            size = QSize()
+            for item in list(self._item_list):
+                try:
+                    size = size.expandedTo(item.minimumSize())
+                except Exception:
+                    continue
+            margins = self.contentsMargins()
+            size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+            return size
+        except Exception:
+            return QSize(100, 50)
 
     def _do_layout(self, rect, test_only):
-        margins = self.contentsMargins()
-        effective_rect = rect.adjusted(
-            +margins.left(), +margins.top(), -margins.right(), -margins.bottom()
-        )
-        x = effective_rect.x()
-        y = effective_rect.y()
-        line_height = 0
+        try:
+            margins = self.contentsMargins()
+            effective_rect = rect.adjusted(
+                +margins.left(), +margins.top(), -margins.right(), -margins.bottom()
+            )
+            x = effective_rect.x()
+            y = effective_rect.y()
+            line_height = 0
 
-        for item in self._item_list:
-            widget = item.widget()
-            if widget and not widget.isVisible():
-                continue
-            space_x = self.horizontalSpacing()
-            space_y = self.verticalSpacing()
-            next_x = x + item.sizeHint().width() + space_x
-            if next_x - space_x > effective_rect.right() and line_height > 0:
-                x = effective_rect.x()
-                y = y + line_height + space_y
-                next_x = x + item.sizeHint().width() + space_x
-                line_height = 0
+            for item in list(self._item_list):
+                try:
+                    widget = item.widget()
+                    if widget and not widget.isVisible():
+                        continue
+                    sh = item.sizeHint()
+                    space_x = self.horizontalSpacing()
+                    space_y = self.verticalSpacing()
+                    next_x = x + sh.width() + space_x
+                    if next_x - space_x > effective_rect.right() and line_height > 0:
+                        x = effective_rect.x()
+                        y = y + line_height + space_y
+                        next_x = x + sh.width() + space_x
+                        line_height = 0
 
-            if not test_only:
-                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
+                    if not test_only:
+                        item.setGeometry(QRect(QPoint(x, y), sh))
 
-            x = next_x
-            line_height = max(line_height, item.sizeHint().height())
+                    x = next_x
+                    line_height = max(line_height, sh.height())
+                except Exception:
+                    continue
 
-        return y + line_height - rect.y() + margins.bottom()
+            return y + line_height - rect.y() + margins.bottom()
+        except Exception:
+            return 0

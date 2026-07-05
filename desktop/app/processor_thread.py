@@ -17,9 +17,8 @@ from audio.transcriber import (
     FAIL_GROQ_TIMEOUT,
     FAIL_LOCAL_MODEL,
     AudioTranscriber,
-    classify_groq_error,
 )
-from audio.vad import FAIL_VAD_NO_SPEECH, strip_silence
+from audio.vad import FAIL_VAD_NO_SPEECH
 
 # Processor-thread-only codes (not shared with audio layer)
 FAIL_CANCELLED = "FAIL_CANCELLED"
@@ -55,6 +54,17 @@ class ProcessorThread(QThread):
     _SPEECH_RMS = 0.015
     _SILENCE_CHUNKS = 6
     _MIN_SEGMENT_CHUNKS = 8
+    # Streaming transcription: transcribe every ~1 second when Groq is active
+    # (fast API, <500ms per call on short clips) so the user sees partial text
+    # arriving during recording and only the last <1s tail needs transcribing
+    # after stop — achieving Wispr Flow-level latency.
+    # Falls back to ~55s intervals for local Whisper (slow CPU inference).
+    _STREAM_FLUSH_INTERVAL_GROQ = int(1.0 * 16000)  # 16000 samples = ~1s
+    _STREAM_FLUSH_INTERVAL_LOCAL = int(55.0 * 16000)  # 880000 samples = ~55s
+    # Minimum audio to accumulate before a streaming flush fires (~3s).
+    # Short utterances (<3s) skip streaming flushes entirely — they get a
+    # single transcription call on stop, cutting latency in half.
+    _MIN_STREAM_SAMPLES = int(3.0 * 16000)  # 48000 samples = ~3s
 
     def __init__(self, session, transcriber, ai_processor=None, live_transcription_enabled=True):
         super().__init__()
@@ -63,6 +73,27 @@ class ProcessorThread(QThread):
         self.ai_processor = ai_processor
         self.live_transcription_enabled = live_transcription_enabled
         self.correlation_id = session.id
+        # Exposed for debug window memory diagnostic
+        self.stream_buffer_samples = 0
+        self._total_recording_samples = 0
+
+    @property
+    def stream_buffer_memory_mb(self) -> float:
+        """Current stream buffer memory in MB (int16 = 2 bytes per sample)."""
+        return (self.stream_buffer_samples * 2) / (1024.0 * 1024.0)
+
+    @property
+    def _effective_flush_interval(self) -> int:
+        """
+        Use 1s intervals when Groq is fast (very tiny tail on stop, ~Wispr Flow latency).
+        Use 55s intervals for local Whisper (avoids backlog from slow CPU inference).
+        """
+        if (
+            hasattr(self.transcriber, "active_backend")
+            and self.transcriber.active_backend == "groq"
+        ):
+            return self._STREAM_FLUSH_INTERVAL_GROQ
+        return self._STREAM_FLUSH_INTERVAL_LOCAL
 
     def _finalize_segment(self, segment_chunks, partial_segments):
         if not segment_chunks:
@@ -82,46 +113,63 @@ class ProcessorThread(QThread):
             pass  # Partial transcription failure is non-fatal
         return [], partial_segments
 
+    def _flush_stream_segment(
+        self,
+        buffer_chunks: list,
+        out_texts: list,
+        app_ctx,
+        thread_logger,
+    ) -> bool:
+        """
+        Transcribe one streaming segment and append to out_texts.
+
+        Returns True on success (text was transcribed and emitted), False on
+        failure so the caller can decide whether to clear the buffer.
+        On failure the buffer is kept intact so the audio is NOT lost — the
+        next flush cycle will retry on the accumulated data.
+
+        This is the heart of the streaming memory optimization — instead of
+        accumulating the entire recording into one giant array, we transcribe
+        in chunks so peak memory stays at ~7MB per segment rather than ~230MB+
+        for a 60-minute recording.
+        """
+        if not buffer_chunks:
+            return True  # Nothing to do is not a failure
+        try:
+            segment_audio = np.concatenate(buffer_chunks).astype(np.float32, copy=False)
+            # No per-segment VAD — Whisper handles silence internally.
+            # Per-segment VAD would strip segment boundaries, losing words
+            # that straddle them.
+            text, backend = self.transcriber.transcribe_array_with_backend(
+                segment_audio, app_context=app_ctx
+            )
+            text = (text or "").strip()
+            if text:
+                out_texts.append(text)
+                if backend:
+                    self._backends_used.add(backend)
+                self.partial.emit(" ".join(out_texts), str(self.correlation_id or ""))
+            return True
+        except Exception:
+            thread_logger.warning("stream_segment_transcribe_failed", exc_info=True)
+        return False
+
     def run(self):
         thread_logger = logger.bind(correlation_id=self.correlation_id)
         processing_start = time.perf_counter()
         log_event("processing_start", correlation_id=self.correlation_id)
         try:
             transcription_start = time.perf_counter()
-            all_chunks = []
+            stream_buffer = []
+            stream_sample_count = 0
+            stream_texts = []
+            self._backends_used: set[str] = set()
             segment_chunks = []
             partial_segments = []
             silence_run = 0
 
-            for chunk in self.session.iter_chunks():
-                if self.isInterruptionRequested():
-                    raise RuntimeError("processing cancelled")
-                all_chunks.append(chunk)
-
-                rms = float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2))) if len(chunk) else 0.0
-                if rms >= self._SPEECH_RMS:
-                    segment_chunks.append(chunk)
-                    silence_run = 0
-                    continue
-
-                if segment_chunks:
-                    segment_chunks.append(chunk)
-                    silence_run += 1
-                    if (
-                        silence_run >= self._SILENCE_CHUNKS
-                        and len(segment_chunks) >= self._MIN_SEGMENT_CHUNKS
-                    ):
-                        segment_chunks, partial_segments = self._finalize_segment(
-                            segment_chunks, partial_segments
-                        )
-                        silence_run = 0
-
-            segment_chunks, partial_segments = self._finalize_segment(
-                segment_chunks, partial_segments
-            )
-
-            # Use the app context captured when recording started.
-            # By stop time, focus is often back on Rota AI itself.
+            # Resolve app context early — needed for streaming transcription.
+            # session.app_context is captured at recording start so it's safe.
             app_ctx = self.session.app_context
             if app_ctx is None:
                 from injection.app_detector import get_active_app
@@ -132,41 +180,111 @@ class ProcessorThread(QThread):
                 app_name=app_ctx.app_name,
                 process=app_ctx.process_name,
                 tone=app_ctx.tone,
+                category=getattr(app_ctx, "category", ""),
+            )
+            app_category = getattr(app_ctx, "category", "") or ""
+            is_prompt = bool(app_category == "prompt")
+            if is_prompt:
+                thread_logger.info(
+                    "prompt_context_detected_skipping_ai_cleanup",
+                    app_name=app_ctx.app_name,
+                    process=app_ctx.process_name,
+                )
+
+            # Track whether ANY chunk had speech-level audio — if the entire
+            # recording is silence, we skip the transcription API call entirely
+            # and emit empty immediately, avoiding wasted time and API quota.
+            _had_speech = False
+
+            for chunk in self.session.iter_chunks():
+                if self.isInterruptionRequested():
+                    raise RuntimeError("processing cancelled")
+
+                stream_buffer.append(chunk)
+                stream_sample_count += len(chunk)
+                self.stream_buffer_samples = stream_sample_count
+
+                # Expose total recording sample count for debug window
+                self._total_recording_samples += len(chunk)
+
+                # Partial transcription (live feedback via greedy decode, unchanged)
+                rms = float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2))) if len(chunk) else 0.0
+                if rms >= self._SPEECH_RMS:
+                    _had_speech = True
+                    segment_chunks.append(chunk)
+                    silence_run = 0
+                elif segment_chunks:
+                    segment_chunks.append(chunk)
+                    silence_run += 1
+                    if (
+                        silence_run >= self._SILENCE_CHUNKS
+                        and len(segment_chunks) >= self._MIN_SEGMENT_CHUNKS
+                    ):
+                        segment_chunks, partial_segments = self._finalize_segment(
+                            segment_chunks, partial_segments
+                        )
+                        silence_run = 0
+                else:
+                    silence_run = 0
+
+                # Flush streaming buffer at dynamic intervals (1s for Groq, 55s for local).
+                # For Groq: transcribe small segments during recording so the user sees
+                # partial text arriving in ~1s bursts. On stop, only the final <1s tail
+                # is left — achieving Wispr Flow-level latency.
+                # Only clear the buffer on success so failed segments aren't lost.
+                # Minimum accumulation guard: only apply BEFORE the first flush so very
+                # short recordings (<3s) skip streaming entirely and get one call on stop.
+                # After the first flush, subsequent flushes fire at the normal interval.
+                # stream_texts is empty before the first flush, so it works as the gate.
+                if stream_sample_count >= self._effective_flush_interval and (
+                    stream_texts or stream_sample_count >= self._MIN_STREAM_SAMPLES
+                ):
+                    ok = self._flush_stream_segment(
+                        stream_buffer, stream_texts, app_ctx, thread_logger
+                    )
+                    if ok:
+                        stream_buffer = []
+                        stream_sample_count = 0
+                        self.stream_buffer_samples = 0
+
+            # Early empty: if NO chunk had speech-level audio, skip the
+            # transcription API call entirely — saves time and API quota.
+            if not _had_speech:
+                transcription_seconds = time.perf_counter() - transcription_start
+                log_event(
+                    "transcription_end",
+                    duration_ms=transcription_seconds * 1000.0,
+                    has_text=False,
+                    correlation_id=self.correlation_id,
+                    reason="no_speech_detected",
+                )
+                self.completed.emit(
+                    "",
+                    "",
+                    False,
+                    str(self.correlation_id or ""),
+                    float(transcription_seconds or 0.0),
+                    0.0,
+                    False,
+                    "",
+                )
+                return
+
+            # Finalize remaining partial segments (live feedback)
+            segment_chunks, partial_segments = self._finalize_segment(
+                segment_chunks, partial_segments
             )
 
-            # Strip silence from full audio using Silero VAD before transcribing
-            raw_text = ""
-            backend_used = ""
-            if all_chunks:
-                full_audio = np.concatenate(all_chunks).astype(np.float32, copy=False)
+            # Flush final stream buffer (on stop — <1s tail for Groq, <55s for local)
+            if stream_buffer:
+                self._flush_stream_segment(stream_buffer, stream_texts, app_ctx, thread_logger)
+                stream_buffer = []
 
-                # Apply Silero VAD to strip all non-speech silence/noise
-                cleaned_audio = strip_silence(full_audio)
+            # Assemble final text from all streaming segments
+            raw_text = " ".join(t for t in stream_texts if t).strip()
+            backend_used = "+".join(sorted(self._backends_used)) if self._backends_used else ""
 
-                if cleaned_audio is None or cleaned_audio.size == 0:
-                    # User only captured silence/noise: skip Whisper completely and return immediately!
-                    thread_logger.info("%s silence_only_detected_skipping_whisper", FAIL_VAD_NO_SPEECH)
-                    raw_text = ""
-                    backend_used = FAIL_VAD_NO_SPEECH
-                else:
-                    if self.isInterruptionRequested():
-                        raise RuntimeError("processing cancelled before full-audio decode")
-                    try:
-                        raw_text, backend_used = self.transcriber.transcribe_array_with_backend(
-                            cleaned_audio, app_context=app_ctx
-                        )
-                        raw_text = (raw_text or "").strip()
-                    except Exception as inner_exc:
-                        failure_code = classify_groq_error(str(inner_exc))
-                        thread_logger.error(
-                            "transcription_failed",
-                            failure_code=failure_code,
-                            exc_info=True,
-                        )
-                        raw_text = ""
-                        backend_used = failure_code  # stores failure code for analytics/diagnostics
-
-            # Safety fallback if final decode returns empty.
+            # Safety fallback: use live partial segments if streaming produced nothing
             if not raw_text and self.live_transcription_enabled:
                 raw_text = " ".join(partial_segments).strip()
 
@@ -193,9 +311,17 @@ class ProcessorThread(QThread):
                 return
 
             # AI cleanup — passthrough if ai_processor not set
+            # For prompt contexts (ChatGPT, Claude, etc.), skip AI cleanup entirely
+            # to preserve the user's dictated prompt verbatim.
             ai_start = time.perf_counter()
             ai_failed = False
-            if self.ai_processor is not None:
+            if is_prompt:
+                cleaned_text = raw_text
+                thread_logger.debug(
+                    "ai_cleanup_skipped_prompt_context",
+                    chars=len(raw_text),
+                )
+            elif self.ai_processor is not None:
                 try:
                     cleaned_text = self.ai_processor.process_text(
                         raw_text,
@@ -216,11 +342,12 @@ class ProcessorThread(QThread):
                 "processing_success",
                 duration_ms=(time.perf_counter() - processing_start) * 1000.0,
                 correlation_id=self.correlation_id,
+                is_prompt=is_prompt,
             )
             self.completed.emit(
                 str(raw_text or ""),
                 str(cleaned_text or ""),
-                False,
+                bool(is_prompt),
                 str(self.correlation_id or ""),
                 float(transcription_seconds or 0.0),
                 float(ai_seconds or 0.0),

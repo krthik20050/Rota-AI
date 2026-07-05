@@ -28,8 +28,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui.components.flow_layout import FlowLayout
-
 logger = structlog.get_logger(__name__)
 
 CLR_ACCENT = "#86EFAC"
@@ -196,7 +194,9 @@ class SnippetsPage(QWidget):
 
         # Trigger
         trigger_lbl = QLabel("Spoken Trigger Phrase")
-        trigger_lbl.setStyleSheet(f"color: {CLR_TEXT_SECONDARY}; font-size: 12px; font-weight: 600;")
+        trigger_lbl.setStyleSheet(
+            f"color: {CLR_TEXT_SECONDARY}; font-size: 12px; font-weight: 600;"
+        )
         form_lay.addWidget(trigger_lbl)
         self._snippet_trigger_input = QLineEdit()
         self._snippet_trigger_input.setObjectName("SnippetTriggerInput")
@@ -216,7 +216,9 @@ class SnippetsPage(QWidget):
 
         self._snippet_expansion_input = QTextEdit()
         self._snippet_expansion_input.setObjectName("SnippetExpansionInput")
-        self._snippet_expansion_input.setPlaceholderText("The full text that will expand when you speak the trigger...")
+        self._snippet_expansion_input.setPlaceholderText(
+            "The full text that will expand when you speak the trigger..."
+        )
         self._snippet_expansion_input.setMinimumHeight(140)
         form_lay.addWidget(self._snippet_expansion_input, 2)
 
@@ -227,11 +229,20 @@ class SnippetsPage(QWidget):
 
         var_container = QWidget()
         var_container.setStyleSheet("background: transparent;")
-        var_flow = FlowLayout(var_container, hspacing=6, vspacing=6)
+        var_flow = QHBoxLayout(var_container)
         var_flow.setContentsMargins(0, 0, 0, 0)
+        var_flow.setSpacing(6)
         for var in [
-            "date", "time", "clipboard", "today", "cursor",
-            "day", "month", "year", "datetime", "timestamp",
+            "date",
+            "time",
+            "clipboard",
+            "today",
+            "cursor",
+            "day",
+            "month",
+            "year",
+            "datetime",
+            "timestamp",
         ]:
             v_btn = QPushButton(f"{{{{{var}}}}}")
             v_btn.setObjectName("SnippetVarBtn")
@@ -243,7 +254,9 @@ class SnippetsPage(QWidget):
 
         # Live preview
         preview_label = QLabel("Live Preview")
-        preview_label.setStyleSheet(f"color: {CLR_TEXT_SECONDARY}; font-size: 12px; font-weight: 600;")
+        preview_label.setStyleSheet(
+            f"color: {CLR_TEXT_SECONDARY}; font-size: 12px; font-weight: 600;"
+        )
         form_lay.addWidget(preview_label)
         self._snippet_preview_widget = QLabel()
         self._snippet_preview_widget.setObjectName("SnippetLivePreview")
@@ -297,7 +310,9 @@ class SnippetsPage(QWidget):
         self._snippet_expansion_input.setFocus()
 
     def _update_snippet_live_preview(self):
-        if not hasattr(self, "_snippet_expansion_input") or not hasattr(self, "_snippet_preview_widget"):
+        if not hasattr(self, "_snippet_expansion_input") or not hasattr(
+            self, "_snippet_preview_widget"
+        ):
             return
         raw_text = self._snippet_expansion_input.toPlainText()
         now = datetime.datetime.now()
@@ -308,12 +323,18 @@ class SnippetsPage(QWidget):
         preview = preview.replace("{{clipboard}}", "[Clipboard Content]")
         preview = preview.replace("{{cursor}}", "|")
         if not preview.strip():
-            self._snippet_preview_widget.setText("Type in the expansion field to see the live rendered output...")
+            self._snippet_preview_widget.setText(
+                "Type in the expansion field to see the live rendered output..."
+            )
         else:
             self._snippet_preview_widget.setText(preview)
         if hasattr(self, "_snippet_char_counter"):
             char_count = len(raw_text)
-            color = CLR_ERROR if char_count > 3800 else (CLR_WARNING if char_count > 3200 else CLR_TEXT_MUTED)
+            color = (
+                CLR_ERROR
+                if char_count > 3800
+                else (CLR_WARNING if char_count > 3200 else CLR_TEXT_MUTED)
+            )
             self._snippet_char_counter.setText(f"{char_count} / 4000")
             self._snippet_char_counter.setStyleSheet(f"color: {color}; font-size: 11px;")
 
@@ -363,7 +384,9 @@ class SnippetsPage(QWidget):
         # Search filter
         search = self._snippet_search_text.strip().lower()
         if search:
-            all_status = {k: v for k, v in all_status.items() if search in k.lower() or search in v[0].lower()}
+            all_status = {
+                k: v for k, v in all_status.items() if search in k.lower() or search in v[0].lower()
+            }
 
         if not all_status:
             msg = "No matches." if search else "No snippets yet.\nClick '+ Add New Snippet' below."
@@ -386,7 +409,9 @@ class SnippetsPage(QWidget):
         # Sync editor with selected snippet
         snippets = {k: v[0] for k, v in all_status.items()}
         if self._selected_snippet_key in snippets:
-            self._show_snippet_in_editor(self._selected_snippet_key, snippets[self._selected_snippet_key])
+            self._show_snippet_in_editor(
+                self._selected_snippet_key, snippets[self._selected_snippet_key]
+            )
         else:
             self._selected_snippet_key = None
             self._snippet_stack.setCurrentIndex(0)
@@ -471,6 +496,7 @@ class SnippetsPage(QWidget):
                 if self.snippets_manager:
                     self.snippets_manager.toggle(trig)
                     self._snippets_refresh()
+
             return _toggle_it
 
         tog.clicked.connect(make_toggler(trigger))

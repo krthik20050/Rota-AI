@@ -100,6 +100,53 @@ _CATEGORY_TONE: dict[str, str] = {
     "other": "neutral",
 }
 
+# Window title substrings that indicate a user is composing an AI prompt.
+# These override the default category when detected in the window title.
+# The "prompt" category tells the pipeline to minimize/no-op AI cleanup
+# because the user is dictating a prompt (not normal text).
+_PROMPT_TITLE_HINTS = frozenset(
+    {
+        "chatgpt",
+        "chat gpt",
+        "claude",
+        "gemini",
+        "copilot",
+        "perplexity",
+        "grok",
+        "bard",
+        "openai",
+        "ai chat",
+        "ai assistant",
+        "deepseek",
+    }
+)
+
+# Window title substrings → override category for browser/web apps
+# (Applied in get_active_app() so the overrides propagate to all pipeline stages)
+_TITLE_CATEGORY_OVERRIDES: list[tuple[str, str]] = [
+    ("gmail", "email"),
+    ("outlook", "email"),
+    ("mail", "email"),
+    ("inbox", "email"),
+    ("superhuman", "email"),
+    ("hey.com", "email"),
+    ("slack", "chat"),
+    ("discord", "chat"),
+    ("whatsapp", "chat"),
+    ("telegram", "chat"),
+    ("messenger", "chat"),
+    ("teams", "chat"),
+    ("github", "editor"),
+    ("gitlab", "editor"),
+    ("linear", "editor"),
+    ("jira", "editor"),
+    ("notion", "document"),
+    ("obsidian", "document"),
+    ("docs.google", "document"),
+    ("google docs", "document"),
+    ("word", "document"),
+]
+
 
 def _get_window_title(hwnd: int) -> str:
     length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
@@ -125,9 +172,20 @@ def _process_name_from_pid(pid: int) -> str:
         return ""
 
 
-def _classify(process_name: str) -> tuple[str, str]:
+def _classify(process_name: str, window_title: str = "") -> tuple[str, str]:
     stem = process_name.lower().removesuffix(".exe")
     category = _PROCESS_CATEGORY.get(stem, "other")
+
+    # Window title overrides: check for AI prompt contexts first
+    title_lower = window_title.lower()
+    if any(hint in title_lower for hint in _PROMPT_TITLE_HINTS):
+        return "prompt", "neutral"
+
+    # Window title overrides: check for app-specific context
+    for title_hint, override_category in _TITLE_CATEGORY_OVERRIDES:
+        if title_hint in title_lower:
+            return override_category, _CATEGORY_TONE.get(override_category, "neutral")
+
     tone = _CATEGORY_TONE.get(category, "neutral")
     return category, tone
 
@@ -145,7 +203,8 @@ def get_active_app() -> AppContext:
         app_name = _get_window_title(hwnd)
         pid = _get_pid(hwnd)
         process_name = _process_name_from_pid(pid) if pid else ""
-        category, tone = _classify(process_name)
+        # Pass window title to _classify so AI prompt contexts are detected
+        category, tone = _classify(process_name, window_title=app_name)
 
         logger.debug(
             "active_app_detected",

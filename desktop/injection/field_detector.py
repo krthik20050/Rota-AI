@@ -187,16 +187,66 @@ def get_focused_field_info() -> dict[str, Any]:
 
 
 def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
-    """Raise the captured window before paste."""
+    """
+    Raise the captured window before paste.
+
+    Now VERIFIES focus actually landed by checking that GetForegroundWindow()
+    returns the expected HWND after the SetForegroundWindow call.
+
+    If first attempt fails, tries scanning for text inputs in the target window
+    and clicking into the best candidate as a fallback.
+
+    Returns True if focus was successfully restored to the target window.
+    """
     try:
         if not field_info:
             return False
         hwnd = field_info.get("hwnd")
         if not hwnd:
             return False
+
+        # First attempt: SetForegroundWindow
         user32.SetForegroundWindow(hwnd)
-        time.sleep(0.02)
-        return True
+        time.sleep(0.05)  # Increased from 20ms to 50ms for reliability
+
+        # Verify focus landed on the expected window
+        current_hwnd = user32.GetForegroundWindow()
+        if current_hwnd == hwnd:
+            return True
+
+        # Second attempt: try harder with AttachThreadInput + SetForegroundWindow
+        try:
+            target_pid = field_info.get("pid", 0)
+            if target_pid:
+                # Get current thread's input and attach to target thread
+                current_tid = ctypes.windll.kernel32.GetCurrentThreadId()
+                target_tid = user32.GetWindowThreadProcessId(hwnd, None)
+                user32.AttachThreadInput(current_tid, target_tid, True)
+                user32.SetForegroundWindow(hwnd)
+                user32.SetFocus(hwnd)
+                user32.BringWindowToTop(hwnd)
+                user32.AttachThreadInput(current_tid, target_tid, False)
+                time.sleep(0.05)
+        except Exception:
+            pass
+
+        # Verify again
+        current_hwnd = user32.GetForegroundWindow()
+        if current_hwnd == hwnd:
+            return True
+
+        # If SetForegroundWindow still didn't work, try scanning for text inputs
+        # and clicking into the best candidate as a fallback approach.
+        logger.info("focus_restore_fallback_scanning", hwnd=hwnd)
+        text_inputs = scan_for_text_inputs(hwnd)
+        if text_inputs:
+            ok = focus_text_input(text_inputs[0])
+            if ok:
+                logger.info("focus_restore_fallback_ok")
+                return True
+
+        logger.warning("focus_restore_failed", hwnd=hwnd, current_hwnd=current_hwnd)
+        return False
     except Exception as e:
         logger.warning("focus_restore_error", error=str(e))
         return False

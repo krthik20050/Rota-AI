@@ -12,13 +12,21 @@ from PySide6.QtCore import Qt, QTimer, Slot
 
 from app.logging_config import log_event
 from app.processor_thread import (
+    FAIL_CANCELLED,
     FAIL_GROQ_AUTH,
+    FAIL_GROQ_ERROR,
+    FAIL_GROQ_RATE_LIMIT,
+    FAIL_GROQ_TIMEOUT,
+    FAIL_TIMEOUT,
     FAIL_UNKNOWN,
     FAILURE_MESSAGES,
     ProcessorThread,
 )
 from app.signal_bridges import RecordingState
+from audio.vad import FAIL_VAD_NO_SPEECH
+from injection.field_reader import read_focused_field_text
 from services.session_store import SessionRecord
+from telemetry.latency_tracker import SessionTimings
 from ui.overlay.pill_state import PillState
 from utils.text_metrics import calculate_text_metrics
 
@@ -87,6 +95,14 @@ class ProcessingPipelineMixin:
             self._set_error_state("no active session during stop")
             logger.error("stop_failed_missing_session")
             return
+
+        # Read existing field text for AI context BEFORE processor thread starts
+        # (the processor reads session.field_text during process_text())
+        try:
+            session.field_text = read_focused_field_text()
+        except Exception:
+            session.field_text = ""
+
         self._set_state(RecordingState.PROCESSING, "hotkey stop", session.id)
         self._duration_timer.stop()
         recording_seconds = time.time() - session.start_time
@@ -164,7 +180,11 @@ class ProcessingPipelineMixin:
             return
 
         session.mark_processing()
-        self._processing_timeout_timer.start(30000)
+        # Scale processing timeout with recording duration so very long recordings
+        # (>60s) don't get killed mid-transcription. Minimum 30s, scales to 2x
+        # recording duration (capped at 300s / 5 min max wait).
+        scaled_timeout = max(30000, min(int(recording_seconds * 2000), 300000))
+        self._processing_timeout_timer.start(scaled_timeout)
         QTimer.singleShot(700, self._advance_overlay_to_processing)
         self._active_session = None
 
@@ -281,6 +301,10 @@ class ProcessingPipelineMixin:
             expanded = self.snippets.expand(cleaned)
             inject_text = expanded if expanded is not None else cleaned
 
+            # Notify user when injecting long text so they know data wasn't lost
+            _inject_chars = len(inject_text)
+            _is_long_injection = _inject_chars > 8000  # ~1500 words
+
             # Per-app config: override settings based on active app
             app_ctx = getattr(session, "app_context", None) if session else None
             if app_ctx:
@@ -317,12 +341,21 @@ class ProcessingPipelineMixin:
             log_event("injection_start", correlation_id=correlation_id)
             injection_start = time.perf_counter()
             field_info = session.field_info if session else None
-            success, msg = self.injector.inject(
-                inject_text,
-                correlation_id=correlation_id,
-                field_info=field_info,
-                use_paste_shortcut=True,
-            )
+            try:
+                success, msg = self.injector.inject(
+                    inject_text,
+                    correlation_id=correlation_id,
+                    field_info=field_info,
+                    use_paste_shortcut=True,
+                )
+            finally:
+                # Defer clipboard restore to keep the UI responsive — the
+                # injector's time.sleep(restore_delay) (up to 800ms for long
+                # text) runs on the next Qt event loop tick, not blocking.
+                # Scheduled in finally so it always runs, even if inject()
+                # raises an unexpected exception.
+                if hasattr(self.injector, "restore_clipboard"):
+                    QTimer.singleShot(0, self.injector.restore_clipboard)
             # If there's text after cursor, store it for optional paste
             if cursor_split_tail:
                 # Store remaining text so Ctrl+V after injection pastes it
@@ -340,8 +373,14 @@ class ProcessingPipelineMixin:
                 )
             if success:
                 self.auto_improvement.track_injection(correlation_id, inject_text)
+                if _is_long_injection:
+                    self.show_toast(
+                        f"{len(inject_text.split())} words injected — long text handled successfully"
+                    )
             else:
-                self.show_toast("Could not paste. Click a text field first, then try again.")
+                self.show_toast(
+                    "Saved to history — paste (Ctrl+V) or open the app to copy", duration_ms=6000
+                )
             injection_seconds = time.perf_counter() - injection_start
             log_event(
                 "injection_end",
@@ -361,10 +400,25 @@ class ProcessingPipelineMixin:
                 "injection_success": str(success),
             }
 
+            # Record latency for the debug dashboard
+            try:
+                if hasattr(self, "_latency_tracker") and self._latency_tracker is not None:
+                    self._latency_tracker.record(
+                        SessionTimings(
+                            recording_ms=self._last_recording_seconds * 1000.0,
+                            transcription_ms=transcription_seconds * 1000.0,
+                            ai_ms=ai_seconds * 1000.0,
+                            injection_ms=injection_seconds * 1000.0,
+                            backend=backend_used,
+                            success=True,
+                        )
+                    )
+            except Exception:
+                pass
+
             # Signal success to UI immediately after injection
             self._sessions.pop(correlation_id, None)
-            self._maybe_notify_backend_fallback()
-            self.overlay.show_success("Sent")
+            self.overlay.show_success("Long text injected" if _is_long_injection else "Sent")
             self._set_state(RecordingState.SUCCESS, "processing finished", correlation_id)
             QTimer.singleShot(
                 450,
@@ -548,52 +602,45 @@ class ProcessingPipelineMixin:
         return False, False, ""
 
     def _maybe_notify_backend_fallback(self):
+        """
+        Consume and discard backend fallback events silently.
+
+        The user should NEVER see a toast about Groq→local fallback — it is
+        automatic, recovers within 30 seconds, and produces identical results.
+        Only critical auth failures (invalid API key) still get a warning.
+        """
         if self.transcriber is None:
             return
-        # Always consume both the failure code AND the backend event to keep
-        # transcriber state clean (both are set together in _mark_groq_failure).
         failure_code = self.transcriber.consume_last_failure_code()
         backend, reason = self.transcriber.consume_backend_event()
 
-        # Prefer the classified failure code over raw text parsing
-        if failure_code:
+        # Only the user-facing auth failure gets a toast — everything else
+        # (rate limits, timeouts, latency) is handled silently.
+        if failure_code == FAIL_GROQ_AUTH:
             message = FAILURE_MESSAGES.get(failure_code)
             if message:
-                self.show_toast(message, warning=(failure_code == FAIL_GROQ_AUTH))
-                return
-
-        # Fall back to raw reason parsing (legacy path, or when failure_code not set)
-        if backend != "local" or not reason:
+                self.show_toast(message, warning=True)
             return
-        reason_lower = reason.lower()
-        if reason_lower.startswith("latency="):
-            self.show_toast("Groq slow. Switched to local transcription.")
+        # Non-auth failures are silent — the system already fell back to local
+        # and will recover within _GROQ_RECOVERY_COOLDOWN (30s).
+        if failure_code:
+            logger.info("backend_fallback_silent", failure_code=failure_code)
             return
-        if any(
-            token in reason_lower
-            for token in ("429", "rate", "quota", "limit", "too many requests")
-        ):
-            self.show_toast(
-                "Groq rate limit reached. Switched to local transcription. Try again in a minute."
-            )
-            return
-        if "401" in reason_lower or "unauthorized" in reason_lower or "invalid" in reason_lower:
-            self.show_toast(
-                "Groq API key is invalid. Go to Settings → API Keys to update it.",
-                warning=True,
-            )
-            return
-        if "timeout" in reason_lower or "timed out" in reason_lower:
-            self.show_toast(
-                "Groq timed out. Switched to local transcription — try again."
-            )
-            return
-        self.show_toast(
-            "Groq unavailable. Switched to local transcription. Check your API key in Settings."
-        )
+        if backend == "local" and reason:
+            logger.info("backend_fallback_silent", reason=reason[:80])
 
     @Slot(str, str, str, str)
-    def on_processing_error(self, err_msg, correlation_id, traceback_text, failure_code=FAIL_UNKNOWN):
+    def on_processing_error(
+        self, err_msg, correlation_id, traceback_text, failure_code=FAIL_UNKNOWN
+    ):
+        """
+        Handle a processing thread error.
+
+        The user should NOT see an error overlay or alarming dialog for
+        recoverable failures (timeout, VAD no-speech, Groq fallback).
+        Only critical failures (auth, model missing) get a muted toast.
+        The recording loop ALWAYS continues — auto-recovery returns to IDLE.
+        """
         if correlation_id != self._processing_session_id:
             log_event(
                 "processing_result", "ignored", correlation_id=correlation_id, reason="stale_error"
@@ -604,8 +651,59 @@ class ProcessingPipelineMixin:
         if session:
             session.mark_failed()
 
-        # Look up a human-readable message for this failure code
-        user_message = FAILURE_MESSAGES.get(failure_code, "Transcription failed — check the logs for details.")
+        # Determine which failures are non-critical (silent recovery)
+        _silent_failures = {FAIL_VAD_NO_SPEECH, "FAIL_VAD_NO_SPEECH"}
+        _muted_failures = {
+            FAIL_TIMEOUT,
+            FAIL_CANCELLED,
+            FAIL_UNKNOWN,
+            FAIL_GROQ_ERROR,
+            FAIL_GROQ_RATE_LIMIT,
+            FAIL_GROQ_TIMEOUT,
+            "FAIL_TIMEOUT",
+            "FAIL_CANCELLED",
+            "FAIL_UNKNOWN",
+        }
+        _is_silent = failure_code in _silent_failures
+        _is_muted = failure_code in _muted_failures
+
+        log_event(
+            "processing_failed",
+            status="failed",
+            failure_code=failure_code,
+            correlation_id=correlation_id,
+            error=err_msg,
+            traceback=traceback_text,
+            silent=_is_silent or _is_muted,
+        )
+
+        # Silently recover — no overlay, no toast, no dialog
+        if _is_silent:
+            self._sessions.pop(correlation_id, None)
+            self._clear_processor_refs(correlation_id)
+            self._set_state(RecordingState.IDLE, f"silent_recovery_{failure_code}", correlation_id)
+            self.overlay.set_state(PillState.IDLE)
+            return
+
+        # Muted failure — show overlay briefly, no error dialog
+        if _is_muted:
+            user_message = FAILURE_MESSAGES.get(failure_code, "")
+            self._last_session_id = correlation_id
+            self._latest_timings = {
+                "recording_ms": f"{round(self._last_recording_seconds * 1000, 2)} ms",
+                "error": f"[{failure_code}] {err_msg[:80]}",
+            }
+            self._refresh_debug_window()
+            # Quick overlay flash, no error dialog
+            self.overlay.show_success("No speech detected")
+            self._sessions.pop(correlation_id, None)
+            self._clear_processor_refs(correlation_id)
+            self._set_state(RecordingState.IDLE, f"muted_recovery_{failure_code}", correlation_id)
+            QTimer.singleShot(500, lambda: self.overlay.set_state(PillState.IDLE))
+            return
+
+        # Critical failure — show muted toast, no error dialog
+        user_message = FAILURE_MESSAGES.get(failure_code, "")
         log_event(
             "processing_failed",
             status="failed",
@@ -620,15 +718,9 @@ class ProcessingPipelineMixin:
             "recording_ms": f"{round(self._last_recording_seconds * 1000, 2)} ms",
             "error": f"[{failure_code}] {err_msg[:80]}",
         }
-        self.overlay.show_error("Could not process recording")
-        self.main_window.set_error_details(f"[{failure_code}] {err_msg}")
         self._refresh_debug_window()
-        self.show_toast(user_message, warning=True)
-        # Show error report dialog with "Send Report" button
-        QTimer.singleShot(
-            600,
-            lambda: self._report_processing_error(err_msg, traceback_text),
-        )
+        if user_message:
+            self.show_toast(user_message, warning=True)
         self._sessions.pop(correlation_id, None)
         self._clear_processor_refs(correlation_id)
         QTimer.singleShot(

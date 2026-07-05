@@ -27,6 +27,8 @@ from app.thread_lifecycle_mixin import ThreadLifecycleMixin
 from app.transcriber_mixin import TranscriberMixin
 from data.snippets import SnippetsManager
 from plat import get_hotkey_handler as _get_hotkey_handler
+from telemetry.latency_tracker import LatencyTracker
+from ui.debug_window import DebugWindow
 from ui.history_window import HistoryWindow
 from ui.main_window import MainWindow
 from ui.overlay.pill_overlay import PillOverlay
@@ -87,8 +89,6 @@ def _check_crash_flag() -> str:
     return ""
 
 
-
-
 class RotaApp(
     ThreadLifecycleMixin,
     RecordingStateMixin,
@@ -128,8 +128,12 @@ class RotaApp(
         self.injector = services.injector
         self.snippets = SnippetsManager()
         self.auto_improvement = AutoImprovementSystem(
-            personal_dict=self.ai_processor.personal_dict if self.ai_processor else None
+            personal_dict=self.ai_processor.personal_dict if self.ai_processor else None,
+            style_profile=self.ai_processor._get_style_profile() if self.ai_processor else None,
         )
+
+        # Latency tracker for debug dashboard (rolling average of last 50 sessions)
+        self.latency_tracker = LatencyTracker(window_size=50)
         from audio.audio_control import SystemAudioController
 
         self.audio_controller = SystemAudioController(self.config)
@@ -230,6 +234,16 @@ class RotaApp(
         self.hotkey_handler = None
         self._pipeline_runner: Callable[[str], None] | None = None
         self._backup_manager = None
+        # Wire latency tracker into pipeline mixin (unconditional)
+        self._latency_tracker = self.latency_tracker
+
+        # Debug dashboard window — shows live state, timings, and rolling latency
+        self.debug_window = DebugWindow(
+            on_start_clicked=self._handle_manual_start,
+            on_stop_clicked=self._handle_manual_stop,
+        )
+        self.debug_window.show()
+
         self._refresh_debug_window()
 
     def _show_macos_setup(self):
@@ -455,7 +469,43 @@ class RotaApp(
         self.main_window.update_state(state_value, self._last_session_id)
         self.main_window.update_text_results(self._latest_raw_text, self._latest_cleaned_text)
         self.main_window.update_timings(self._latest_timings)
+
+        # Memory diagnostic: read stream buffer from active processor thread
+        buffer_mb = 0.0
+        total_mb = 0.0
+        processor = getattr(self, "_processor_thread", None)
+        if processor is not None and processor.isRunning():
+            buffer_mb = processor.stream_buffer_memory_mb
+            total_samples = getattr(processor, "_total_recording_samples", 0)
+            total_mb = (total_samples * 2) / (1024.0 * 1024.0)  # int16 samples
+
+        # Update both main window and debug dashboard window with live data
+        latency_summary = ""
+        try:
+            if hasattr(self, "latency_tracker") and self.latency_tracker is not None:
+                latency_summary = self.latency_tracker.summary()
+                self.main_window.update_latency_summary(latency_summary)
+        except Exception:
+            pass
+
+        try:
+            if hasattr(self, "debug_window"):
+                self.debug_window.update_state(state_value, self._last_session_id)
+                self.debug_window.update_text_results(
+                    self._latest_raw_text, self._latest_cleaned_text
+                )
+                self.debug_window.update_timings(self._latest_timings)
+                self.debug_window.update_memory(buffer_mb, total_mb)
+                if latency_summary:
+                    self.debug_window.update_latency_summary(latency_summary)
+        except Exception:
+            pass
+
         self._update_metrics()
+
+        if hasattr(self.main_window, "update_memory"):
+            self.main_window.update_memory(buffer_mb, total_mb)
+
         if hasattr(self, "tray"):
             self.tray.update_runtime_state(state_value)
 
@@ -500,7 +550,7 @@ class RotaApp(
             )
             return False
 
-    def show_toast(self, message, warning=False):
+    def show_toast(self, message, warning=False, duration_ms=4000):
         # Close any existing toast before showing a new one to prevent zombie windows
         existing = getattr(self, "_active_toast", None)
         if existing is not None:
@@ -508,7 +558,7 @@ class RotaApp(
                 existing.close()
             except RuntimeError:
                 pass  # already destroyed by Qt
-        self._active_toast = Toast(message, warning=warning)
+        self._active_toast = Toast(message, warning=warning, duration_ms=duration_ms)
         self._active_toast.show()
 
     def _do_undo_injection(self):

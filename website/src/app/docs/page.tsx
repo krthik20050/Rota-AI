@@ -1,4 +1,10 @@
+import React from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { getDocContent } from "@/lib/docs";
+import { DocsSidebar, DocsMobileMenu } from "@/components/DocsNavigation";
+import { ArchitecturalDiagram } from "@/components/ArchitecturalDiagrams";
 
 export const metadata = {
   title: "Docs - Rota AI",
@@ -9,47 +15,87 @@ const SIDEBAR_SECTIONS = [
   {
     title: "Getting Started",
     items: [
-      { label: "Installation", href: "#installation" },
-      { label: "Quickstart", href: "#quickstart" },
-      { label: "System requirements", href: "#requirements" },
+      { label: "Installation", href: "#installation", slug: "installation" },
+      { label: "Quickstart", href: "#quickstart", slug: "quickstart" },
+      { label: "System requirements", href: "#requirements", slug: "requirements" },
     ],
   },
   {
     title: "Configuration",
     items: [
-      { label: "Transcription backends", href: "#backends" },
-      { label: "Voice snippets", href: "#snippets" },
-      { label: "Personal dictionary", href: "#dictionary" },
-      { label: "Settings reference", href: "#settings" },
+      { label: "Transcription backends", href: "#backends", slug: "backends" },
+      { label: "Voice snippets", href: "#snippets", slug: "snippets" },
+      { label: "Personal dictionary", href: "#dictionary", slug: "dictionary" },
+      { label: "Settings reference", href: "#settings", slug: "settings" },
     ],
   },
   {
     title: "Usage",
     items: [
-      { label: "Basic dictation", href: "#basic-dictation" },
-      { label: "Voice commands", href: "#voice-commands" },
-      { label: "Context awareness", href: "#context" },
-      { label: "Offline mode", href: "#offline" },
+      { label: "Basic dictation", href: "#basic-dictation", slug: "basic-dictation" },
+      { label: "Voice commands", href: "#voice-commands", slug: "voice-commands" },
+      { label: "Context awareness", href: "#context", slug: "context" },
+      { label: "Offline mode", href: "#offline", slug: "offline" },
     ],
   },
   {
     title: "Platform",
     items: [
-      { label: "Windows setup", href: "#windows" },
-      { label: "macOS setup", href: "#macos" },
-      { label: "Linux setup", href: "#linux" },
+      { label: "Windows setup", href: "#windows", slug: "windows" },
+      { label: "macOS setup", href: "#macos", slug: "macos" },
+      { label: "Linux setup", href: "#linux", slug: "linux" },
+    ],
+  },
+  {
+    title: "Architecture",
+    items: [
+      { label: "System overview", href: "#system-overview", slug: "system-overview" },
+      { label: "Audio pipeline", href: "#audio-pipeline", slug: "audio-pipeline" },
+      { label: "Threading model", href: "#threading-model", slug: "threading-model" },
+      { label: "Platform abstraction", href: "#platform-abstraction", slug: "platform-abstraction" },
+      { label: "Security & storage", href: "#security-storage", slug: "security-storage" },
+    ],
+  },
+  {
+    title: "Development",
+    items: [
+      { label: "Getting the code", href: "#getting-code", slug: "getting-code" },
+      { label: "Local setup", href: "#local-setup", slug: "local-setup" },
+      { label: "Building releases", href: "#building-releases", slug: "building-releases" },
+      { label: "Contributing", href: "#contributing", slug: "contributing" },
     ],
   },
   {
     title: "Reference",
     items: [
-      { label: "Hotkeys", href: "#hotkeys" },
-      { label: "Privacy & security", href: "#privacy" },
-      { label: "FAQ", href: "#faq" },
-      { label: "Troubleshooting", href: "#troubleshooting" },
+      { label: "Hotkeys", href: "#hotkeys", slug: "hotkeys" },
+      { label: "Privacy & security", href: "#privacy", slug: "privacy" },
+      { label: "FAQ", href: "#faq", slug: "faq" },
+      { label: "Troubleshooting", href: "#troubleshooting", slug: "troubleshooting" },
     ],
   },
 ];
+
+const proseClasses =
+  "prose prose-invert max-w-none " +
+  "prose-headings:text-[#fafafa] prose-headings:font-semibold prose-headings:scroll-mt-24 " +
+  "prose-h3:text-[19px] prose-h3:mt-8 prose-h3:mb-4 prose-h3:leading-snug " +
+  "prose-h4:text-[15px] prose-h4:mt-6 prose-h4:mb-3 prose-h4:leading-snug " +
+  "prose-p:text-[#d4d4d8] prose-p:leading-[1.75] prose-p:mb-5 prose-p:text-[15px] " +
+  "prose-strong:text-[#fafafa] prose-strong:font-semibold " +
+  "prose-em:text-[#d4d4d8] prose-em:not-italic prose-em:font-semibold " +
+  "prose-a:text-[#e5c118] prose-a:font-normal prose-a:underline hover:prose-a:underline " +
+  "prose-code:text-[#e5c118] prose-code:font-normal prose-code:bg-zinc-900/80 prose-code:border prose-code:border-white/[0.04] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-sm prose-code:text-[13px] prose-code:font-mono prose-code:before:content-none prose-code:after:content-none " +
+  "prose-pre:bg-[#111113] prose-pre:border prose-pre:border-white/[.06] prose-pre:rounded-sm prose-pre:p-4 " +
+  "prose-pre:overflow-x-auto " +
+  "prose-blockquote:border-l-[#e4f222]/40 prose-blockquote:text-[#a1a1aa] prose-blockquote:pl-5 prose-blockquote:italic " +
+  "prose-li:text-[#d4d4d8] prose-li:mb-2 prose-li:text-[14.5px] prose-li:leading-[1.7] " +
+  "prose-ul:my-6 prose-ol:my-6 " +
+  "prose-hr:border-white/[.06] prose-hr:my-10 " +
+  "prose-img:rounded-sm prose-img:my-8 " +
+  "prose-table:text-[13px] prose-table:my-8 w-full " +
+  "prose-th:text-[#fafafa] prose-th:font-medium prose-th:py-2.5 prose-th:px-4 prose-th:border-b prose-th:border-white/[.08] prose-th:text-left " +
+  "prose-td:text-[#d4d4d8] prose-td:py-2.5 prose-td:px-4 prose-td:border-b prose-td:border-white/[.04]";
 
 export default function DocsPage() {
   return (
@@ -79,429 +125,124 @@ export default function DocsPage() {
         {/* Sidebar */}
         <aside className="w-56 lg:w-64 shrink-0 hidden md:block fixed left-0 top-14 bottom-0 overflow-y-auto px-4 py-8"
           style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-          <nav className="space-y-8">
-            {SIDEBAR_SECTIONS.map((section) => (
-              <div key={section.title}>
-                <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#50545a] mb-3 px-2">
-                  {section.title}
-                </h3>
-                <ul className="space-y-0.5">
-                  {section.items.map((item) => (
-                    <li key={item.label}>
-                      <a
-                        href={item.href}
-                        className="block px-2 py-1.5 text-xs text-[#71717a] hover:text-[#fafafa] hover:bg-white/[.03] rounded-sm transition-colors"
-                      >
-                        {item.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </nav>
+          <DocsSidebar sections={SIDEBAR_SECTIONS} />
         </aside>
 
         {/* Mobile sidebar toggle */}
         <div className="md:hidden fixed top-14 left-0 right-0 z-40 px-4 py-3"
           style={{ background: "rgba(9,9,11,0.95)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <details className="group">
-            <summary className="text-xs uppercase tracking-[0.15em] text-[#71717a] cursor-pointer list-none flex items-center justify-between">
-              <span>Jump to section</span>
-              <svg className="w-3.5 h-3.5 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <div className="mt-3 space-y-3 pb-2">
-              {SIDEBAR_SECTIONS.map((section) => (
-                <div key={section.title}>
-                  <h4 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#50545a] mb-1.5">{section.title}</h4>
-                  <div className="space-y-1">
-                    {section.items.map((item) => (
-                      <a key={item.label} href={item.href}
-                        className="block text-xs text-[#71717a] hover:text-[#fafafa] py-1 transition-colors">
-                        {item.label}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </details>
+          <DocsMobileMenu sections={SIDEBAR_SECTIONS} />
         </div>
 
         {/* Main content */}
         <main className="flex-1 md:ml-56 lg:ml-64 px-6 sm:px-10 pt-8 md:pt-8 pb-20 max-w-4xl">
           <div className="md:pt-8 md:mt-6">
-            <h1 className="font-display uppercase tracking-[0.02em] leading-[0.92] mb-6"
+            <h1 className="font-display uppercase tracking-[0.02em] leading-[0.92] mb-12"
               style={{ fontSize: "clamp(32px, 5vw, 52px)", color: "#fafafa" }}>
               Documentation
             </h1>
 
-            {/* ────────────── Getting Started ────────────── */}
-            <section id="installation" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Installation</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Download the latest release for your operating system from the website or GitHub releases. No account or credit card required.</p>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-2">Windows</p>
-                  <p className="text-xs">Download RotaAI-Setup.exe and run it. Follow the installer prompts.</p>
-                </div>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-2">macOS</p>
-                  <p className="text-xs">Download RotaAI-macOS.zip. Unzip it. Control-click RotaAI.app, choose Open, then grant permissions.</p>
-                </div>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-2">Linux</p>
-                  <p className="text-xs">Download the AppImage. Make it executable: <code className="text-[#e4f222]">chmod +x RotaAI.AppImage</code>. Run it.</p>
-                </div>
-              </div>
-            </section>
+            {SIDEBAR_SECTIONS.map((section) => (
+              <div key={section.title} className="mb-20">
+                <h2 className="text-[10px] uppercase tracking-[0.25em] font-bold text-zinc-400 font-mono border-b border-white/[.06] pb-3 mb-12">
+                  {section.title}
+                </h2>
 
-            <section id="quickstart" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Quickstart</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <ol className="space-y-3 list-decimal pl-5">
-                  <li><strong className="text-[#fafafa]">Download and install</strong> Rota AI for your platform.</li>
-                  <li><strong className="text-[#fafafa]">Choose a backend</strong> during onboarding: Groq (free API key), Gemini (free API key), or Ollama (fully local).</li>
-                  <li><strong className="text-[#fafafa]">Press F9</strong> in any text field to start recording. A floating pill appears.</li>
-                  <li><strong className="text-[#fafafa]">Speak naturally</strong> at a normal pace. Rota transcribes in real time.</li>
-                  <li><strong className="text-[#fafafa]">Release F9</strong> to stop recording. Your cleaned text appears where your cursor is.</li>
-                </ol>
-              </div>
-            </section>
+                <div className="space-y-16">
+                  {section.items.map((item) => {
+                    const doc = getDocContent(item.slug);
+                    if (!doc.content) return null;
+                    return (
+                      <section
+                        key={item.slug}
+                        id={item.href.replace("#", "")}
+                        className="scroll-mt-24 border-b border-white/[.02] pb-16 last:border-0 last:pb-0"
+                      >
+                        <h3 className="text-xl font-semibold text-[#fafafa] mb-6 font-mono text-xs uppercase tracking-[0.2em]">
+                          {doc.title || item.label}
+                        </h3>
+                        <div className={proseClasses}>
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              pre({ children, ...props }) {
+                                const childrenArray = React.Children.toArray(children);
+                                const mermaidChild = childrenArray.find(
+                                  (child) =>
+                                    React.isValidElement(child) &&
+                                    (child.props as { className?: string }).className?.includes("language-mermaid")
+                                ) as React.ReactElement<{ className?: string; children?: React.ReactNode }> | undefined;
 
-            <section id="requirements" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">System Requirements</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                {[
-                  { label: "OS", value: "Windows 10/11, macOS 13+, or Linux (Ubuntu 20.04+, Fedora 36+, Arch)" },
-                  { label: "RAM", value: "4 GB minimum, 8 GB recommended" },
-                  { label: "GPU", value: "Optional. NVIDIA with 4GB+ VRAM for local transcription" },
-                  { label: "Disk", value: "~600 MB for dependencies plus model size (140MB to 3.1GB)" },
-                  { label: "Microphone", value: "Any built-in or external microphone" },
-                ].map((item) => (
-                  <div key={item.label} className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div className="text-xs uppercase tracking-[0.15em] text-[#71717a] font-mono mb-1">{item.label}</div>
-                    <div className="text-sm text-[#fafafa]">{item.value}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* ────────────── Configuration ────────────── */}
-            <section id="backends" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Transcription Backends</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Rota AI supports three transcription backends. You can switch between them anytime from Settings.</p>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-1">Groq (Cloud, Free Tier)</p>
-                  <p className="text-xs">Fastest option. Powered by Groq LPU hardware. Sign up at console.groq.com for a free API key. Whisper Large v3 transcription with sub-second latency.</p>
-                </div>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-1">Gemini (Cloud, Free Tier)</p>
-                  <p className="text-xs">Google transcription API. Free tier includes enough credits for daily use. Get an API key from Google AI Studio.</p>
-                </div>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-1">Ollama (Local, Fully Offline)</p>
-                  <p className="text-xs">Install Ollama, download a Whisper model (small is 480MB), and Rota works 100% offline. No API keys, no accounts, no internet required.</p>
+                                if (mermaidChild) {
+                                  return <ArchitecturalDiagram type={String(mermaidChild.props.children || "")} />;
+                                }
+                                return <pre {...props}>{children}</pre>;
+                              },
+                              code({ className, children, ...props }) {
+                                return (
+                                  <code className={className} {...props}>
+                                    {children}
+                                  </code>
+                                );
+                              }
+                            }}
+                          >
+                            {doc.content}
+                          </ReactMarkdown>
+                        </div>
+                      </section>
+                    );
+                  })}
                 </div>
               </div>
-            </section>
+            ))}
 
-            <section id="snippets" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Voice Snippets</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Voice snippets let you insert frequently used text with a spoken shortcut. Instead of typing a full sentence, say a short trigger word and Rota expands it. For example, set &ldquo;sig&rdquo; to expand to your full email signature.</p>
-                <p>Manage your snippets from Settings {'>'} Snippets. You can add, edit, or delete snippets at any time. Snippets are stored locally and synced across sessions.</p>
-              </div>
-            </section>
-
-            <section id="dictionary" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Personal Dictionary</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>The personal dictionary learns your vocabulary over time. Technical terms, project names, acronyms, and unusual words are remembered so Rota transcribes them correctly every time.</p>
-                <p>If Rota consistently misrecognizes a word, add it to your dictionary by saying the word and correcting the spelling. The dictionary is stored locally and persists across updates.</p>
-              </div>
-            </section>
-
-            <section id="settings" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Settings Reference</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-white/[.06]">
-                        <th className="text-left py-2.5 pr-4 text-[10px] uppercase tracking-[0.2em] text-[#50545a] font-mono">Setting</th>
-                        <th className="text-left py-2.5 pl-4 text-[10px] uppercase tracking-[0.2em] text-[#50545a] font-mono">Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { setting: "Backend", desc: "Choose Groq, Gemini, or Ollama for transcription" },
-                        { setting: "Model size", desc: "Base (fast), Small (balanced), Large (accurate)" },
-                        { setting: "Hotkey", desc: "Customize the recording key (default: F9)" },
-                        { setting: "Microphone", desc: "Select which microphone to use" },
-                        { setting: "Language", desc: "Transcription language (auto-detect or manual)" },
-                        { setting: "History retention", desc: "How long to keep session history (default: 2 days)" },
-                        { setting: "AI cleanup", desc: "Enable or disable the AI cleanup pass" },
-                        { setting: "Offline mode", desc: "Force local-only operation with Ollama" },
-                      ].map((row) => (
-                        <tr key={row.setting} className="border-b border-white/[.03]">
-                          <td className="py-2.5 pr-4 text-[#fafafa] font-mono">{row.setting}</td>
-                          <td className="py-2.5 pl-4 text-[#71717a]">{row.desc}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-
-            {/* ────────────── Usage ────────────── */}
-            <section id="basic-dictation" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Basic Dictation</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Basic dictation is the core feature of Rota AI. Press and hold the hotkey (default F9), speak what you want to type, then release. The transcribed and cleaned text is injected directly into the application you are using.</p>
-                <p>Tips for best accuracy:</p>
-                <ul className="space-y-1.5 pl-5 list-disc">
-                  <li>Speak at a natural pace. Do not slow down deliberately.</li>
-                  <li>Position your microphone 6 to 12 inches from your mouth.</li>
-                  <li>Minimize background noise for clearer recordings.</li>
-                  <li>Use a consistent volume. Avoid whispering or shouting.</li>
-                  <li>Pause briefly between sentences for cleaner segmentation.</li>
-                </ul>
-              </div>
-            </section>
-
-            <section id="voice-commands" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Voice Commands</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Rota AI understands voice commands that let you edit text by speaking. These work during or immediately after dictation.</p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-white/[.06]">
-                        <th className="text-left py-2.5 pr-4 text-[10px] uppercase tracking-[0.2em] text-[#50545a] font-mono">Command</th>
-                        <th className="text-left py-2.5 pl-4 text-[10px] uppercase tracking-[0.2em] text-[#50545a] font-mono">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { cmd: "Scratch that", action: "Removes the last transcribed sentence" },
-                        { cmd: "Make it more formal", action: "Rewrites the last sentence in formal tone" },
-                        { cmd: "Make it casual", action: "Rewrites in casual tone" },
-                        { cmd: "Change deadline to Friday", action: "Edits text in-place based on context" },
-                        { cmd: "Translate to Spanish", action: "Converts the last sentence to Spanish" },
-                        { cmd: "New line", action: "Inserts a line break" },
-                        { cmd: "New paragraph", action: "Starts a new paragraph" },
-                      ].map((row) => (
-                        <tr key={row.cmd} className="border-b border-white/[.03]">
-                          <td className="py-2.5 pr-4 text-[#e4f222] font-mono">{row.cmd}</td>
-                          <td className="py-2.5 pl-4 text-[#71717a]">{row.action}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-
-            <section id="context" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Context Awareness</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Rota detects which application is in focus and adapts the transcription output accordingly. No configuration required.</p>
-                <ul className="space-y-2 pl-5 list-disc">
-                  <li><strong className="text-[#fafafa]">Email (Outlook, Gmail):</strong> Formal tone, proper salutations and closings.</li>
-                  <li><strong className="text-[#fafafa]">Chat (Slack, Discord, Telegram):</strong> Casual tone, shorter sentences.</li>
-                  <li><strong className="text-[#fafafa]">Code (VS Code, Cursor, JetBrains):</strong> Preserves camelCase, snake_case, code syntax, and technical vocabulary.</li>
-                  <li><strong className="text-[#fafafa]">Documents (Word, Notion, Google Docs):</strong> Neutral tone with proper punctuation and formatting.</li>
-                </ul>
-              </div>
-            </section>
-
-            <section id="offline" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Offline Mode</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Rota AI can run entirely offline using Ollama as the transcription backend. No internet connection, no API keys, and no data leaving your machine.</p>
-                <ol className="space-y-2 pl-5 list-decimal">
-                  <li>Install <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="text-[#e4f222] hover:underline">Ollama</a> on your machine.</li>
-                  <li>Download a Whisper model: <code className="text-[#e4f222] text-xs">ollama pull whisper-small</code> (480MB) or <code className="text-[#e4f222] text-xs">ollama pull whisper-large</code> (3.1GB).</li>
-                  <li>In Rota AI Settings, change the backend to Ollama.</li>
-                  <li>That is it. Rota now works completely offline.</li>
-                </ol>
-                <p>Offline transcription is slightly slower than cloud backends but provides complete privacy. Your voice data never leaves your computer.</p>
-              </div>
-            </section>
-
-            {/* ────────────── Platform ────────────── */}
-            <section id="windows" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Windows Setup</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Rota AI runs on Windows 10 and Windows 11. The installer handles all dependencies automatically.</p>
-                <ul className="space-y-2 pl-5 list-disc">
-                  <li>Download the .exe installer from the website.</li>
-                  <li>Run the installer. No administrator privileges required.</li>
-                  <li>Rota starts automatically after installation and lives in the system tray.</li>
-                  <li>On first launch, Windows may ask for microphone permission. Grant it.</li>
-                </ul>
-              </div>
-            </section>
-
-            <section id="macos" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">macOS Setup</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Rota AI supports macOS 13+. The current build is not notarized, so first launch requires a one-time permission step.</p>
-                <ul className="space-y-2 pl-5 list-disc">
-                  <li>Download RotaAI-macOS.zip and unzip it.</li>
-                  <li>Control-click RotaAI.app and choose Open from the context menu.</li>
-                  <li>Click Open in the dialog. This is only needed on first launch.</li>
-                  <li>Grant Accessibility and Microphone permissions when prompted.</li>
-                </ul>
-              </div>
-            </section>
-
-            <section id="linux" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Linux Setup</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Rota AI supports Ubuntu 20.04+, Fedora 36+, and Arch Linux via AppImage.</p>
-                <ul className="space-y-2 pl-5 list-disc">
-                  <li>Download the .AppImage file from the website.</li>
-                  <li>Make it executable: <code className="text-[#e4f222] text-xs">chmod +x RotaAI.AppImage</code>.</li>
-                  <li>Run it: <code className="text-[#e4f222] text-xs">./RotaAI.AppImage</code>.</li>
-                  <li>For system-wide access, move it to <code className="text-[#e4f222] text-xs">~/.local/bin/</code> or <code className="text-[#e4f222] text-xs">/usr/local/bin/</code>.</li>
-                </ul>
-              </div>
-            </section>
-
-            {/* ────────────── Reference ────────────── */}
-            <section id="hotkeys" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Hotkeys</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-white/[.06]">
-                      <th className="text-left py-2.5 pr-4 text-[10px] uppercase tracking-[0.2em] text-[#50545a] font-mono">Key</th>
-                      <th className="text-left py-2.5 pl-4 text-[10px] uppercase tracking-[0.2em] text-[#50545a] font-mono">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { key: "F9", action: "Start / stop recording" },
-                      { key: "F9 (tap)", action: "Quick record for short input" },
-                      { key: "F9 (hold)", action: "Record continuously, stop on release" },
-                      { key: "Esc", action: "Cancel current recording" },
-                    ].map((row) => (
-                      <tr key={row.key} className="border-b border-white/[.03]">
-                        <td className="py-2.5 pr-4 text-[#e4f222] font-mono">{row.key}</td>
-                        <td className="py-2.5 pl-4 text-[#71717a]">{row.action}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-[#71717a] mt-3">All hotkeys are customizable in Settings.</p>
-            </section>
-
-            <section id="privacy" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Privacy & Security</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <p>Rota AI is built with privacy as a core principle.</p>
-                <ul className="space-y-2 pl-5 list-disc">
-                  <li><strong className="text-[#fafafa]">Zero telemetry.</strong> The desktop app contains no analytics, no error reporting, no phone-home functionality.</li>
-                  <li><strong className="text-[#fafafa]">Encrypted API keys.</strong> Keys are stored using DPAPI on Windows and Keychain on macOS. Encrypted at rest.</li>
-                  <li><strong className="text-[#fafafa]">Local storage.</strong> Session history, snippets, and dictionary are stored in a local SQLite database you control.</li>
-                  <li><strong className="text-[#fafafa]">You choose the processor.</strong> Voice data goes only to the transcription service you select. Switch to Ollama for fully offline operation.</li>
-                  <li><strong className="text-[#fafafa]">Open source.</strong> Every line of code is on GitHub under the MIT license. Anyone can audit it.</li>
-                </ul>
-                <p>See the <Link href="/privacy" className="text-[#e4f222] hover:underline">Privacy Policy</Link> for complete details.</p>
-              </div>
-            </section>
-
-            <section id="troubleshooting" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Troubleshooting</h2>
-              <div className="space-y-4 text-sm text-[#a1a1aa] leading-relaxed">
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-1">Nothing happens when I press F9</p>
-                  <p className="text-xs">Check that the microphone is connected and not muted. Verify that Rota is running in the system tray. Try restarting the app.</p>
-                </div>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-1">Transcription is slow or inaccurate</p>
-                  <p className="text-xs">Switch to a different backend in Settings. Groq offers the lowest latency. For offline use, try the Small model instead of Large.</p>
-                </div>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-1">API key not working</p>
-                  <p className="text-xs">Double-check the key in Settings. For Groq, ensure you copied the full key from console.groq.com. For Gemini, verify the key is active in Google AI Studio.</p>
-                </div>
-                <div className="p-4 rounded-sm" style={{ background: "#111113", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#fafafa] text-xs font-mono mb-1">Text not appearing in the target app</p>
-                  <p className="text-xs">Make sure the target app has focus and the cursor is in a text field. Some applications (like password fields or terminals) may not accept text injection.</p>
-                </div>
-                <p className="mt-4">Still having issues? <a href="https://github.com/krthik20050/Rota-AI/issues" target="_blank" rel="noopener noreferrer" className="text-[#e4f222] hover:underline">Open a GitHub issue</a> with details about your problem.</p>
-              </div>
-            </section>              {/* FAQPage JSON-LD Schema */}
-              <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                  __html: JSON.stringify({
-                    "@context": "https://schema.org",
-                    "@type": "FAQPage",
-                    "mainEntity": [
-                      {
-                        "@type": "Question",
-                        "name": "Is Rota AI really free forever?",
-                        "acceptedAnswer": { "@type": "Answer", "text": "Yes. MIT licensed. No pro plan, no premium tier, no credit card." }
-                      },
-                      {
-                        "@type": "Question",
-                        "name": "Do I need an account?",
-                        "acceptedAnswer": { "@type": "Answer", "text": "No. Rota AI works without any account. Cloud backends need their own free API keys." }
-                      },
-                      {
-                        "@type": "Question",
-                        "name": "Can I use Rota AI on multiple computers?",
-                        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Download and install on each machine. Settings are per-machine by design." }
-                      },
-                      {
-                        "@type": "Question",
-                        "name": "Does Rota AI work in games?",
-                        "acceptedAnswer": { "@type": "Answer", "text": "It can, depending on the game. Fullscreen games may block the overlay. Windowed or borderless mode works best." }
-                      }
-                    ]
-                  }),
-                }}
-              />
-              {/* BreadcrumbList JSON-LD Schema */}
-              <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                  __html: JSON.stringify({
-                    "@context": "https://schema.org",
-                    "@type": "BreadcrumbList",
-                    "itemListElement": [
-                      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rota.software/" },
-                      { "@type": "ListItem", "position": 2, "name": "Docs", "item": "https://rota.software/docs" }
-                    ]
-                  }),
-                }}
-              />
-              <section id="faq" className="mb-16 scroll-mt-24">
-              <h2 className="text-base font-semibold text-[#fafafa] mb-4 font-mono text-xs uppercase tracking-[0.2em]">Frequently Asked Questions</h2>
-              <div className="space-y-0 text-sm text-[#a1a1aa] leading-relaxed">
-                {[
-                  { q: "Is Rota AI really free forever?", a: "Yes. MIT licensed. No pro plan, no premium tier, no credit card." },
-                  { q: "Do I need an account?", a: "No. Rota AI works without any account. Cloud backends need their own free API keys." },
-                  { q: "Can I use Rota AI on multiple computers?", a: "Yes. Download and install on each machine. Settings are per-machine by design." },
-                  { q: "Does Rota AI work in games?", a: "It can, depending on the game. Fullscreen games may block the overlay. Windowed or borderless mode works best." },
-                ].map((item, i) => (
-                  <details key={i} className="group border-b border-white/[.06]">
-                    <summary className="py-3.5 text-sm font-medium text-[#fafafa] cursor-pointer list-none flex items-center justify-between gap-4 hover:text-[#e4f222] transition-colors">
-                      {item.q}
-                      <svg className="w-3.5 h-3.5 shrink-0 text-[#71717a] transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
-                    </summary>
-                    <p className="pb-3.5 text-sm text-[#a1a1aa] leading-relaxed">{item.a}</p>
-                  </details>
-                ))}
-              </div>
-            </section>
+            {/* FAQPage JSON-LD Schema */}
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "FAQPage",
+                  "mainEntity": [
+                    {
+                      "@type": "Question",
+                      "name": "Is Rota AI really free forever?",
+                      "acceptedAnswer": { "@type": "Answer", "text": "Yes. MIT licensed. No pro plan, no premium tier, no credit card." }
+                    },
+                    {
+                      "@type": "Question",
+                      "name": "Do I need an account?",
+                      "acceptedAnswer": { "@type": "Answer", "text": "No. Rota AI works without any account. Cloud backends need their own free API keys." }
+                    },
+                    {
+                      "@type": "Question",
+                      "name": "Can I use Rota AI on multiple computers?",
+                      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Download and install on each machine. Settings are per-machine by design." }
+                    },
+                    {
+                      "@type": "Question",
+                      "name": "Does Rota AI work in games?",
+                      "acceptedAnswer": { "@type": "Answer", "text": "It can, depending on the game. Fullscreen games may block the overlay. Windowed or borderless mode works best." }
+                    }
+                  ]
+                }),
+              }}
+            />
+            {/* BreadcrumbList JSON-LD Schema */}
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "BreadcrumbList",
+                  "itemListElement": [
+                    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rota.software/" },
+                    { "@type": "ListItem", "position": 2, "name": "Docs", "item": "https://rota.software/docs" }
+                  ]
+                }),
+              }}
+            />
           </div>
         </main>
       </div>

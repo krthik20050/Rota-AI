@@ -76,31 +76,41 @@ class AudioRecorder(QObject):
         self._auto_stop_s = max(0.0, seconds)
 
     def _audio_callback(self, indata, frames, _callback_time, status):
-        """Callback function to receive audio data from the stream."""
-        if status:
-            logger.warning("Audio callback status: %s", status)
+        """Callback function to receive audio data from the stream.
 
-        audio_chunk = indata.copy().flatten()
-        if self._active_session is not None:
-            self._active_session.audio_queue.put(audio_chunk)
+        NEVER raises — every exception is caught and logged so a single bad
+        chunk cannot crash or stall the recording stream.
+        """
+        try:
+            if status:
+                logger.warning("Audio callback status: %s", status)
 
-        if len(audio_chunk) > 0 and self._is_recording:
-            rms = float(np.sqrt(np.mean(audio_chunk.astype(np.float32) ** 2)))
-            self.audio_level_signal.emit(rms)
+            audio_chunk = indata.copy().flatten()
+            if self._active_session is not None:
+                try:
+                    self._active_session.audio_queue.put(audio_chunk)
+                except Exception:
+                    logger.exception("audio_queue_put_failed")
 
-            # Auto-stop on silence
-            if self._auto_stop_s > 0 and not self._auto_stop_emitted:
-                if rms > _SILENCE_RMS:
-                    self._speech_detected = True
-                    self._silence_start = 0.0  # reset on speech
-                elif self._speech_detected:
-                    now = _time.monotonic()
-                    if self._silence_start == 0.0:
-                        self._silence_start = now
-                    elif now - self._silence_start >= self._auto_stop_s:
-                        self._auto_stop_emitted = True
-                        self.auto_stop_signal.emit()
-                        logger.info("auto_stop_triggered silence_s=%.1f", self._auto_stop_s)
+            if len(audio_chunk) > 0 and self._is_recording:
+                rms = float(np.sqrt(np.mean(audio_chunk.astype(np.float32) ** 2)))
+                self.audio_level_signal.emit(rms)
+
+                # Auto-stop on silence
+                if self._auto_stop_s > 0 and not self._auto_stop_emitted:
+                    if rms > _SILENCE_RMS:
+                        self._speech_detected = True
+                        self._silence_start = 0.0  # reset on speech
+                    elif self._speech_detected:
+                        now = _time.monotonic()
+                        if self._silence_start == 0.0:
+                            self._silence_start = now
+                        elif now - self._silence_start >= self._auto_stop_s:
+                            self._auto_stop_emitted = True
+                            self.auto_stop_signal.emit()
+                            logger.info("auto_stop_triggered silence_s=%.1f", self._auto_stop_s)
+        except Exception:
+            logger.exception("audio_callback_error_chunk_dropped")
 
     @property
     def rms_amplitude(self):

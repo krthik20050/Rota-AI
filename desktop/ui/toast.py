@@ -7,10 +7,26 @@ from PySide6.QtCore import QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPainter, QPainterPath
 from PySide6.QtWidgets import QApplication, QWidget
 
+# Singleton: track the currently visible toast so overlapping notifications
+# are closed before showing a new one. Prevents toast stacking when multiple
+# events fire in rapid succession (e.g. "No speech detected" + fallback).
+_toast_instance: QWidget | None = None
+
 _RADIUS = 20.0
 _PAD_H = 22.0  # horizontal padding
 _PAD_V = 12.0  # vertical padding
 _BORDER_ALPHA = 30  # subtle inner ring alpha
+
+
+def _close_existing_toast() -> None:
+    """Close any currently visible toast before showing a new one."""
+    global _toast_instance
+    if _toast_instance is not None:
+        try:
+            _toast_instance.close()
+        except Exception:
+            pass
+        _toast_instance = None
 
 
 class Toast(QWidget):
@@ -19,6 +35,9 @@ class Toast(QWidget):
 
     Fully self-painted (no QLabel child) so the rounded shape is crisp at
     the OS level — no rectangular background artefact on Windows.
+
+    Each Toast closes the previously visible Toast on creation, preventing
+    overlapping notification stacking.
     """
 
     def __init__(
@@ -29,6 +48,9 @@ class Toast(QWidget):
         on_click: Callable | None = None,
         duration_ms: int = 3500,
     ):
+        # Close any existing toast before showing this one
+        _close_existing_toast()
+
         super().__init__(parent)
         self._message = message
         self._warning = warning
@@ -71,7 +93,11 @@ class Toast(QWidget):
             geo = screen.availableGeometry()
             self.move((geo.width() - w) // 2, geo.bottom() - 110)
 
-        QTimer.singleShot(duration_ms, self.close)
+        # Register this as the active toast instance
+        global _toast_instance
+        _toast_instance = self
+
+        QTimer.singleShot(duration_ms, self._on_toast_expired)
 
     # ── Windows DWM glass (eliminates white/accent-colour bounding rect) ──
 
@@ -105,13 +131,9 @@ class Toast(QWidget):
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
             # 1. Punch fully transparent so DWM glass shows through empty areas
-            painter.setCompositionMode(
-                QPainter.CompositionMode.CompositionMode_Clear
-            )
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
             painter.fillRect(self.rect(), QColor(0, 0, 0, 0))
-            painter.setCompositionMode(
-                QPainter.CompositionMode.CompositionMode_SourceOver
-            )
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
             # 2. Pill background clipped to rounded path — no rectangular leak
             path = QPainterPath()
@@ -124,12 +146,11 @@ class Toast(QWidget):
             # 3. Subtle inner ring
             painter.setClipping(False)
             from PySide6.QtGui import QPen
+
             painter.setBrush(Qt.BrushStyle.NoBrush)
             ring_color = QColor(255, 255, 255, _BORDER_ALPHA)
             painter.setPen(QPen(ring_color, 1.0))
-            painter.drawRoundedRect(
-                QRectF(0.5, 0.5, w - 1, h - 1), _RADIUS - 0.5, _RADIUS - 0.5
-            )
+            painter.drawRoundedRect(QRectF(0.5, 0.5, w - 1, h - 1), _RADIUS - 0.5, _RADIUS - 0.5)
 
             # 4. Text centered
             painter.setPen(self._fg)
@@ -142,9 +163,16 @@ class Toast(QWidget):
         finally:
             painter.end()
 
+    def _on_toast_expired(self) -> None:
+        """Called when the toast auto-dismiss timer fires. Clears singleton ref."""
+        global _toast_instance
+        if _toast_instance is self:
+            _toast_instance = None
+        self.close()
+
     def mousePressEvent(self, event) -> None:
         if self._on_click is not None:
             self._on_click()
-            self.close()
+            self._on_toast_expired()
         else:
             super().mousePressEvent(event)

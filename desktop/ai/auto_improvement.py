@@ -25,7 +25,7 @@ class AutoImprovementSystem:
     4. Feeds corrections back into the Personal Dictionary & saves correction logs.
     """
 
-    def __init__(self, log_path: str | None = None, personal_dict=None):
+    def __init__(self, log_path: str | None = None, personal_dict=None, style_profile=None):
         if log_path is None:
             import sys
 
@@ -42,6 +42,7 @@ class AutoImprovementSystem:
             log_path = os.path.join(appdata_dir, "auto_improvement_log.json")
         self._path = log_path
         self.personal_dict = personal_dict
+        self.style_profile = style_profile
         self._recent_injections: list[
             dict
         ] = []  # items: {"session_id": str, "text": str, "timestamp": float}
@@ -152,12 +153,17 @@ class AutoImprovementSystem:
 
         # Feed back to personal dictionary if provided
         if self.personal_dict is not None:
-            # Add to personal dictionary UI / memory
             if hasattr(self.personal_dict, "add_term"):
                 self.personal_dict.add_term(corrected)
             elif hasattr(self.personal_dict, "learn_from_text"):
-                # fallback or direct learning method
                 self.personal_dict.learn_from_text(corrected)
+
+        # Feed back to writing style profile if provided
+        if self.style_profile is not None:
+            try:
+                self.style_profile.learn_from_correction(original, corrected)
+            except Exception:
+                logger.warning("style_profile_learn_failed", original=original, corrected=corrected)
 
     def get_corrections(self) -> list[dict]:
         """Returns all recorded corrections, newest first."""

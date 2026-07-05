@@ -107,6 +107,8 @@ class MainWindow(QWidget):
         self.latest_raw_text = ""
         self.latest_cleaned_text = ""
         self._last_error_message = ""
+        self._latest_timings = {}
+        self._latency_summary = ""
         self.nav_buttons: dict[str, QPushButton] = {}
 
         # ── Resize state ─────────────────────────────────────────────
@@ -134,8 +136,9 @@ class MainWindow(QWidget):
         self.setStyleSheet(WISPR_QSS)
 
         self.root_layout = QVBoxLayout(self)
-        self.root_layout.setContentsMargins(_VISUAL_MARGIN, _VISUAL_MARGIN,
-                                                 _VISUAL_MARGIN, _VISUAL_MARGIN)
+        self.root_layout.setContentsMargins(
+            _VISUAL_MARGIN, _VISUAL_MARGIN, _VISUAL_MARGIN, _VISUAL_MARGIN
+        )
 
         self.container = QFrame()
         self.container.setObjectName("MainContainer")
@@ -207,8 +210,9 @@ class MainWindow(QWidget):
     def _toggle_maximize(self):
         if self._is_maximized:
             self._is_maximized = False
-            self.root_layout.setContentsMargins(_VISUAL_MARGIN, _VISUAL_MARGIN,
-                                                 _VISUAL_MARGIN, _VISUAL_MARGIN)
+            self.root_layout.setContentsMargins(
+                _VISUAL_MARGIN, _VISUAL_MARGIN, _VISUAL_MARGIN, _VISUAL_MARGIN
+            )
             self.container.setStyleSheet("")
             self.showNormal()
             # showNormal triggers resizeEvent → timer → _update_window_region re-applies clip
@@ -402,6 +406,13 @@ class MainWindow(QWidget):
 
     # Stub methods — satisfy controller interface without logic
     def update_timings(self, timings):
+        self._latest_timings = timings
+
+    def update_latency_summary(self, summary: str) -> None:
+        """Store rolling latency summary. Displayed in the debug window."""
+        self._latency_summary = summary
+
+    def update_memory(self, buffer_mb: float, total_mb: float) -> None:
         pass
 
     def update_hotkey_status(self, msg):
@@ -487,7 +498,7 @@ class MainWindow(QWidget):
                 else:
                     self.setCursor(new_cursor)
             # Show resize grip when hovering near bottom-right corner
-            show_grip = ("bottom" in dirs and "right" in dirs)
+            show_grip = "bottom" in dirs and "right" in dirs
             if show_grip != self._show_grip:
                 self._show_grip = show_grip
                 self.update()
@@ -605,9 +616,9 @@ class MainWindow(QWidget):
         if self._is_maximized or not self._show_grip:
             return
         # Grip sits at the container's bottom-right corner
-        cx = self.container.width() - 2   # 2px inset from container right edge
+        cx = self.container.width() - 2  # 2px inset from container right edge
         cy = self.container.height() - 2  # 2px inset from container bottom edge
-        ox = self.container.x()           # translate from MainWindow coords
+        ox = self.container.x()  # translate from MainWindow coords
         oy = self.container.y()
         painter = QPainter(self)
         try:
@@ -619,8 +630,10 @@ class MainWindow(QWidget):
             for i in range(3):
                 off = i * 5
                 painter.drawLine(
-                    ox + cx - off, oy + cy - 8,
-                    ox + cx - 8, oy + cy - off,
+                    ox + cx - off,
+                    oy + cy - 8,
+                    ox + cx - 8,
+                    oy + cy - off,
                 )
         finally:
             painter.end()

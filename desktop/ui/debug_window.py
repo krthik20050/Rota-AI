@@ -48,8 +48,11 @@ class DebugWindow(QWidget):
 
         self.state_label = QLabel("State: IDLE")
         self.session_label = QLabel("Session ID: -")
+        self.memory_label = QLabel("Buffer: 0.0 MB | Total: 0.0 MB")
+        self.memory_label.setStyleSheet("color: #88AA88; font-weight: normal; font-size: 11px;")
         root.addWidget(self.state_label)
         root.addWidget(self.session_label)
+        root.addWidget(self.memory_label)
 
         button_row = QHBoxLayout()
         self.start_button = QPushButton("Start Recording")
@@ -85,6 +88,9 @@ class DebugWindow(QWidget):
         self.state_label.setText(f"State: {state_value}")
         self.session_label.setText(f"Session ID: {session_id or '-'}")
 
+    def update_memory(self, buffer_mb: float, total_mb: float) -> None:
+        self.memory_label.setText(f"Buffer: {buffer_mb:.2f} MB | Total: {total_mb:.2f} MB")
+
     def update_text_results(self, raw_text, cleaned_text):
         self.raw_text.setPlainText(raw_text or "")
         self.cleaned_text.setPlainText(cleaned_text or "")
@@ -95,6 +101,16 @@ class DebugWindow(QWidget):
             return
         lines = [f"{key}: {value}" for key, value in timings.items()]
         self.timings_text.setPlainText("\n".join(lines))
+
+    def update_latency_summary(self, summary: str) -> None:
+        """Show the rolling latency tracker summary with color-coded status."""
+        current = self.timings_text.toPlainText()
+        if current == "No timings yet.":
+            self.timings_text.setPlainText(summary)
+        else:
+            # Prepend the latency summary above the per-session timings
+            combined = summary + "\n" + ("-" * 40) + "\n" + current
+            self.timings_text.setPlainText(combined)
 
     def update_logs(self, lines):
         self.logs_text.setPlainText("\n".join(lines))
