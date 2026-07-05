@@ -52,7 +52,7 @@ def check_for_update(current_version: str, on_update_found) -> None:
                     "User-Agent": "RotaAI-updater/1.0",
                 },
             )
-            with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+            with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # nosec B310: URL is hardcoded to api.github.com
                 data = json.loads(resp.read().decode())
 
             tag: str = data.get("tag_name", "").strip().lstrip("v")

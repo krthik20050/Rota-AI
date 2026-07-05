@@ -16,7 +16,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-_LOCK_PATH = "/tmp/rota-ai.lock"  # noqa: S108
+_LOCK_PATH = "/tmp/rota-ai.lock"  # nosec B108  # noqa: S108
 _lock_fd = None
 
 

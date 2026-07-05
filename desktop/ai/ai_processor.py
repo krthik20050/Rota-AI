@@ -390,7 +390,7 @@ class AIProcessor:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310: URL is hardcoded to generativelanguage.googleapis.com
                 body = json.loads(resp.read().decode("utf-8"))
                 candidates = body.get("candidates", [])
                 if candidates:
@@ -597,7 +597,7 @@ class AIProcessor:
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310: URL is localhost-only, validated by config
                 body = json.loads(resp.read().decode())
                 cleaned = (body.get("response") or "").strip()
                 if cleaned:
