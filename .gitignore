@@ -97,13 +97,6 @@ desktop-launcher.example.bat
 *.log
 original_landing.txt
 
-# Zero-byte / crash artifacts
-1.7.6
-self._hotkey_mods
-tuple[bool
-voice-powered
-run_build.py
-
 # Test scripts (local-only)
 test_imports.bat
 test_imports.py
@@ -153,12 +146,5 @@ None
 R
 SPEECH_THRESHOLD
 dict
-len(full_audio)`
-list[dict[str
-nul
-str
-strftime('%s'
-tuple[bool
-
 # Python project config
 desktop/pyproject.toml

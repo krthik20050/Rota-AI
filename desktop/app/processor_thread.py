@@ -54,12 +54,15 @@ class ProcessorThread(QThread):
     _SPEECH_RMS = 0.015
     _SILENCE_CHUNKS = 6
     _MIN_SEGMENT_CHUNKS = 8
-    # Streaming transcription: transcribe every ~1 second when Groq is active
-    # (fast API, <500ms per call on short clips) so the user sees partial text
-    # arriving during recording and only the last <1s tail needs transcribing
+    # Streaming transcription: transcribe every ~3 seconds when Groq is active
+    # (fast API, <1s per call on short clips) so the user sees partial text
+    # arriving during recording and only the last <3s tail needs transcribing
     # after stop — achieving Wispr Flow-level latency.
+    # 3s segments provide enough phonetic context for accurate transcription
+    # while still feeling responsive. Raised from 1s after quality regression reports:
+    # 1s clips caused Whisper to hallucinate due to insufficient context.
     # Falls back to ~55s intervals for local Whisper (slow CPU inference).
-    _STREAM_FLUSH_INTERVAL_GROQ = int(1.0 * 16000)  # 16000 samples = ~1s
+    _STREAM_FLUSH_INTERVAL_GROQ = int(3.0 * 16000)  # 48000 samples = ~3s
     _STREAM_FLUSH_INTERVAL_LOCAL = int(55.0 * 16000)  # 880000 samples = ~55s
     # Minimum audio to accumulate before a streaming flush fires (~3s).
     # Short utterances (<3s) skip streaming flushes entirely — they get a
@@ -167,6 +170,12 @@ class ProcessorThread(QThread):
             segment_chunks = []
             partial_segments = []
             silence_run = 0
+            # Accumulate ALL audio for a final full-context transcription.
+            # Streaming transcribes 3s fragments independently (no cross-segment
+            # context), causing Whisper to hallucinate. By keeping the full audio
+            # and transcribing it in one shot at the end, we give Whisper/Groq
+            # complete context — dramatically improving accuracy.
+            _full_audio_chunks: list[np.ndarray] = []
 
             # Resolve app context early — needed for streaming transcription.
             # session.app_context is captured at recording start so it's safe.
@@ -203,6 +212,10 @@ class ProcessorThread(QThread):
                 stream_buffer.append(chunk)
                 stream_sample_count += len(chunk)
                 self.stream_buffer_samples = stream_sample_count
+
+                # Accumulate ALL chunks for final full-context transcription.
+                # Memory: 60s recording at 16kHz float32 = ~3.8 MB — well within budget.
+                _full_audio_chunks.append(chunk)
 
                 # Expose total recording sample count for debug window
                 self._total_recording_samples += len(chunk)
@@ -280,13 +293,43 @@ class ProcessorThread(QThread):
                 self._flush_stream_segment(stream_buffer, stream_texts, app_ctx, thread_logger)
                 stream_buffer = []
 
-            # Assemble final text from all streaming segments
-            raw_text = " ".join(t for t in stream_texts if t).strip()
-            backend_used = "+".join(sorted(self._backends_used)) if self._backends_used else ""
+            # ── FINAL TRANSCRIPTION: full audio, one shot ────────────────
+            # This is THE quality fix. Streaming fragments (even at 3s) are
+            # transcribed independently with zero cross-segment context, causing
+            # Whisper to hallucinate. Transcribing the FULL audio gives the model
+            # complete phonetic/semantic context → dramatically better accuracy.
+            # The streaming results above are only used for LIVE partial display.
+            _full_transcript: str | None = None
+            _full_backend: str | None = None
+            if _full_audio_chunks and _had_speech:
+                try:
+                    _full_audio = np.concatenate(_full_audio_chunks).astype(np.float32, copy=False)
+                    _result = self.transcriber.transcribe_array(_full_audio, app_context=app_ctx)
+                    _full_transcript = (_result or "").strip()
+                    if _full_transcript:
+                        thread_logger.info(
+                            "full_audio_transcription_ok",
+                            chars=len(_full_transcript),
+                            original_samples=len(_full_audio),
+                        )
+                except Exception as _exc:
+                    thread_logger.warning(
+                        "full_audio_transcription_failed",
+                        error=str(_exc)[:80],
+                        exc_info=True,
+                    )
 
-            # Safety fallback: use live partial segments if streaming produced nothing
-            if not raw_text and self.live_transcription_enabled:
-                raw_text = " ".join(partial_segments).strip()
+            # Use full-context transcription if available, else fall back to
+            # streamed fragments (which were only used for partial display).
+            if _full_transcript:
+                raw_text = _full_transcript
+                backend_used = "full_audio"
+            else:
+                raw_text = " ".join(t for t in stream_texts if t).strip()
+                backend_used = "+".join(sorted(self._backends_used)) if self._backends_used else ""
+                # Safety fallback: use live partial segments
+                if not raw_text and self.live_transcription_enabled:
+                    raw_text = " ".join(partial_segments).strip()
 
             transcription_seconds = time.perf_counter() - transcription_start
             self.session.raw_text = raw_text

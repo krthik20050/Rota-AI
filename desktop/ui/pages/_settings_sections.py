@@ -132,6 +132,7 @@ def _test_groq_key(key: str) -> tuple[bool, str]:
     """Test a Groq API key by listing models. Returns (ok, message)."""
     try:
         from groq import Groq
+
         client = Groq(api_key=key)
         client.models.list()
         return True, "Groq API key is valid ✓"
@@ -147,7 +148,7 @@ def _test_gemini_key(key: str) -> tuple[bool, str]:
         import urllib.request
 
         url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
-        with urllib.request.urlopen(url, timeout=10) as resp:
+        with urllib.request.urlopen(url, timeout=10) as resp:  # nosec B310: URL is hardcoded to generativelanguage.googleapis.com
             data = json.loads(resp.read())
             if "models" in data:
                 return True, "Gemini API key is valid ✓"
@@ -267,9 +268,7 @@ def _test_api_key_thread(dlg, provider: str):
             btn.setEnabled(True)
             btn.setText("Test")
             status_lbl.setText(msg)
-            status_lbl.setStyleSheet(
-                "color: #4ADE80;" if ok else "color: #F87171;"
-            )
+            status_lbl.setStyleSheet("color: #4ADE80;" if ok else "color: #F87171;")
             status_lbl.setVisible(True)
 
         QTimer.singleShot(0, _done)

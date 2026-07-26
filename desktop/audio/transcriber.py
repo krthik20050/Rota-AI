@@ -62,7 +62,13 @@ def _strip_hallucinations(text: str) -> str:
 def classify_groq_error(error_text: str) -> str:
     """Map a Groq error string to a failure code."""
     lower = error_text.lower()
-    if "401" in lower or "unauthorized" in lower or "invalid" in lower or "auth" in lower or "api key" in lower:
+    if (
+        "401" in lower
+        or "unauthorized" in lower
+        or "invalid" in lower
+        or "auth" in lower
+        or "api key" in lower
+    ):
         return FAIL_GROQ_AUTH
     if "429" in lower or "rate limit" in lower or "quota" in lower or "too many requests" in lower:
         return FAIL_GROQ_RATE_LIMIT
@@ -285,6 +291,7 @@ class AudioTranscriber:
             "response_format": "text",
             "temperature": 0.0,
             "prompt": " ".join(prompt_parts),
+            "timeout": 15,  # seconds — prevent hanging when Groq is slow
         }
         response = client.audio.transcriptions.create(**kwargs)
         text = (

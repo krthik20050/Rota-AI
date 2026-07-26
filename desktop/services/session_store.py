@@ -252,20 +252,14 @@ class SessionStore:
             }
 
     def _aggregate(self, today_only: bool) -> dict:
-        where = (
-            "WHERE date(started_at, 'unixepoch', 'localtime') = date('now', 'localtime')"
+        query = (
+            "SELECT COALESCE(SUM(words), 0), COALESCE(SUM(recording_seconds), 0.0), COUNT(*) "
+            "FROM sessions WHERE date(started_at, 'unixepoch', 'localtime') = date('now', 'localtime')"
             if today_only
-            else ""
-        )
+            else "SELECT COALESCE(SUM(words), 0), COALESCE(SUM(recording_seconds), 0.0), COUNT(*) FROM sessions"
+        )  # nosec B608: `query` is fully hardcoded — no user input involved
         with self._write_lock:
-            cur = self._conn.execute(
-                f"""
-                SELECT COALESCE(SUM(words), 0),
-                       COALESCE(SUM(recording_seconds), 0.0),
-                       COUNT(*)
-                FROM sessions {where}
-                """
-            )
+            cur = self._conn.execute(query)
             row = cur.fetchone() or (0, 0.0, 0)
         words = int(row[0] or 0)
         secs = float(row[1] or 0.0)
@@ -364,15 +358,9 @@ class SessionStore:
             "all": "",
         }
         where = where_map.get(range_key, "")
+        query = f"SELECT COALESCE(SUM(words), 0), COALESCE(SUM(recording_seconds), 0.0), COUNT(*) FROM sessions {where}"  # nosec B608: `where_map` values are fully hardcoded
         with self._write_lock:
-            cur = self._conn.execute(
-                f"""
-                SELECT COALESCE(SUM(words), 0),
-                       COALESCE(SUM(recording_seconds), 0.0),
-                       COUNT(*)
-                FROM sessions {where}
-                """
-            )
+            cur = self._conn.execute(query)
             row = cur.fetchone() or (0, 0.0, 0)
         words = int(row[0] or 0)
         secs = float(row[1] or 0.0)
