@@ -206,7 +206,7 @@ class TestOnboardingDialog:
 
         dialog = OnboardingDialog(config=None)
         assert dialog._step == 0
-        assert dialog._TOTAL_STEPS == 5
+        assert dialog._TOTAL_STEPS == 2
         assert not dialog._closing
         assert dialog._stack is not None
 
@@ -218,11 +218,9 @@ class TestOnboardingDialog:
         dialog = OnboardingDialog(config=config)
         assert dialog._step == 0
         dialog._next()
-        assert dialog._step == 1
-        dialog._next()
-        assert dialog._step == 2
+        assert dialog._step == 1  # Welcome -> Ready
         dialog._prev()
-        assert dialog._step == 1
+        assert dialog._step == 0  # Back to Welcome
 
     def test_navigation_to_ready(self):
         _ensure_app()
@@ -255,16 +253,14 @@ class TestOnboardingDialog:
         assert config.save.called
         assert len(emitted) == 1
 
-    @patch("ui.onboarding.os.environ", {"GEMINI_API_KEY": "fake-key"})
-    def test_ready_summary_with_env_keys(self):
+    def test_navigate_to_ready_step(self):
         _ensure_app()
         from ui.onboarding import OnboardingDialog
 
         config = _make_onboarding_config()
         dialog = OnboardingDialog(config=config)
-        # Navigate to ready step
-        for _ in range(dialog._READY):
-            dialog._next()
+        # Navigate to ready step (step 1 of 2)
+        dialog._next()
         assert dialog._step == dialog._READY
 
     def test_mouse_drag_events(self):
