@@ -1,8 +1,8 @@
 """
 Wispr Flow "Voice in Motion" Design System — QSS Stylesheet
 ============================================================
-Aggregator module. Imports design tokens and QSS sub-sections,
-assembles WISPR_QSS, and re-exports all public names.
+Aggregator module. Imports design tokens from _base.py (tokens now inlined
+there — ponytail:merge) and QSS sub-sections, then assembles WISPR_QSS.
 
 Imported by ui.main_window.
 """
@@ -10,11 +10,14 @@ Imported by ui.main_window.
 from __future__ import annotations
 
 # ── Assemble full stylesheet ─────────────────────────────────────────
-from ui.styles._main_window_qss_base import _QSS_BASE
-from ui.styles._main_window_qss_components import _QSS_COMPONENTS
-
-# ── Re-export all design tokens ──────────────────────────────────────
-from ui.styles._main_window_qss_tokens import (  # noqa: F401
+# Note: design tokens are now defined in _main_window_qss_base.py
+# (CLR_BASE, CLR_ACCENT, CLR_ERROR, etc.) — the separate _tokens.py
+# was removed (ponytail:merge: one less file to maintain).
+# ponytail:merge — tokens now defined in _base.py (was _tokens.py)
+# All imports below are re-exports for consumer modules (home_page, main_window).
+# noqa comments keep ruff from stripping them as "unused".
+from ui.styles._main_window_qss_base import (  # noqa: F401
+    _QSS_BASE,
     CLR_ACCENT,
     CLR_ACCENT_DIM,
     CLR_ACCENT_GLOW,
@@ -45,5 +48,6 @@ from ui.styles._main_window_qss_tokens import (  # noqa: F401
     SIDEBAR_W,
     STATS_PANEL_W,
 )
+from ui.styles._main_window_qss_components import _QSS_COMPONENTS  # noqa: F401
 
 WISPR_QSS: str = _QSS_BASE + _QSS_COMPONENTS

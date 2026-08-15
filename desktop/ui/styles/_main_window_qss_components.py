@@ -5,7 +5,8 @@ segmented control, archetype card, buttons, stat cards.
 
 from __future__ import annotations
 
-from ui.styles._main_window_qss_tokens import (
+# ponytail:merge — tokens inlined into _base.py, import from there
+from ui.styles._main_window_qss_base import (
     CLR_ACCENT,
     CLR_BORDER,
     CLR_BORDER_HOVER,
