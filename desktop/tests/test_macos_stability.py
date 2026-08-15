@@ -78,7 +78,7 @@ class TestMacOSInjectorHelpers:
 
     @patch("plat.macos_injector._clipboard_copy")
     @patch("plat.macos_injector.time.sleep")
-    def test_tier_1_ax_inject_available(self, mock_sleep, mock_copy):
+    def test_tier_1_ax_inject_available(self, _mock_sleep, mock_copy):
         from plat.macos_injector import _inject_ax
 
         # _inject_ax does `from ApplicationServices import AXUIElementSetAttributeValue`
@@ -96,7 +96,7 @@ class TestMacOSInjectorHelpers:
 
     @patch("plat.macos_injector._clipboard_copy")
     @patch("plat.macos_injector.time.sleep")
-    def test_tier_2_apple_script_inject(self, mock_sleep, mock_copy):
+    def test_tier_2_apple_script_inject(self, _mock_sleep, mock_copy):
         mock_copy.return_value = True
         from plat.macos_injector import _inject_apple_script
 

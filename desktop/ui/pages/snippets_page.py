@@ -492,7 +492,7 @@ class SnippetsPage(QWidget):
         )
 
         def make_toggler(trig):
-            def _toggle_it(checked):
+            def _toggle_it(_checked):
                 if self.snippets_manager:
                     self.snippets_manager.toggle(trig)
                     self._snippets_refresh()

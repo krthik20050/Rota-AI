@@ -296,7 +296,7 @@ def test_process_text_empty_input():
 @patch.dict(os.environ, {"GROQ_API_KEY": "fake-groq-key"})
 @patch("ai.ai_processor._groq_rate_limiter.acquire", return_value=(True, 0.0))
 @patch("ai.ai_processor.Groq")
-def test_process_text_with_app_context(mock_groq_class, mock_rl_acquire):
+def test_process_text_with_app_context(mock_groq_class, _mock_rl_acquire):
     """Verify that app context is included in the prompt sent to the LLM."""
     mock_client = MagicMock()
     mock_response = MagicMock()
