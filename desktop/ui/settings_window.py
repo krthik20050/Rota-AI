@@ -294,7 +294,7 @@ class SettingsWindow(QDialog):
                 "QPushButton:hover { color: #F87171; }"
             )
             del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            del_btn.clicked.connect(lambda checked, a=app_name: self._remove_per_app(a))
+            del_btn.clicked.connect(lambda _checked, a=app_name: self._remove_per_app(a))
             row_lay.addWidget(del_btn)
 
             self.per_app_layout.addWidget(row)

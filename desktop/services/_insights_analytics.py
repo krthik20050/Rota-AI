@@ -3,8 +3,26 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from services._insights_models import CRUTCH_SYNONYMS
 from utils.text_metrics import calculate_text_metrics
+
+# ponytail:merge — CRUTCH_SYNONYMS inlined here from removed _insights_models.py
+CRUTCH_SYNONYMS = {
+    "basically": ["fundamentally", "in essence", "at its core"],
+    "actually": ["in fact", "indeed", "precisely"],
+    "literally": ["truly", "genuinely", "exactly"],
+    "seriously": ["sincerely", "genuinely", "earnestly"],
+    "obviously": ["clearly", "evidently", "it follows that"],
+    "essentially": ["at its core", "fundamentally", "in principle"],
+    "you know": ["as you may recall", "consider this", "notably"],
+    "i mean": ["to clarify", "what I'm saying is", "put simply"],
+    "so": ["therefore", "consequently", "as a result"],
+    "like": ["such as", "similar to", "for instance"],
+    "just": ["simply", "merely", "precisely"],
+    "kind of": ["somewhat", "to some extent", "rather"],
+    "sort of": ["in a way", "to a degree", "partially"],
+    "um": ["[pause]", "[breathe]", "[silent beat]"],
+    "uh": ["[pause]", "[breathe]", "[silent beat]"],
+}
 
 
 class InsightsAnalyticsMixin:

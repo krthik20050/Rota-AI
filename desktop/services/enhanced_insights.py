@@ -1,20 +1,127 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime
 
 from services._insights_analytics import InsightsAnalyticsMixin
-from services._insights_models import (
-    ACHIEVEMENTS,
-    PERSONAS,
-    Achievement,
-    DailyChallenge,
-    Persona,
-    PhraseInsight,
-    YearInReview,
-)
 from services.session_store import SessionStore
 
-# Re-export public dataclasses so existing imports keep working
+# ── ponytail:merge — models inlined from _insights_models.py ──────────────
+# (removed separate file to reduce file count)
+
+
+@dataclass
+class Persona:
+    name: str
+    level: int
+    xp: int
+    title: str
+    description: str
+
+
+@dataclass
+class PhraseInsight:
+    phrase: str
+    count: int
+    rank: int
+
+
+@dataclass
+class YearInReview:
+    total_words: int
+    total_sessions: int
+    total_time_saved: float
+    avg_wpm: int
+    avg_clarity: int
+    streak_record: int
+    top_phrases: list[PhraseInsight]
+    app_breakdown: dict[str, int]
+    percentile: int
+    persona: Persona
+
+
+@dataclass
+class Achievement:
+    id: str
+    name: str
+    description: str
+    icon: str
+    unlocked: bool
+    unlocked_at: str | None = None
+
+
+@dataclass
+class DailyChallenge:
+    id: str
+    description: str
+    target: int
+    progress: int
+    completed: bool
+
+
+PERSONAS = [
+    {
+        "level": 1,
+        "name": "Silent Beginner",
+        "title": "Whisperer",
+        "description": "First words transcribed",
+    },
+    {
+        "level": 5,
+        "name": "Chatterbox",
+        "title": "Sprinter",
+        "description": "5000 words transcribed",
+    },
+    {
+        "level": 10,
+        "name": "Orator",
+        "title": "Silver Tongue",
+        "description": "10000 words transcribed",
+    },
+    {
+        "level": 20,
+        "name": "Polyglot",
+        "title": "Word Smith",
+        "description": "25000 words transcribed",
+    },
+    {"level": 50, "name": "Sage", "title": "Oracle", "description": "100000 words transcribed"},
+]
+
+ACHIEVEMENTS = [
+    {
+        "id": "first_session",
+        "name": "First Flight",
+        "description": "Complete your first transcription",
+        "icon": "🎤",
+    },
+    {
+        "id": "week_streak",
+        "name": "Week Warrior",
+        "description": "Transcribe for 7 consecutive days",
+        "icon": "🔥",
+    },
+    {
+        "id": "month_streak",
+        "name": "Monthly Master",
+        "description": "Transcribe for 30 consecutive days",
+        "icon": "🏆",
+    },
+    {
+        "id": "clean_speech",
+        "name": "Pristine",
+        "description": "Complete a session with 0% filler words",
+        "icon": "✨",
+    },
+    {
+        "id": "power_user",
+        "name": "Power User",
+        "description": "100 sessions completed",
+        "icon": "⚡",
+    },
+]
+
+
+# Re-export public names so existing imports keep working
 __all__ = [
     "EnhancedInsightsService",
     "Persona",

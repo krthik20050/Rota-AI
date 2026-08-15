@@ -75,7 +75,7 @@ class AudioRecorder(QObject):
         """Enable silence-based auto-stop. seconds=0 disables it."""
         self._auto_stop_s = max(0.0, seconds)
 
-    def _audio_callback(self, indata, frames, _callback_time, status):
+    def _audio_callback(self, indata, _frames, _callback_time, status):
         """Callback function to receive audio data from the stream.
 
         NEVER raises — every exception is caught and logged so a single bad
