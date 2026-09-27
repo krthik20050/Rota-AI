@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -209,13 +210,18 @@ class DictionaryPage(QWidget):
     def _dict_refresh(self):
         data = self._dict_load()
         words = data.get("vocabulary", [])
+        # Search matches the whole query against the whole term, or any
+        # token of it ("new york city" matches "new", "york", "city").
         search_term = ""
         if hasattr(self, "_dict_search_input"):
             search_term = self._dict_search_input.text().strip().lower()
-        # Filter
-        filtered_words = (
-            [w for w in words if search_term in w.lower()] if search_term else list(words)
-        )
+        if search_term:
+            tokens = search_term.split()
+            filtered_words = [
+                w for w in words if search_term in w.lower() or any(t in w.lower() for t in tokens)
+            ]
+        else:
+            filtered_words = list(words)
         # Sort: newest first = reverse insertion order (last added = most recent)
         if self._sort_newest:
             filtered_words.reverse()
@@ -238,21 +244,22 @@ class DictionaryPage(QWidget):
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._dict_layout.addWidget(empty)
             return
-        # Uniform-width chips in grid rows sized to the *current* container
-        # width, so every chip fits — no clipped half-chips, no sideways
-        # scrolling, and the grid reflows when the window is resized.
+        # Uniform chips that EXPAND to fill each row (justified grid): the
+        # last row no longer strands dead space on the right, and the grid
+        # reflows when the window is resized.
         per_row = max(1, self._last_container_width // (self._chip_width + 8))
         for start in range(0, len(filtered_words), per_row):
+            row_words = filtered_words[start : start + per_row]
             row_widget = QWidget()
             row_widget.setStyleSheet("background: transparent;")
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.setSpacing(8)
-            for word in filtered_words[start : start + per_row]:
+            for word in row_words:
                 chip = self._create_word_chip(word)
-                chip.setFixedWidth(self._chip_width)
-                row_layout.addWidget(chip)
-            row_layout.addStretch()
+                chip.setMinimumWidth(self._chip_width)
+                chip.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                row_layout.addWidget(chip, 1)
             self._dict_layout.addWidget(row_widget)
 
     def resizeEvent(self, event) -> None:
