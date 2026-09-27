@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -22,7 +22,15 @@ class DictionaryPage(QWidget):
     def __init__(self, personal_dict=None, parent=None):
         super().__init__(parent)
         self.personal_dict = personal_dict
+        self._chip_width = 150
+        self._last_container_width = 400
         self._setup_ui()
+        # Debounced reflow: rebuilding chips on every resize pixel would
+        # flicker; batch them instead.
+        self._reflow_timer = QTimer(self)
+        self._reflow_timer.setSingleShot(True)
+        self._reflow_timer.setInterval(150)
+        self._reflow_timer.timeout.connect(self._on_reflow_tick)
 
     def _setup_ui(self):
         lay = QVBoxLayout(self)
@@ -45,16 +53,10 @@ class DictionaryPage(QWidget):
         subtitle.setObjectName("Subtitle")
         lay.addWidget(subtitle)
 
-        # ── Controls row: search, sort toggle, add ──
+        # ── Controls row: sort toggle, search, add-input ──
         self._sort_newest = True  # default: newest first
-        controls_row = QHBoxLayout()
-        controls_row.setSpacing(8)
-
-        self._dict_search_input = QLineEdit()
-        self._dict_search_input.setObjectName("DictSearchInput")
-        self._dict_search_input.setPlaceholderText("Search dictionary...")
-        self._dict_search_input.textChanged.connect(self._dict_refresh)
-        controls_row.addWidget(self._dict_search_input, 1)
+        inputs_row = QHBoxLayout()
+        inputs_row.setSpacing(8)
 
         self._sort_btn = QPushButton("⬇ Newest")
         self._sort_btn.setObjectName("SortToggleBtn")
@@ -63,12 +65,8 @@ class DictionaryPage(QWidget):
         self._sort_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._sort_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._sort_btn.clicked.connect(self._toggle_sort)
-        controls_row.addWidget(self._sort_btn)
+        inputs_row.addWidget(self._sort_btn)
 
-        lay.addLayout(controls_row)
-
-        inputs_row = QHBoxLayout()
-        inputs_row.setSpacing(12)
         self._dict_search_input = QLineEdit()
         self._dict_search_input.setObjectName("DictSearchInput")
         self._dict_search_input.setPlaceholderText("Search dictionary...")
@@ -202,6 +200,12 @@ class DictionaryPage(QWidget):
         self._sort_btn.setText("⬇ Newest" if self._sort_newest else "⬆ Oldest")
         self._dict_refresh()
 
+    def _on_reflow_tick(self) -> None:
+        """Re-measure the container before rebuilding the chip grid."""
+        if hasattr(self, "_dict_scroll") and self._dict_scroll.widget() is not None:
+            self._last_container_width = max(200, self._dict_scroll.widget().width())
+        self._dict_refresh()
+
     def _dict_refresh(self):
         data = self._dict_load()
         words = data.get("vocabulary", [])
@@ -234,18 +238,30 @@ class DictionaryPage(QWidget):
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._dict_layout.addWidget(empty)
             return
-        # Group words into rows of up to 5 chips for a grid-like layout
-        row_widget = None
-        row_layout = None
-        for i, word in enumerate(filtered_words):
-            if i % 5 == 0:
-                row_widget = QWidget()
-                row_widget.setStyleSheet("background: transparent;")
-                row_layout = QHBoxLayout(row_widget)
-                row_layout.setContentsMargins(0, 0, 0, 0)
-                row_layout.setSpacing(8)
-                self._dict_layout.addWidget(row_widget)
-            row_layout.addWidget(self._create_word_chip(word))
+        # Uniform-width chips in grid rows sized to the *current* container
+        # width, so every chip fits — no clipped half-chips, no sideways
+        # scrolling, and the grid reflows when the window is resized.
+        per_row = max(1, self._last_container_width // (self._chip_width + 8))
+        for start in range(0, len(filtered_words), per_row):
+            row_widget = QWidget()
+            row_widget.setStyleSheet("background: transparent;")
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(8)
+            for word in filtered_words[start : start + per_row]:
+                chip = self._create_word_chip(word)
+                chip.setFixedWidth(self._chip_width)
+                row_layout.addWidget(chip)
+            row_layout.addStretch()
+            self._dict_layout.addWidget(row_widget)
+
+    def resizeEvent(self, event) -> None:
+        """Reflow word chips when the page width changes (wrap, not clip)."""
+        super().resizeEvent(event)
+        old_w = event.oldSize().width() if event is not None else -1
+        new_w = event.size().width() if event is not None else -1
+        if old_w != -1 and new_w != old_w:
+            self._reflow_timer.start()
 
     def _dict_add_word(self):
         word = self._dict_input.text().strip()
