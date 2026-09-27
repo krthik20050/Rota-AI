@@ -51,6 +51,11 @@ _bmad/
 .cursor/
 .planning/
 .codex/
+.freebuff/
+.playwright-mcp/
+
+# Node dependencies (website/ has its own lockfile)
+node_modules/
 
 # Local machine config (contains personal paths)
 .claude/settings.local.json
