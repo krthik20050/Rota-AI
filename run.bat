@@ -6,7 +6,10 @@ REM HOW TO USE
 REM   A) Leave this file inside the repo folder — nothing to configure.
 REM   B) Shortcut on Desktop: right-click this file -> Send to -> Desktop (shortcut).
 REM   C) Copy this file to Desktop only: edit ROTA_REPO_OVERRIDE below (one line).
-REM CLICK AGAIN while Rota runs: brings the window forward (does not start a second copy).
+REM CLICK AGAIN while Rota runs: brings the window forward (does not start a
+REM second copy) — UNLESS a newer version was just pulled from git, in which
+REM case the running (stale) instance is restarted so you're always on the
+REM latest code.
 REM ============================================================================
 setlocal enabledelayedexpansion
 
@@ -93,6 +96,7 @@ REM ============================================================================
 REM 2. AUTO-UPDATE - Pull latest from current branch
 REM ============================================================================
 echo [1/4] Checking for updates...
+set "UPDATED=0"
 
 set "BRANCH="
 for /f "tokens=*" %%b in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "BRANCH=%%b"
@@ -124,6 +128,7 @@ if "!LOCAL_HEAD!"=="!REMOTE_HEAD!" (
     git pull --ff-only origin !BRANCH! >nul 2>&1
     if !errorlevel! equ 0 (
         echo       Updated successfully.
+        set "UPDATED=1"
     ) else (
         echo       Local changes ahead of remote — skipping update.
     )
@@ -235,6 +240,21 @@ REM --- Single-instance check (runs SYNCHRONOUSLY so this CMD window keeps ---
 REM     foreground focus when AllowSetForegroundWindow is called, ensuring  ---
 REM     the running instance can actually call SetForegroundWindow later).  ---
 echo       Checking for existing instance...
+set "EXISTING_PID="
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":47201" ^| findstr "LISTENING"') do set "EXISTING_PID=%%p"
+
+if not defined EXISTING_PID goto :launch_fresh
+
+REM A stale instance (started before this pull) must be restarted so the
+REM new code actually runs — this is how "run.bat always runs the latest"
+REM is enforced in practice.
+if "!UPDATED!"=="1" (
+    echo       Code was just updated - restarting the running instance...
+    taskkill /F /PID !EXISTING_PID! >nul 2>&1
+    timeout /t 2 /nobreak >nul
+    goto :launch_fresh
+)
+
 "%VENV_PYTHON%" -c "import sys,socket,ctypes;s=socket.socket();s.settimeout(1.0);s.connect(('127.0.0.1',47201));ctypes.windll.user32.AllowSetForegroundWindow(0xFFFFFFFF);s.sendall(b'ROTA_WAKE_MAIN\n');s.shutdown(2);s.close()" 2>nul
 if %errorlevel% equ 0 (
     echo       Rota is already running ^(window brought forward^).
@@ -243,6 +263,8 @@ if %errorlevel% equ 0 (
     echo =============================================
     goto :done
 )
+
+:launch_fresh
 
 echo       Rota is starting. This launcher will close automatically.
 echo       If the app window does not appear, check the system tray.

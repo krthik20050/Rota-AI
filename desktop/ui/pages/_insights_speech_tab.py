@@ -22,7 +22,12 @@ def build_speech_tab(page) -> QScrollArea:
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
     scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    # Vertical scrolling only: with widgetResizable + wrapping labels the
+    # container's minimum width always fits the viewport, so this policy
+    # can only ever clip a pathological case — never hide content behind a
+    # sideways scrollbar (the previous ScrollBarAsNeeded showed one because
+    # non-wrapping labels forced a ~1476px minimum width).
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
     container = QWidget()
@@ -43,6 +48,13 @@ def build_speech_tab(page) -> QScrollArea:
     page.coach_drill_title_lbl = QLabel("")
     page.coach_tip_lbl = QLabel("")
     page.coach_drill_lbl = QLabel("")
+
+    # Post-pass: several labels are constructed inline (not via _lbl), so
+    # force word-wrap on every label in the tab. Non-wrapping labels set
+    # the tab's minimum width to the longest line of text, which is what
+    # produced the horizontal scrollbar.
+    for lbl in container.findChildren(QLabel):
+        lbl.setWordWrap(True)
 
     scroll.setWidget(container)
     return scroll
@@ -546,4 +558,8 @@ def _build_crutch_panel(page, lay):
 def _lbl(text, obj_name):
     lbl = QLabel(text)
     lbl.setObjectName(obj_name)
+    # Wrap long labels instead of forcing the card (and the whole tab)
+    # to a minimum width wider than the window — the source of the
+    # horizontal scrollbar on the Speech tab.
+    lbl.setWordWrap(True)
     return lbl

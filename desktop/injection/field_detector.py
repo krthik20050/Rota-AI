@@ -205,7 +205,15 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
         if not hwnd:
             return False
 
-        # First attempt: SetForegroundWindow
+        # First attempt: SetForegroundWindow.
+        # A synthetic ALT press/release first: Windows refuses foreground
+        # switches to processes that haven't received recent input, and this
+        # benign key event grants that right (standard technique). Without
+        # it, restore fails whenever the user has switched windows during a
+        # long transcription — which is exactly when this matters.
+        user32.keybd_event(0x12, 0, 0, 0)  # ALT down
+        user32.keybd_event(0x12, 0, 2, 0)  # ALT up (KEYEVENTF_KEYUP)
+        time.sleep(0.02)
         user32.SetForegroundWindow(hwnd)
         time.sleep(0.05)  # Increased from 20ms to 50ms for reliability
 
@@ -222,6 +230,8 @@ def restore_focus_and_click(field_info: dict[str, Any] | None) -> bool:
                 current_tid = ctypes.windll.kernel32.GetCurrentThreadId()
                 target_tid = user32.GetWindowThreadProcessId(hwnd, None)
                 user32.AttachThreadInput(current_tid, target_tid, True)
+                user32.keybd_event(0x12, 0, 0, 0)  # ALT down (foreground unlock)
+                user32.keybd_event(0x12, 0, 2, 0)  # ALT up
                 user32.SetForegroundWindow(hwnd)
                 user32.SetFocus(hwnd)
                 user32.BringWindowToTop(hwnd)
