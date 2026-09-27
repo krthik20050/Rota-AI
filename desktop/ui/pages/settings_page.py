@@ -389,6 +389,7 @@ class SettingsPage(QWidget):
 
         if hasattr(self, "hotkey_display"):
             from ui.pages._settings_sections import _hotkey_display_name
+
             self.hotkey_display.setText(_hotkey_display_name(conf.get("hotkey", "f9")))
 
         mode = conf.get("hotkey_mode", "hold")
@@ -477,9 +478,7 @@ class SettingsPage(QWidget):
         self.config.set("ollama_url", self.ollama_url_input.text().strip())
         self.config.set("ollama_model", self.ollama_model_input.text().strip())
         try:
-            self.config.set(
-                "auto_stop_silence_s", float(self.auto_stop_input.text().strip())
-            )
+            self.config.set("auto_stop_silence_s", float(self.auto_stop_input.text().strip()))
         except ValueError:
             self.config.set("auto_stop_silence_s", 2.5)
 
@@ -487,9 +486,7 @@ class SettingsPage(QWidget):
         self.config.set("cpu_threads", self.cpu_threads_combo.currentData())
         self.config.set("live_transcription_enabled", self.live_feedback_check.isChecked())
 
-        self.config.set(
-            "ui_font_family", self.font_family_combo.currentData() or "Segoe UI"
-        )
+        self.config.set("ui_font_family", self.font_family_combo.currentData() or "Segoe UI")
         self.config.set("ui_font_size", self.font_size_spin.value())
         self.config.set("ui_font_scope", self.font_scope_combo.currentData() or "app")
         self.config.set("date_display", self.date_display_combo.currentData() or "relative")

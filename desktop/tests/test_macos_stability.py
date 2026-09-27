@@ -38,6 +38,7 @@ class TestMacOSInjectorHelpers:
         """AXIsProcessTrustedWithOptions not available → False."""
         with patch.dict("sys.modules", {"ApplicationServices": None}):
             from plat.macos_injector import _check_accessibility_permission
+
             assert _check_accessibility_permission() is False
 
     def test_clipboard_snapshot_save_restore(self):
@@ -59,6 +60,7 @@ class TestMacOSInjectorHelpers:
         with patch("plat.macos_injector.subprocess.Popen") as mock_popen:
             mock_popen.return_value.returncode = 1
             from plat.macos_injector import _clipboard_copy
+
             assert _clipboard_copy("test") is False
 
     @patch("plat.macos_injector.subprocess.Popen")
@@ -67,6 +69,7 @@ class TestMacOSInjectorHelpers:
         proc.returncode = 0
         mock_popen.return_value = proc
         from plat.macos_injector import _clipboard_copy
+
         assert _clipboard_copy("test") is True
         mock_popen.assert_called_once()
 
@@ -74,6 +77,7 @@ class TestMacOSInjectorHelpers:
         with patch("plat.macos_injector.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1
             from plat.macos_injector import _clipboard_paste
+
             assert _clipboard_paste() is None
 
     @patch("plat.macos_injector._clipboard_copy")
@@ -214,6 +218,7 @@ class TestMacOSInjectorStability:
     def test_ax_available_check_returns_false_when_missing(self):
         with patch.dict("sys.modules", {"ApplicationServices": None}):
             from plat.macos_injector import TextInjector
+
             assert TextInjector._check_ax_available() is False
 
 
@@ -227,40 +232,47 @@ class TestMacOSHotkeyParsing:
 
     def test_parse_simple_key(self):
         from plat.macos_hotkey import _parse_hotkey_str
+
         mods, main = _parse_hotkey_str("tab")
         assert mods == frozenset()
         assert main == "tab"
 
     def test_parse_with_modifiers(self):
         from plat.macos_hotkey import _parse_hotkey_str
+
         mods, main = _parse_hotkey_str("ctrl+shift+r")
         assert mods == frozenset({"ctrl", "shift"})
         assert main == "r"
 
     def test_parse_with_cmd(self):
         from plat.macos_hotkey import _parse_hotkey_str
+
         mods, main = _parse_hotkey_str("cmd+option+k")
         assert "cmd" in mods or "command" in mods or "meta" in mods
         assert main == "k"
 
     def test_parse_empty_string(self):
         from plat.macos_hotkey import _parse_hotkey_str
+
         mods, main = _parse_hotkey_str("")
         assert mods == frozenset()
         assert main == ""
 
     def test_parse_case_insensitive(self):
         from plat.macos_hotkey import _parse_hotkey_str
+
         mods, main = _parse_hotkey_str("Ctrl+Shift+K")
         assert mods == frozenset({"ctrl", "shift"})
         assert main == "k"
 
     def test_quartz_hotkey_modifier_only_returns_none(self):
         from plat.macos_hotkey import _parse_quartz_hotkey
+
         assert _parse_quartz_hotkey("ctrl+shift") is None
 
     def test_quartz_hotkey_unknown_key_returns_none(self):
         from plat.macos_hotkey import _parse_quartz_hotkey
+
         result = _parse_quartz_hotkey("ctrl+shift+superkey")
         assert result is None
 
@@ -347,36 +359,42 @@ class TestMacOSWindowClassification:
 
     def test_classify_browser(self):
         from plat.macos_window import _classify
+
         cat, tone = _classify("Google Chrome")
         assert cat == "browser"
         assert tone == "neutral"
 
     def test_classify_terminal(self):
         from plat.macos_window import _classify
+
         cat, tone = _classify("Terminal")
         assert cat == "terminal"
         assert tone == "technical"
 
     def test_classify_editor(self):
         from plat.macos_window import _classify
+
         cat, tone = _classify("Visual Studio Code")
         assert cat == "editor"
         assert tone == "technical"
 
     def test_classify_unknown(self):
         from plat.macos_window import _classify
+
         cat, tone = _classify("SomeWeirdApp")
         assert cat == "other"
         assert tone == "neutral"
 
     def test_classify_empty(self):
         from plat.macos_window import _classify
+
         cat, tone = _classify("")
         assert cat == "other"
         assert tone == "neutral"
 
     def test_classify_case_sensitive(self):
         from plat.macos_window import _classify
+
         cat, tone = _classify("SLACK")
         assert cat == "chat"
 
@@ -386,6 +404,7 @@ class TestMacOSWindowAppContext:
 
     def test_app_context_defaults(self):
         from plat.macos_window import AppContext
+
         ctx = AppContext()
         assert ctx.app_name == ""
         assert ctx.process_name == ""
@@ -393,7 +412,10 @@ class TestMacOSWindowAppContext:
 
     def test_app_context_with_values(self):
         from plat.macos_window import AppContext
-        ctx = AppContext(app_name="Safari", process_name="safari", category="browser", tone="neutral")
+
+        ctx = AppContext(
+            app_name="Safari", process_name="safari", category="browser", tone="neutral"
+        )
         assert ctx.app_name == "Safari"
         assert ctx.category == "browser"
 
@@ -404,6 +426,7 @@ class TestMacOSWindowFieldDetection:
     @patch("plat.macos_window._AX_AVAILABLE", False)
     def test_get_focused_field_info_returns_defaults_when_ax_missing(self):
         from plat.macos_window import get_focused_field_info
+
         info = get_focused_field_info()
         assert isinstance(info, dict)
         assert "window_id" in info
@@ -414,22 +437,26 @@ class TestMacOSWindowFieldDetection:
     @patch("plat.macos_window._AX_AVAILABLE", False)
     def test_get_field_text_returns_empty_when_ax_missing(self):
         from plat.macos_window import get_field_text
+
         assert get_field_text() == ""
 
     @patch("plat.macos_window._AX_AVAILABLE", False)
     def test_scan_for_text_inputs_returns_empty_when_ax_missing(self):
         from plat.macos_window import scan_for_text_inputs
+
         assert scan_for_text_inputs() == []
 
     @patch("plat.macos_window._AX_AVAILABLE", False)
     def test_focus_text_input_returns_false_when_ax_missing(self):
         from plat.macos_window import focus_text_input
+
         assert focus_text_input({}) is False
 
     @patch("plat.macos_window._AX_AVAILABLE", True)
     @patch("plat.macos_window.subprocess.run")
     def test_restore_focus_and_click_with_process_name(self, mock_run):
         from plat.macos_window import restore_focus_and_click
+
         mock_run.return_value.returncode = 0
         result = restore_focus_and_click({"process_name": "TextEdit"})
         assert result is True
@@ -437,16 +464,19 @@ class TestMacOSWindowFieldDetection:
     @patch("plat.macos_window._AX_AVAILABLE", True)
     def test_restore_focus_and_click_without_field_info(self):
         from plat.macos_window import restore_focus_and_click
+
         assert restore_focus_and_click(None) is True  # fail-open
 
     @patch("plat.macos_window._AX_AVAILABLE", True)
     def test_restore_focus_and_click_with_empty_field_info(self):
         from plat.macos_window import restore_focus_and_click
+
         assert restore_focus_and_click({}) is True  # fail-open
 
     @patch("plat.macos_window._AX_AVAILABLE", True)
     def test_get_active_app_returns_empty_on_failure(self):
         from plat.macos_window import get_active_app
+
         with patch("plat.macos_window._get_frontmost_app_info", return_value=(None, None)):
             ctx = get_active_app()
             assert ctx.app_name == ""
@@ -494,14 +524,32 @@ class TestMacOSSetupCheckResult:
 
     def test_ok_result(self):
         from plat.macos_setup import CheckResult
-        r = CheckResult(key="portaudio", label="PortAudio", detail="Ready", ok=True, critical=True, can_install=False, needs_user=False)
+
+        r = CheckResult(
+            key="portaudio",
+            label="PortAudio",
+            detail="Ready",
+            ok=True,
+            critical=True,
+            can_install=False,
+            needs_user=False,
+        )
         assert r.ok is True
         assert r.critical is True
         assert r.can_install is False
 
     def test_failed_critical_result(self):
         from plat.macos_setup import CheckResult
-        r = CheckResult(key="accessibility", label="Accessibility", detail="Not granted", ok=False, critical=True, can_install=False, needs_user=True)
+
+        r = CheckResult(
+            key="accessibility",
+            label="Accessibility",
+            detail="Not granted",
+            ok=False,
+            critical=True,
+            can_install=False,
+            needs_user=True,
+        )
         assert r.ok is False
         assert r.critical is True
         assert r.needs_user is True
@@ -512,6 +560,7 @@ class TestMacOSSetupChecks:
 
     def test_check_portaudio_available(self):
         from plat.macos_setup import check_portaudio
+
         with patch("plat.macos_setup.sounddevice", create=True):
             r = check_portaudio()
             assert r.key == "portaudio"
@@ -520,16 +569,21 @@ class TestMacOSSetupChecks:
 
     def test_check_portaudio_missing(self):
         from plat.macos_setup import check_portaudio
+
         # Force import to fail
         with patch.dict("sys.modules", {"sounddevice": None}):
             import importlib
-            with patch.object(importlib, "import_module", side_effect=ImportError("no sounddevice")):
+
+            with patch.object(
+                importlib, "import_module", side_effect=ImportError("no sounddevice")
+            ):
                 r = check_portaudio()
                 assert r.ok is False
                 assert r.can_install is True
 
     def test_check_pyobjc_available(self):
         from plat.macos_setup import check_pyobjc
+
         with (
             patch.dict("sys.modules", {"AppKit": MagicMock(), "ApplicationServices": MagicMock()}),
             patch("plat.macos_setup.sys.frozen", False, create=True),
@@ -540,6 +594,7 @@ class TestMacOSSetupChecks:
 
     def test_check_pyobjc_frozen_bundle(self):
         from plat.macos_setup import check_pyobjc
+
         with patch("plat.macos_setup.sys.frozen", True, create=True):
             r = check_pyobjc()
             assert r.ok is True
@@ -548,6 +603,7 @@ class TestMacOSSetupChecks:
 
     def test_check_pyobjc_missing(self):
         from plat.macos_setup import check_pyobjc
+
         with (
             patch.dict("sys.modules", {"AppKit": None, "ApplicationServices": None}),
             patch("plat.macos_setup.sys.frozen", False, create=True),
@@ -558,6 +614,7 @@ class TestMacOSSetupChecks:
 
     def test_check_accessibility_not_granted(self):
         from plat.macos_setup import check_accessibility
+
         with patch.dict("sys.modules", {"ApplicationServices": None}):
             with patch("plat.macos_setup.sys.modules", {"ApplicationServices": None}):
                 r = check_accessibility()
@@ -566,6 +623,7 @@ class TestMacOSSetupChecks:
 
     def test_check_input_monitoring_not_granted(self):
         from plat.macos_setup import check_input_monitoring
+
         with patch.dict("sys.modules", {"Quartz": None}):
             r = check_input_monitoring()
             assert r.ok is False
@@ -574,6 +632,7 @@ class TestMacOSSetupChecks:
 
     def test_run_checks_returns_all_four(self):
         from plat.macos_setup import run_checks
+
         results = run_checks()
         assert len(results) == 4
         keys = [r.key for r in results]
@@ -588,11 +647,13 @@ class TestMacOSSetupInstallers:
 
     def test_is_setup_done_no_file(self):
         from plat.macos_setup import is_setup_done
+
         with patch("os.path.exists", return_value=False):
             assert is_setup_done() is False
 
     def test_is_setup_done_file_exists(self):
         from plat.macos_setup import is_setup_done
+
         with patch("os.path.exists", return_value=True):
             assert is_setup_done() is True
 
@@ -600,12 +661,14 @@ class TestMacOSSetupInstallers:
     @patch("os.makedirs")
     def test_mark_setup_done(self, mock_makedirs, mock_open):
         from plat.macos_setup import mark_setup_done
+
         mark_setup_done()
         mock_makedirs.assert_called_once()
         mock_open.assert_called_once()
 
     def test_install_portaudio_no_brew(self):
         from plat.macos_setup import install_portaudio
+
         with patch("plat.macos_setup._find_brew", return_value=None):
             with patch("plat.macos_setup._install_homebrew", return_value=(False, "Failed")):
                 ok, msg = install_portaudio()
@@ -614,6 +677,7 @@ class TestMacOSSetupInstallers:
 
     def test_install_pyobjc_frozen_skips(self):
         from plat.macos_setup import install_pyobjc
+
         with patch("plat.macos_setup.sys.frozen", True, create=True):
             ok, msg = install_pyobjc()
             assert ok is True
@@ -622,6 +686,7 @@ class TestMacOSSetupInstallers:
 
     def test_find_brew_not_installed(self):
         from plat.macos_setup import _find_brew
+
         with patch("os.path.isfile", return_value=False):
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value.returncode = 1
@@ -651,6 +716,7 @@ class TestPlatformInit:
         with patch("sys.platform", "darwin"):
             self._evict_plat_modules()
             from plat import get_hotkey_handler
+
             handler = get_hotkey_handler()
             assert "macos_hotkey" in str(handler.__module__)
 
@@ -658,6 +724,7 @@ class TestPlatformInit:
         with patch("sys.platform", "linux"):
             self._evict_plat_modules()
             from plat import get_hotkey_handler
+
             handler = get_hotkey_handler()
             assert "linux_hotkey" in str(handler.__module__)
 
@@ -665,6 +732,7 @@ class TestPlatformInit:
         with patch("sys.platform", "darwin"):
             self._evict_plat_modules()
             from plat import get_injector
+
             injector = get_injector()
             assert "macos_injector" in str(injector.__module__)
 
@@ -672,5 +740,6 @@ class TestPlatformInit:
         with patch("sys.platform", "linux"):
             self._evict_plat_modules()
             from plat import get_injector
+
             injector = get_injector()
             assert "linux_injector" in str(injector.__module__)

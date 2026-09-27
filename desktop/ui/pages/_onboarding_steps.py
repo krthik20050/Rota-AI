@@ -6,6 +6,7 @@ Steps:
 
 API Keys and Model configuration are moved to Settings.
 """
+
 from __future__ import annotations
 
 import threading
@@ -124,8 +125,7 @@ def build_step_welcome(dialog) -> QWidget:
     lay.addSpacing(4)
 
     hk_note = QLabel(
-        "Works globally across all your apps. "
-        "You can change this anytime in Settings."
+        "Works globally across all your apps. You can change this anytime in Settings."
     )
     hk_note.setObjectName("StepBody")
     hk_note.setWordWrap(True)
@@ -203,6 +203,8 @@ def build_step_ready(dialog) -> QWidget:
 
     lay.addStretch()
     return w
+
+
 # ── Hotkey capture helpers ────────────────────────────────────────
 
 

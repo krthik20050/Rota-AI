@@ -100,8 +100,8 @@ class OnboardingDialog(QDialog):
 
         self._stack = QStackedWidget()
         self._stack.setStyleSheet("background: transparent;")
-        self._stack.addWidget(build_step_welcome(self))   # 0: Welcome + Hotkey
-        self._stack.addWidget(build_step_ready(self))      # 1: Ready
+        self._stack.addWidget(build_step_welcome(self))  # 0: Welcome + Hotkey
+        self._stack.addWidget(build_step_ready(self))  # 1: Ready
         lay.addWidget(self._stack, 1)
         lay.addSpacing(24)
 

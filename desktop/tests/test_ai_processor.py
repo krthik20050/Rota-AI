@@ -300,7 +300,9 @@ def test_process_text_with_app_context(mock_groq_class, _mock_rl_acquire):
     """Verify that app context is included in the prompt sent to the LLM."""
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.choices = [MagicMock(message=MagicMock(content="Hey what is up I am doing great today"))]
+    mock_response.choices = [
+        MagicMock(message=MagicMock(content="Hey what is up I am doing great today"))
+    ]
     mock_client.chat.completions.create.return_value = mock_response
     mock_groq_class.return_value = mock_client
 
