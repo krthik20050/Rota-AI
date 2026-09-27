@@ -276,7 +276,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install PySide6 structlog python-dotenv pyperclip pynput keyring psutil groq numpy pytest pytest-cov
+          pip install PySide6 structlog python-dotenv pyperclip pynput keyring psutil groq numpy sounddevice pytest pytest-cov
           pip install pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-ApplicationServices pyobjc-framework-Quartz
 
       - name: Check imports (macOS)
