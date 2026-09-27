@@ -193,7 +193,7 @@ def test_ai_processor_gemini_is_default():
     """Gemini should be selected when ai_provider is 'gemini' (the new default)."""
     processor = AIProcessor(ai_provider="gemini")
     assert processor.active_backend == "gemini"
-    assert processor.model == "gemini-2.0-flash"
+    assert processor.model == "gemini-flash-latest"
 
 
 @patch.dict(os.environ, {"GROQ_API_KEY": "fake-groq-key", "GEMINI_API_KEY": "fake-gemini-key"})

@@ -202,6 +202,41 @@ class TextInjector:
             max_attempts = 2 if text_len < 100 else 3
             for attempt in range(max_attempts):
                 try:
+                    # CARET GUARD: a paste with no focused text control is
+                    # silently swallowed — keybd_event "succeeds" regardless,
+                    # which is how injections were logged as success while
+                    # nothing appeared. Verify a text field has keyboard
+                    # focus in the CURRENT foreground window; if not, click
+                    # into the best candidate first. This covers the case
+                    # where the user moved focus (or another app took it)
+                    # during a long transcription.
+                    try:
+                        from injection.field_detector import (
+                            focus_text_input,
+                            get_focused_field_info,
+                            scan_for_text_inputs,
+                        )
+
+                        fg_hwnd = ctypes.windll.user32.GetForegroundWindow()
+                        fg_info = get_focused_field_info()
+                        if not fg_info.get("is_text_field"):
+                            candidates = scan_for_text_inputs(fg_hwnd)
+                            if candidates:
+                                if focus_text_input(candidates[0]):
+                                    logger.info(
+                                        "caret_guard_clicked_input",
+                                        class_name=candidates[0].get("class_name"),
+                                        correlation_id=correlation_id,
+                                    )
+                                    time.sleep(0.04)
+                            else:
+                                logger.warning(
+                                    "caret_guard_no_inputs",
+                                    correlation_id=correlation_id,
+                                )
+                    except Exception:
+                        logger.debug("caret_guard_error", correlation_id=correlation_id)
+
                     # Send Ctrl+V using native Windows keybd_event.
                     # WHY: Avoids importing/using python-keyboard package which initializes
                     # its own low-level hook thread and causes 0x8001010d / access violation crashes.

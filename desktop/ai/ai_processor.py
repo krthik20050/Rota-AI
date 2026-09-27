@@ -133,7 +133,7 @@ class AIProcessor:
     def model(self) -> str:
         backend = self.active_backend
         if backend == "gemini":
-            return "gemini-2.0-flash"
+            return "gemini-flash-latest"
         elif backend == "groq":
             return "llama-3.3-70b-versatile"
         elif backend == "ollama":
@@ -404,6 +404,17 @@ class AIProcessor:
             if exc.code == 429:
                 self._mark_cooldown(model_name)
                 logger.warning("gemini_429_cooldown", model=model_name, cid=correlation_id)
+            elif exc.code == 404:
+                # Model gone (deprecated / not available to this key). Cooldown
+                # so the cascade skips it instead of burning a round-trip on
+                # every dictation. Long — deprecations don't heal in minutes.
+                self._mark_cooldown(model_name, seconds=3600)
+                logger.error(
+                    "gemini_model_unavailable",
+                    code=404,
+                    model=model_name,
+                    cid=correlation_id,
+                )
             else:
                 logger.error(
                     "gemini_http_error", code=exc.code, model=model_name, cid=correlation_id
@@ -444,15 +455,17 @@ class AIProcessor:
         Ordering: respects ai_provider preference (groq-first or gemini-first),
         then round-robins within that order so no single model gets all the load.
         """
-        # Four Gemini models × free-tier quota = ~6 000 req/day combined capacity.
-        # gemini-1.5-flash removed (returns 404 — fully deprecated). gemini-2.0-flash kept (still
-        # serving, sometimes rate-limited). Order: fastest first, most-capable last.
+        # Gemini slots use Google's *stable aliases* (gemini-*-latest), which
+        # always point at the current flash/lite/pro generations. Pinning
+        # dated names (gemini-2.x-*) rots as Google deprecates models — keys
+        # created after a deprecation get hard 404s, which cost ~6s of
+        # guaranteed-failing requests per dictation before the Groq fallback.
+        # Order: fastest first, most-capable last.
         gemini_slots = (
             [
-                ("gemini", "gemini-2.0-flash"),
-                ("gemini", "gemini-2.0-flash-lite"),
-                ("gemini", "gemini-2.5-flash"),
-                ("gemini", "gemini-2.5-pro"),
+                ("gemini", "gemini-flash-latest"),
+                ("gemini", "gemini-flash-lite-latest"),
+                ("gemini", "gemini-pro-latest"),
             ]
             if self._gemini_api_key
             else []
