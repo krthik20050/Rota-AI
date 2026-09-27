@@ -255,8 +255,12 @@ jobs:
           retention-days: 30
 
   # ── Create Release ────────────────────────────────────────────────────────
+  # Windows is the primary deliverable: publish as soon as the Windows build
+  # succeeds. Linux/macOS assets are attached only when those builds succeed,
+  # so a failed secondary build can no longer block the installer release
+  # (this is what silently dropped the v1.0.x/v1.1.0 installers).
   release:
-    needs: [build-windows, build-linux, build-macos]
+    needs: [build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -266,15 +270,19 @@ jobs:
         with:
           name: windows-installer
 
+      # Optional platform artifacts: if those builds failed, release anyway
+      # with whatever exists (Windows installer minimum).
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
           name: linux-appimage
+        continue-on-error: true
 
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
         with:
           name: macos-app
+        continue-on-error: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -282,6 +290,7 @@ jobs:
           name: "Rota AI ${{ github.ref_name }}"
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
+          fail_on_unmatched_files: false
           files: |
             RotaAI-Setup.exe
             RotaAI.AppImage
