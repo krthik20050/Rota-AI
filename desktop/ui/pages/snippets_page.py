@@ -11,12 +11,13 @@ import datetime
 import re
 
 import structlog
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -53,13 +54,82 @@ _ROW_QSS_NORMAL = (
 )
 
 
+def _toggle_qss(enabled: bool) -> str:
+    """QSS for the per-row ON/OFF toggle, shared by build and in-place updates."""
+    return (
+        f"QPushButton {{ background: {'rgba(134,239,172,0.25)' if enabled else 'rgba(255,255,255,0.06)'}; "
+        f"color: {CLR_ACCENT if enabled else CLR_TEXT_MUTED}; "
+        f"border: 1px solid {'rgba(134,239,172,0.5)' if enabled else 'rgba(255,255,255,0.08)'}; "
+        f"border-radius: 10px; font-size: 9px; font-weight: bold; padding: 0; }}"
+        f"QPushButton:hover {{ background: {'rgba(134,239,172,0.35)' if enabled else 'rgba(255,255,255,0.1)'}; }}"
+    )
+
+
 class SnippetsPage(QWidget):
+    _VARIABLES = (
+        "date",
+        "time",
+        "clipboard",
+        "today",
+        "cursor",
+        "day",
+        "month",
+        "year",
+        "datetime",
+        "timestamp",
+    )
+
     def __init__(self, snippets_manager, parent=None):
         super().__init__(parent)
         self.snippets_manager = snippets_manager
         self._selected_snippet_key = None
         self._snippet_search_text = ""
+        self._var_btn_width = 92
+        self._last_editor_width = 520
         self._setup_ui()
+        # Debounced re-layout of variable chips when the editor is resized,
+        # so they always wrap to fit instead of overflowing horizontally.
+        self._var_reflow_timer = QTimer(self)
+        self._var_reflow_timer.setSingleShot(True)
+        self._var_reflow_timer.setInterval(150)
+        self._var_reflow_timer.timeout.connect(self._on_var_reflow_tick)
+
+    def _on_var_reflow_tick(self) -> None:
+        if hasattr(self, "_snippet_editor_page"):
+            self._last_editor_width = max(300, self._snippet_editor_page.width())
+        self._rebuild_var_buttons()
+
+    def _rebuild_var_buttons(self) -> None:
+        """Grid of fixed-width variable chips sized to the current editor width."""
+        per_row = max(
+            2, min(len(self._VARIABLES), self._last_editor_width // (self._var_btn_width + 6))
+        )
+        old_layout = self._var_container.layout()
+        if old_layout is not None:
+            while old_layout.count():
+                item = old_layout.takeAt(0)
+                w = item.widget()
+                if w is not None:
+                    w.deleteLater()
+            old_layout.deleteLater()
+        grid = QGridLayout(self._var_container)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(6)
+        for i, var in enumerate(self._VARIABLES):
+            v_btn = QPushButton(f"{{{{{var}}}}}")
+            v_btn.setObjectName("SnippetVarBtn")
+            v_btn.setFixedWidth(self._var_btn_width)
+            v_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            v_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            v_btn.clicked.connect(lambda _, v=var: self._insert_var_placeholder(v))
+            grid.addWidget(v_btn, i // per_row, i % per_row)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        old_w = event.oldSize().width() if event is not None else -1
+        new_w = event.size().width() if event is not None else -1
+        if old_w != -1 and new_w != old_w:
+            self._var_reflow_timer.start()
 
     def _setup_ui(self):
         lay = QHBoxLayout(self)
@@ -228,28 +298,10 @@ class SnippetsPage(QWidget):
         form_lay.addWidget(var_label)
 
         var_container = QWidget()
+        var_container.setObjectName("SnippetVarContainer")
         var_container.setStyleSheet("background: transparent;")
-        var_flow = QHBoxLayout(var_container)
-        var_flow.setContentsMargins(0, 0, 0, 0)
-        var_flow.setSpacing(6)
-        for var in [
-            "date",
-            "time",
-            "clipboard",
-            "today",
-            "cursor",
-            "day",
-            "month",
-            "year",
-            "datetime",
-            "timestamp",
-        ]:
-            v_btn = QPushButton(f"{{{{{var}}}}}")
-            v_btn.setObjectName("SnippetVarBtn")
-            v_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            v_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            v_btn.clicked.connect(lambda _, v=var: self._insert_var_placeholder(v))
-            var_flow.addWidget(v_btn)
+        self._var_container = var_container
+        self._rebuild_var_buttons()
         form_lay.addWidget(var_container)
 
         # Live preview
@@ -483,23 +535,31 @@ class SnippetsPage(QWidget):
         tog.setFixedSize(36, 20)
         tog.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         tog.setCursor(Qt.CursorShape.PointingHandCursor)
-        tog.setStyleSheet(
-            f"QPushButton {{ background: {'rgba(134,239,172,0.25)' if enabled else 'rgba(255,255,255,0.06)'}; "
-            f"color: {CLR_ACCENT if enabled else CLR_TEXT_MUTED}; "
-            f"border: 1px solid {'rgba(134,239,172,0.5)' if enabled else 'rgba(255,255,255,0.08)'}; "
-            f"border-radius: 10px; font-size: 9px; font-weight: bold; padding: 0; }}"
-            f"QPushButton:hover {{ background: {'rgba(134,239,172,0.35)' if enabled else 'rgba(255,255,255,0.1)'}; }}"
-        )
+        tog.setStyleSheet(_toggle_qss(enabled))
 
-        def make_toggler(trig):
-            def _toggle_it(_checked):
-                if self.snippets_manager:
-                    self.snippets_manager.toggle(trig)
-                    self._snippets_refresh()
+        def _toggle_it(_checked):
+            """Flip this snippet in place — no full list rebuild, no flicker."""
+            if not self.snippets_manager:
+                return
+            self.snippets_manager.toggle(trigger)
+            status = self.snippets_manager.all_with_status().get(trigger)
+            now_enabled = bool(status[1]) if status else False
+            tog.setText("ON" if now_enabled else "OFF")
+            tog.setChecked(now_enabled)
+            tog.setStyleSheet(_toggle_qss(now_enabled))
+            if now_enabled:
+                trig_lbl.setStyleSheet("")
+                icon_lbl.setStyleSheet("")
+            else:
+                trig_lbl.setStyleSheet(f"color: {CLR_TEXT_MUTED}; text-decoration: line-through;")
+                icon_lbl.setStyleSheet("opacity: 0.4;")
+            row.setStyleSheet(
+                _ROW_QSS_SELECTED
+                if self._selected_snippet_key == trigger
+                else (_ROW_QSS_DISABLED if not now_enabled else _ROW_QSS_NORMAL)
+            )
 
-            return _toggle_it
-
-        tog.clicked.connect(make_toggler(trigger))
+        tog.clicked.connect(_toggle_it)
         h.addWidget(tog)
 
         # Click to select
