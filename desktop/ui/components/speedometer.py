@@ -67,12 +67,15 @@ class SpeedometerWidget(QWidget):
         p.setPen(pen)
         p.drawArc(rect, 180 * 16, -180 * 16)
 
-        # Filled arc
-        if pct > 0.005:
+        # Filled arc — any progress shows. A ~4° minimum sliver keeps tiny
+        # values (e.g. 43 of 10,000 daily words = 0.4%) visibly on the gauge
+        # instead of rounding away to an invisible sub-degree arc.
+        if pct > 0.0:
+            sweep = max(4 * 16, int(-pct * 180 * 16))
             pen = QPen(QColor("#86EFAC"), 13)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             p.setPen(pen)
-            p.drawArc(rect, 180 * 16, int(-pct * 180 * 16))
+            p.drawArc(rect, 180 * 16, sweep)
 
         # Value text — monospace for data feel
         p.setPen(QColor("#F0F0F2"))

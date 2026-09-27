@@ -260,9 +260,11 @@ class HomePage(QWidget):
                 if self.history_layout.count() > 0:
                     self.history_layout.addSpacing(12)
                 date_str = self._format_date(entry_date)
-                marker = QLabel("")
-                marker.setObjectName("DateGroupMarker")
-                marker.setFixedHeight(0)
+                # Visible date header (TODAY / YESTERDAY / …) styled with the
+                # existing SectionLabel rule. Previously this was an empty
+                # zero-height label, so date groups rendered as nothing.
+                marker = QLabel(date_str)
+                marker.setObjectName("SectionLabel")
                 self.history_layout.addWidget(marker)
                 self._date_headers.append((date_str, marker))
 
