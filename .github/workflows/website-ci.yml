@@ -8,9 +8,13 @@ on:
       - '.github/workflows/website-ci.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'website/**'
-      - '.github/workflows/website-ci.yml'
+    # No paths filter here: the "Protect main" ruleset requires the
+    # website-ci check on every PR, so a path-filtered workflow would skip
+    # desktop-only PRs and block them forever (a skipped required check
+    # never reports SUCCESS). The job is ~35s, so always-run is cheap.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 concurrency:
   group: website-ci-${{ github.ref }}
