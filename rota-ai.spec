@@ -6,6 +6,9 @@ import sys
 import re
 from pathlib import Path
 
+# Fail before packaging if the build environment lacks the actual UI binding.
+from PySide6 import QtCore, QtGui, QtMultimedia, QtWidgets
+
 ROOT = Path(SPECPATH)
 DESKTOP = ROOT / "desktop"
 VERSION_FILE = DESKTOP / "app" / "version.py"
@@ -23,11 +26,11 @@ if VERSION_FILE.exists():
         APP_VERSION = match.group(1)
 
 common_hiddenimports = [
-    # PyQt6 essentials
-    "PyQt6.QtCore",
-    "PyQt6.QtGui",
-    "PyQt6.QtWidgets",
-    "PyQt6.QtMultimedia",
+    # PySide6 essentials
+    "PySide6.QtCore",
+    "PySide6.QtGui",
+    "PySide6.QtWidgets",
+    "PySide6.QtMultimedia",
     # sounddevice
     "sounddevice",
     "_sounddevice_data",
@@ -120,6 +123,10 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
+        # Never collect a second Qt binding from a developer environment.
+        "PyQt6",
+        "PyQt5",
+        "PySide2",
         # Exclude CUDA to keep size manageable (CPU-only build)
         "torch.cuda",
         "torch.backends.cuda",
@@ -139,6 +146,11 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
+
+if IS_WINDOWS:
+    # Qt uses the Windows ICU API. An unrelated ICU DLL on PATH can have
+    # incompatible exports and prevent QtCore from loading in the bundle.
+    a.binaries = [entry for entry in a.binaries if entry[0].lower() != "icuuc.dll"]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 

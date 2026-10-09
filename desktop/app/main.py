@@ -110,8 +110,6 @@ threading.excepthook = _thread_excepthook
 
 
 def run() -> None:
-    configure_logging()
-
     # ── CLI argument parsing ──────────────────────────────────────────────
     parser = argparse.ArgumentParser(prog="rota", description="Rota AI — voice dictation")
     parser.add_argument(
@@ -119,6 +117,11 @@ def run() -> None:
         action="version",
         version=f"%(prog)s {__version__}",
         help="Show the version number and exit",
+    )
+    parser.add_argument(
+        "--smoke-test",
+        action="store_true",
+        help="Verify startup imports and the Qt event loop, then exit",
     )
     parser.add_argument(
         "--hotkey-backend",
@@ -131,6 +134,17 @@ def run() -> None:
         ),
     )
     args = parser.parse_args()
+    if args.smoke_test:
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication, QWidget
+
+        app = QApplication(sys.argv)
+        window = QWidget()
+        window.show()
+        QTimer.singleShot(100, app.quit)
+        sys.exit(app.exec())
+
+    configure_logging()
     if args.hotkey_backend != "auto":
         os.environ["ROTA_HOTKEY_BACKEND"] = args.hotkey_backend
         logger.info(
