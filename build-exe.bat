@@ -40,11 +40,18 @@ echo       This may take several minutes on first build.
 echo.
 
 cd /d "%ROOT%"
-pyinstaller rota-ai.spec --clean --noconfirm
+python -m PyInstaller rota-ai.spec --clean --noconfirm
 
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Build failed. Check the output above.
+    goto :fail
+)
+
+REM --- Verify the packaged startup before creating an installer ---
+powershell -NoProfile -Command "$app = Start-Process -FilePath '%DIST%\RotaAI.exe' -ArgumentList '--smoke-test' -PassThru -WindowStyle Hidden; if (-not $app.WaitForExit(60000)) { Stop-Process -Id $app.Id -Force; exit 1 }; exit $app.ExitCode"
+if %errorlevel% neq 0 (
+    echo [ERROR] Packaged app failed its startup smoke test.
     goto :fail
 )
 
