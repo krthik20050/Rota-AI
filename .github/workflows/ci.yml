@@ -177,7 +177,7 @@ jobs:
           cd desktop
           set PYTHONPATH=%cd%;%PYTHONPATH%
           set QT_QPA_PLATFORM=offscreen
-          python -m pytest tests\ -v --tb=short -x
+          python -X faulthandler -m pytest tests\ -v --tb=short -x
 
   # ── Full Matrix CI (weekly scheduled only) ─────────────────────────────────
   linux-ci:

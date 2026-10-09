@@ -19,7 +19,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QCoreApplication, QEvent, Qt
 from PySide6.QtGui import QCloseEvent
 
 # ---------------------------------------------------------------------------
@@ -49,6 +49,11 @@ def _disable_audio_playback():
     """Rendering tests must not start hardware audio threads during teardown."""
     with patch("ui.overlay.pill_overlay.play_haptic"):
         yield
+        if _QT_APP is not None:
+            for widget in _QT_APP.topLevelWidgets():
+                widget.close()
+                widget.deleteLater()
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 # ===================================================================
