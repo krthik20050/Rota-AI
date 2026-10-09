@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
 
@@ -41,6 +42,13 @@ def _cleanup_app():
     """Force-clean singleton so each test class can re-init if needed."""
     global _QT_APP
     _QT_APP = None
+
+
+@pytest.fixture(autouse=True)
+def _disable_audio_playback():
+    """Rendering tests must not start hardware audio threads during teardown."""
+    with patch("ui.overlay.pill_overlay.play_haptic"):
+        yield
 
 
 # ===================================================================
