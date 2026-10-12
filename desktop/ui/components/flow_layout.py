@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QRect, QSize, Qt
-from PySide6.QtWidgets import QLayout, QWidgetItem
+from PySide6.QtWidgets import QLayout
 
 
 class FlowLayout(QLayout):
@@ -29,8 +29,12 @@ class FlowLayout(QLayout):
     def addWidget(self, widget, stretch=0, alignment=None):
         _ = stretch
         _ = alignment
-        item = QWidgetItem(widget)
-        self.addItem(item)
+        # QLayout registers Qt ownership before dispatching to our addItem.
+        # Creating QWidgetItem directly leaves cards as unowned windows and
+        # lets Python destroy their children (including animation timers).
+        super().addWidget(widget)
+        if alignment is not None:
+            self.setAlignment(widget, alignment)
 
     def setSpacing(self, spacing: int):
         self._h_space = spacing
@@ -115,7 +119,7 @@ class FlowLayout(QLayout):
             for item in list(self._item_list):
                 try:
                     widget = item.widget()
-                    if widget and not widget.isVisible():
+                    if widget and widget.isHidden():
                         continue
                     sh = item.sizeHint()
                     space_x = self.horizontalSpacing()

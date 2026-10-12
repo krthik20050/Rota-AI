@@ -96,6 +96,10 @@ desktop-launcher.example.bat
 *.jpg
 *.jpeg
 *.gif
+
+# Website public assets are deployed, so they must be tracked in git
+# (negation must come AFTER the image-ignore rules above to take effect)
+!website/public/**
 *.swp
 *.swo
 *~
@@ -153,3 +157,4 @@ SPEECH_THRESHOLD
 dict
 # Python project config
 desktop/pyproject.toml
+dist-desktop-fix/
