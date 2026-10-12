@@ -33,4 +33,6 @@ repos:
       - id: check-merge-conflict
       - id: check-added-large-files
         args: [--maxkb=500]
+        # Reviewed website logo; retain the size limit for all other files.
+        exclude: ^website/public/logo\.png$
       - id: detect-private-key

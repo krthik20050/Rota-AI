@@ -152,6 +152,14 @@ if IS_WINDOWS:
     # incompatible exports and prevent QtCore from loading in the bundle.
     a.binaries = [entry for entry in a.binaries if entry[0].lower() != "icuuc.dll"]
 
+# Source directories can contain generated local data after development/tests.
+# Never distribute a developer database or stale Python bytecode as app data.
+a.datas = [
+    entry for entry in a.datas
+    if "__pycache__" not in Path(entry[0]).parts
+    and not entry[0].lower().endswith((".pyc", ".db", ".db-wal", ".db-shm", ".sqlite", ".sqlite3"))
+]
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(

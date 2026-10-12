@@ -8,7 +8,9 @@
 #define AppPublisher "Rota AI"
 #define AppURL "https://github.com/krthik20050/Rota-AI"
 #define AppExeName "RotaAI.exe"
-#define SourceDir "dist\RotaAI"
+#ifndef SourceDir
+  #define SourceDir "dist\RotaAI"
+#endif
 
 [Setup]
 AppId={{A7F3C2E1-4B8D-4F2A-9C1E-8D3F5A2B6E4C}

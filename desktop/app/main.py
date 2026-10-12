@@ -121,7 +121,7 @@ def run() -> None:
     parser.add_argument(
         "--smoke-test",
         action="store_true",
-        help="Verify startup imports and the Qt event loop, then exit",
+        help="Verify desktop navigation, metrics, ownership and the Qt event loop, then exit",
     )
     parser.add_argument(
         "--hotkey-backend",
@@ -135,14 +135,16 @@ def run() -> None:
     )
     args = parser.parse_args()
     if args.smoke_test:
-        from PySide6.QtCore import QTimer
-        from PySide6.QtWidgets import QApplication, QWidget
+        from app.desktop_smoke import run_desktop_smoke
 
-        app = QApplication(sys.argv)
-        window = QWidget()
-        window.show()
-        QTimer.singleShot(100, app.quit)
-        sys.exit(app.exec())
+        try:
+            result = run_desktop_smoke()
+        except Exception:
+            # Automation must fail promptly, never wait for a crash dialog.
+            if sys.stderr is not None:
+                traceback.print_exc()
+            result = 1
+        sys.exit(result)
 
     configure_logging()
     if args.hotkey_backend != "auto":

@@ -40,6 +40,30 @@ def test_windows_release_uses_declared_dependencies_and_checks_startup():
     assert "$app.ExitCode -ne 0" in windows_job
 
 
+def test_bundle_excludes_generated_databases_and_bytecode():
+    tree = ast.parse((ROOT / "rota-ai.spec").read_text(encoding="utf-8"))
+    guard = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Attribute) and target.attr == "datas" for target in node.targets
+        )
+    )
+    bundled = SimpleNamespace(
+        datas=[
+            ("data/_test_sessions.db", "test.db", "DATA"),
+            ("data/history.db-wal", "history.db-wal", "DATA"),
+            ("ui/__pycache__/chart.pyc", "chart.pyc", "DATA"),
+            ("ui/chart.py", "chart.py", "DATA"),
+            ("assets/icon.ico", "icon.ico", "DATA"),
+        ]
+    )
+    code = compile(ast.Module(body=[guard], type_ignores=[]), "rota-ai.spec", "exec")
+    exec(code, {"a": bundled, "Path": Path})
+    assert [row[0] for row in bundled.datas] == ["ui/chart.py", "assets/icon.ico"]
+
+
 def test_windows_bundle_uses_system_icu_without_dropping_versioned_qt_icu():
     tree = ast.parse((ROOT / "rota-ai.spec").read_text(encoding="utf-8"))
     guard = next(

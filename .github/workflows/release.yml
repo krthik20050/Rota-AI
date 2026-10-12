@@ -59,6 +59,16 @@ jobs:
           python -m pip check
           python -c "from PySide6 import QtCore, QtGui, QtWidgets, QtMultimedia"
 
+      - name: Verify desktop ownership and navigation regressions
+        shell: pwsh
+        env:
+          PYTHONPATH: desktop
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pip install pytest
+          python -m pytest desktop/tests/test_flow_layout_lifetime.py desktop/tests/test_ui_render.py desktop/tests/test_instance_guard.py -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build RotaAI.exe
         shell: pwsh
         run: |
@@ -189,6 +199,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -r linux/requirements-linux.txt
           pip install pyinstaller
 
@@ -196,6 +207,15 @@ jobs:
         run: |
           chmod +x linux/build-linux.sh
           ./linux/build-linux.sh
+
+      - name: Verify Linux artifact size
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          artifact = Path('dist/RotaAI.AppImage')
+          if artifact.stat().st_size >= 2147483648:
+              raise SystemExit('AppImage exceeds the GitHub release asset limit')
+          PY
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -261,6 +281,15 @@ jobs:
           codesign --verify --deep --strict dist/RotaAI.app
           spctl --assess --type execute --verbose=4 dist/RotaAI.app || true
 
+      - name: Smoke test macOS desktop pages
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python - <<'PY'
+          import subprocess
+          subprocess.run(['dist/RotaAI.app/Contents/MacOS/RotaAI', '--smoke-test'], check=True, timeout=60)
+          PY
+
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
@@ -269,12 +298,11 @@ jobs:
           retention-days: 30
 
   # ── Create Release ────────────────────────────────────────────────────────
-  # Windows is the primary deliverable: publish as soon as the Windows build
-  # succeeds. Linux/macOS assets are attached only when those builds succeed,
-  # so a failed secondary build can no longer block the installer release
-  # (this is what silently dropped the v1.0.x/v1.1.0 installers).
+  # Wait for every platform so successful secondary builds are included.
+  # Failed secondary builds do not block the verified Windows installer.
   release:
-    needs: [build-windows]
+    needs: [build-windows, build-linux, build-macos]
+    if: always() && needs.build-windows.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -287,12 +315,14 @@ jobs:
       # Optional platform artifacts: if those builds failed, release anyway
       # with whatever exists (Windows installer minimum).
       - name: Download Linux artifact
+        if: needs.build-linux.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: linux-appimage
         continue-on-error: true
 
       - name: Download macOS artifact
+        if: needs.build-macos.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: macos-app
